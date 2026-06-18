@@ -26,6 +26,13 @@ public class PlayerController : MonoBehaviour
     public float gravityMultiplier = 2f;// 중력 가속도 배수
     [HideInInspector] public float verticalVelocity;
 
+    [Header("Interaction System")]
+    public float interactRange = 1.5f;     // 상호작용 탐색 길이
+    public float sphereCastRadius = 0.5f;  // 탐색 구체의 반지름 (두께)
+    public LayerMask interactableLayer;
+
+    [HideInInspector] public Transform focusedObject;
+
     [HideInInspector] public bool isRunning = false;
     [HideInInspector] public Vector2 moveInput;
 
@@ -53,10 +60,12 @@ public class PlayerController : MonoBehaviour
 
         stateMachine.AddState(new RunState_Player(this, stateMachine));
         stateMachine.AddState(new JumpState_Player(this, stateMachine));
+        stateMachine.AddState(new PushState_Player(this, stateMachine));
+
 
         controls.PlayerControll.Jump.performed += ctx => stateMachine.CurrentState.OnJumpInput();
 
-        //controls.Player.Interact.performed += ctx => stateMachine.CurrentState.OnInteractInput();
+        controls.PlayerControll.Interact.performed += ctx => stateMachine.CurrentState.OnInteractInput();
     }
 
     private void Start()
@@ -67,6 +76,7 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         HandleMovementInput();
+        UpdateFocus(); // 매 프레임 내가 무엇을 쳐다보는지 업데이트
         stateMachine.Update();
     }
 
@@ -131,6 +141,40 @@ public class PlayerController : MonoBehaviour
         int z = Mathf.RoundToInt(transform.position.z / tileSize);
         return new Vector2Int(x, z);
     }
+
+
+    private void UpdateFocus() // 상호작용 오브젝트 검사
+    {
+        // 캐릭터의 약간 위(가슴 높이)에서 탐색 시작
+        Vector3 rayStart = transform.position + Vector3.up * 0.5f;
+
+        // 앞으로 두꺼운 구체를 쏩니다
+        if (Physics.SphereCast(rayStart, sphereCastRadius, transform.forward, out RaycastHit hit, interactRange, interactableLayer))
+        {
+            // 맞은 오브젝트에 PushableObject 스크립트가 있는지 확인 (밀기 가능한 물체인지 최종 판별)
+            if (hit.collider.GetComponent<PushableObject>() != null)
+            {
+                focusedObject = hit.transform;
+            }
+            else
+            {
+                focusedObject = null;
+            }
+        }
+        else
+        {
+            focusedObject = null;
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.yellow;
+        Vector3 rayStart = transform.position + Vector3.up * 0.5f;
+        Gizmos.DrawWireSphere(rayStart + transform.forward * interactRange, sphereCastRadius);
+        Gizmos.DrawRay(rayStart, transform.forward * interactRange);
+    }
+
 
     private void OnEnable() { controls.Enable(); }
     private void OnDisable() { controls.Disable(); }

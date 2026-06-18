@@ -20,7 +20,13 @@ public abstract class PlayerBaseState
         stateMachine.ChangeState<JumpState_Player>();
     
     }
-    public virtual void OnInteractInput() { }
+    public virtual void OnInteractInput()
+    {
+        if (player.focusedObject != null)
+        {
+            stateMachine.ChangeState<PushState_Player>();
+        }
+    }
 
     // [추가] 이동 방향으로 캐릭터를 부드럽게 회전시키는 공통 메서드
     protected virtual void HandleRotation(Vector3 moveDir)
