@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Project DP/Assets/Prefabs/Tile/Test/New Tile Palette.prefab.meta
 guid: 561c89787d34bcd48ae579be4ddc6685
+========
+guid: d69165a910a279840af8892c173b7bd5
+>>>>>>>> 84c12fe9e3201080ff414cc4ffe2c4c3fe83efde:Project DP/Assets/Prefabs/Tile/Test/PushTile.prefab.meta
 PrefabImporter:
   externalObjects: {}
   userData: 
