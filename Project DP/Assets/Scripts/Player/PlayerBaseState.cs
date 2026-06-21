@@ -15,7 +15,16 @@ public abstract class PlayerBaseState
     public virtual void Update() { }
     public virtual void FixedUpdate() { }
     public virtual void Exit() { }
-    public virtual void OnJumpInput() {
+
+    public virtual void OnAttackInput()
+    {
+        stateMachine.ChangeState<AttackState_Player>();
+    }
+
+    public virtual void OnGuardInput() { stateMachine.ChangeState<GuardState_Player>(); }
+    public virtual void OnGuardReleased() { }
+
+public virtual void OnJumpInput() {
 
         stateMachine.ChangeState<JumpState_Player>();
     
@@ -39,5 +48,19 @@ public abstract class PlayerBaseState
             // Slerp를 사용하여 현재 회전에서 목표 회전으로 부드럽게 보간 (15f는 회전 속도)
             player.transform.rotation = Quaternion.Slerp(player.transform.rotation, targetRotation, 15f * Time.deltaTime);
         }
+    }
+
+    protected virtual Vector3 CalculateMoveDirection()
+    {
+        if (player.cameraTransform == null) return new Vector3(player.moveInput.x, 0, player.moveInput.y).normalized;
+
+        Vector3 camForward = player.cameraTransform.forward;
+        Vector3 camRight = player.cameraTransform.right;
+        camForward.y = 0f;
+        camRight.y = 0f;
+        camForward.Normalize();
+        camRight.Normalize();
+
+        return (camRight * player.moveInput.x + camForward * player.moveInput.y).normalized;
     }
 }

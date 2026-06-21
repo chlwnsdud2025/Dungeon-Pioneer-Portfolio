@@ -47,7 +47,7 @@ public class PushState_Player : PlayerBaseState
         holdTimer = 0f;
 
         // 3. 밀기 준비 애니메이션 재생 및 밀기 방향으로 캐릭터 회전 확정
-        player.animator.CrossFadeInFixedTime(pushReadyHash, 0.1f);
+        player.animator.CrossFadeInFixedTime(pushMoveHash, 0.1f);
         player.transform.rotation = Quaternion.LookRotation(snappedPushDirection);
     }
 

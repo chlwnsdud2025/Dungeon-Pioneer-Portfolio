@@ -40,17 +40,5 @@ public class WalkState_Player : PlayerBaseState
    
 
     // 카메라 방향을 기준으로 한 이동 벡터 계산 편의 메서드
-    private Vector3 CalculateMoveDirection()
-    {
-        if (player.cameraTransform == null) return new Vector3(player.moveInput.x, 0, player.moveInput.y).normalized;
-
-        Vector3 camForward = player.cameraTransform.forward;
-        Vector3 camRight = player.cameraTransform.right;
-        camForward.y = 0f;
-        camRight.y = 0f;
-        camForward.Normalize();
-        camRight.Normalize();
-
-        return (camRight * player.moveInput.x + camForward * player.moveInput.y).normalized;
-    }
+    
 }

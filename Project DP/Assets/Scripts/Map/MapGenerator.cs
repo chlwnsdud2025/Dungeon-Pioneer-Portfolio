@@ -57,7 +57,6 @@ public class MapGenerator : MonoBehaviour
         // 4. 미로 내부의 막다른 길에 보물상자 배치
         PlaceTreasureChest();
     }
-
     private void CarvePath(int x, int z)
     {
         mapData[x, z] = TileType.Floor;
