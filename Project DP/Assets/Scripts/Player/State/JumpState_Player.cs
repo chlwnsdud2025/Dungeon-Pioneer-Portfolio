@@ -2,12 +2,7 @@ using UnityEngine;
 
 public class JumpState_Player : PlayerBaseState
 {
-    private readonly int jumpStartHash = Animator.StringToHash("JumpStart");
-    private readonly int jumpingHash = Animator.StringToHash("Jumping");
-    private readonly int jumpEndHash = Animator.StringToHash("JumpEnd");
-
-    private enum JumpPhase { Start, Airborne, Land }
-    private JumpPhase currentPhase;
+    private readonly int jumpingHash = Animator.StringToHash("Jumping"); // 애니메이션 하나로 통일
 
     private bool isLongJump;
     private Vector3 fixedJumpDirection;
@@ -18,9 +13,9 @@ public class JumpState_Player : PlayerBaseState
     public override void Enter()
     {
         isLongJump = player.isRunning;
-        currentPhase = JumpPhase.Start;
 
-        player.animator.CrossFadeInFixedTime(jumpStartHash, 0.1f);
+        // 시작하자마자 바로 Jumping 애니메이션 하나만 실행
+        player.animator.CrossFadeInFixedTime(jumpingHash, 0.1f);
 
         // 1. 위로 뛰는 힘 적용
         player.verticalVelocity = player.jumpForce;
@@ -32,7 +27,7 @@ public class JumpState_Player : PlayerBaseState
         }
         else
         {
-            // ★ 핵심: 그리드(Tile) 기반 점프 거리 계산 로직 ★
+            // 핵심: 그리드(Tile) 기반 점프 거리 계산 로직
 
             // 기획서 반영: 숏점프 = 바닥타일 1, 건너뛰기 = 바닥타일 1.5
             float targetTiles = isLongJump ? 1.5f : 1.0f;
@@ -51,42 +46,26 @@ public class JumpState_Player : PlayerBaseState
 
     public override void Update()
     {
-        // --- [페이즈 3] 착지(Land) ---
-        if (currentPhase == JumpPhase.Land)
+        // --- 착지 판정 (Land) ---
+        // 수직 속도가 0 이하(떨어지는 중)이고, 캐릭터 컨트롤러가 바닥에 닿았을 때
+        if (player.verticalVelocity <= 0f && player.characterController.isGrounded)
         {
             player.MoveCharacter(Vector3.zero);
 
-            AnimatorStateInfo stateInfo = player.animator.GetCurrentAnimatorStateInfo(0);
-            if (stateInfo.shortNameHash == jumpEndHash && stateInfo.normalizedTime >= 0.8f)
-            {
-                if (player.moveInput == Vector2.zero) stateMachine.ChangeState<IdleState_Player>();
-                else if (player.isRunning) stateMachine.ChangeState<RunState_Player>();
-                else stateMachine.ChangeState<WalkState_Player>();
-            }
+            // 착지 애니메이션(End)을 기다릴 필요 없이 즉시 다음 상태로 전환하여 조작감 극대화
+            if (player.moveInput == Vector2.zero) stateMachine.ChangeState<IdleState_Player>();
+            else if (player.isRunning) stateMachine.ChangeState<RunState_Player>();
+            else stateMachine.ChangeState<WalkState_Player>();
+
             return;
         }
 
-        // --- [페이즈 1, 2] 공중 조작 (Enter에서 정해둔 고정 속도로 날아감) ---
+        // --- 공중 조작 (Enter에서 정해둔 고정 속도로 날아감) ---
         if (fixedJumpSpeed > 0f)
         {
             HandleRotation(fixedJumpDirection);
         }
 
         player.MoveCharacter(fixedJumpDirection * fixedJumpSpeed * Time.deltaTime);
-
-        // --- 페이즈 전환 로직 ---
-        if (currentPhase == JumpPhase.Start && player.verticalVelocity <= 0f)
-        {
-            currentPhase = JumpPhase.Airborne;
-            player.animator.CrossFadeInFixedTime(jumpingHash, 0.1f);
-        }
-
-        if (player.verticalVelocity <= 0f && player.characterController.isGrounded)
-        {
-            currentPhase = JumpPhase.Land;
-            player.animator.CrossFadeInFixedTime(jumpEndHash, 0.05f);
-        }
     }
-
-    
 }

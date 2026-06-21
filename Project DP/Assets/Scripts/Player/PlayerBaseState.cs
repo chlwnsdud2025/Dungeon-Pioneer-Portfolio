@@ -33,7 +33,21 @@ public virtual void OnJumpInput() {
     {
         if (player.focusedObject != null)
         {
-            stateMachine.ChangeState<PushState_Player>();
+            // 1. 대상이 보물상자인지 확인
+            TreasureChest chest = player.focusedObject.GetComponent<TreasureChest>();
+            if (chest != null && !chest.isOpen) // 닫혀있는 상자일 때만
+            {
+                stateMachine.ChangeState<OpenChestState_Player>();
+                return;
+            }
+
+            // 2. 대상이 밀 수 있는 오브젝트인지 확인
+            PushableObject pushObj = player.focusedObject.GetComponent<PushableObject>();
+            if (pushObj != null)
+            {
+                stateMachine.ChangeState<PushState_Player>();
+                return;
+            }
         }
     }
 

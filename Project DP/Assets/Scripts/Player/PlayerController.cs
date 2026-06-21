@@ -74,7 +74,7 @@ public class PlayerController : MonoBehaviour
         stateMachine.AddState(new GuardState_Player(this, stateMachine));
 
         // 상자 열기와 공격 State 추가
-        //stateMachine.AddState(new OpenChestState_Player(this, stateMachine));
+        stateMachine.AddState(new OpenChestState_Player(this, stateMachine));
         stateMachine.AddState(new AttackState_Player(this, stateMachine));
 
         // 입력 이벤트 구독
@@ -208,7 +208,7 @@ public class PlayerController : MonoBehaviour
         if (Physics.SphereCast(rayStart, sphereCastRadius, transform.forward, out RaycastHit hit, interactRange, interactableLayer))
         {
             if (hit.collider.GetComponent<PushableObject>() != null
-                //|| hit.collider.GetComponent<TreasureChest>() != null
+                || hit.collider.GetComponent<TreasureChest>() != null
                 )
             {
                 focusedObject = hit.transform;

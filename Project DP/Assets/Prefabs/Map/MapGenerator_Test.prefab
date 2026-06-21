@@ -52,7 +52,7 @@ MonoBehaviour:
   wallPrefab: {fileID: 2454555364651045917, guid: 3f0a922dd657fc04d8f97c92fb1c2663, type: 3}
   entrancePrefab: {fileID: 2454555364651045917, guid: 908fa8b21f4f09f4cbec6037801b0f16, type: 3}
   exitPrefab: {fileID: 2454555364651045917, guid: c2cfe7712060b6e479c31c683103d393, type: 3}
-  chestPrefab: {fileID: 919132149155446097, guid: bc83e9618523ecb4b94e880f8ad6546f, type: 3}
+  chestPrefab: {fileID: 1385469172357989796, guid: 42b9ae3a4fdc474438121fe8109ab51e, type: 3}
 --- !u!156049354 &6753105252652769266
 Grid:
   m_ObjectHideFlags: 0
