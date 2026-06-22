@@ -36,6 +36,13 @@ public class PlayerController : MonoBehaviour
     public float attackDamage = 5f;     // 공격력
     public LayerMask enemyLayer;        // 몬스터를 판별할 레이어
 
+    [Header("Light & Torch System")]
+    public GameObject torchPrefab;   // 벽에 붙일 횃불 프리팹
+    public int torchCount = 5;       // 가지고 있는 횃불 개수
+
+    [HideInInspector] public Vector3 focusedHitPoint;  // 레이저가 닿은 정확한 점
+    [HideInInspector] public Vector3 focusedHitNormal; // 벽이 바라보는 방향
+
     [HideInInspector] public Transform focusedObject;
 
     [HideInInspector] public bool isRunning = false;
@@ -76,6 +83,8 @@ public class PlayerController : MonoBehaviour
         // 상자 열기와 공격 State 추가
         stateMachine.AddState(new OpenChestState_Player(this, stateMachine));
         stateMachine.AddState(new AttackState_Player(this, stateMachine));
+        stateMachine.AddState(new PlaceTorchState_Player(this, stateMachine));
+
 
         // 입력 이벤트 구독
         controls.PlayerControll.Jump.performed += ctx => stateMachine.CurrentState.OnJumpInput();
@@ -207,11 +216,16 @@ public class PlayerController : MonoBehaviour
 
         if (Physics.SphereCast(rayStart, sphereCastRadius, transform.forward, out RaycastHit hit, interactRange, interactableLayer))
         {
-            if (hit.collider.GetComponent<PushableObject>() != null
-                || hit.collider.GetComponent<TreasureChest>() != null
-                )
+            // ★ 수정됨: WallObject 감지 추가
+            if (hit.collider.GetComponent<PushableObject>() != null ||
+                hit.collider.GetComponent<TreasureChest>() != null ||
+                hit.collider.GetComponent<WallObject>() != null)
             {
                 focusedObject = hit.transform;
+
+                // 감지된 곳의 정확한 충돌 지점과 벽의 표면 방향을 저장합니다.
+                focusedHitPoint = hit.point;
+                focusedHitNormal = hit.normal;
             }
             else
             {

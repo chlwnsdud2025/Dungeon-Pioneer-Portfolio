@@ -24,7 +24,7 @@ public abstract class PlayerBaseState
     public virtual void OnGuardInput() { stateMachine.ChangeState<GuardState_Player>(); }
     public virtual void OnGuardReleased() { }
 
-public virtual void OnJumpInput() {
+    public virtual void OnJumpInput() {
 
         stateMachine.ChangeState<JumpState_Player>();
     
@@ -33,20 +33,32 @@ public virtual void OnJumpInput() {
     {
         if (player.focusedObject != null)
         {
-            // 1. 대상이 보물상자인지 확인
+            // 1. 보물상자인지 확인
             TreasureChest chest = player.focusedObject.GetComponent<TreasureChest>();
-            if (chest != null && !chest.isOpen) // 닫혀있는 상자일 때만
+            if (chest != null && !chest.isOpen)
             {
                 stateMachine.ChangeState<OpenChestState_Player>();
                 return;
             }
 
-            // 2. 대상이 밀 수 있는 오브젝트인지 확인
+            // 2. 밀 수 있는 물체인지 확인
             PushableObject pushObj = player.focusedObject.GetComponent<PushableObject>();
             if (pushObj != null)
             {
                 stateMachine.ChangeState<PushState_Player>();
                 return;
+            }
+
+            // ★ 3. 벽인지 확인 (그리고 횃불이 남아있는지)
+            WallObject wall = player.focusedObject.GetComponent<WallObject>();
+            if (wall != null && player.torchCount > 0)
+            {
+                stateMachine.ChangeState<PlaceTorchState_Player>();
+                return;
+            }
+            else if (wall != null && player.torchCount <= 0)
+            {
+                Debug.Log("<color=red>횃불이 부족합니다!</color>");
             }
         }
     }
