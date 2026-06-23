@@ -16,6 +16,12 @@ public class MapGenerator : MonoBehaviour
     public GameObject entrancePrefab;
     public GameObject exitPrefab;
     public GameObject chestPrefab;
+    public GameObject trapPrefab;  // 함정 프리팹
+    public GameObject enemyPrefab; // 적 프리팹
+
+    [Header("Spawn Settings")]
+    public int trapCount = 3;  // 생성할 함정 개수
+    public int enemyCount = 3; // 생성할 적 개수
 
     public enum TileType
     {
@@ -24,7 +30,9 @@ public class MapGenerator : MonoBehaviour
         Wall = 2,
         Entrance = 3,
         Exit = 4,
-        Chest = 5
+        Chest = 5,
+        Trap = 6,  // 함정 타입 추가
+        Enemy = 7  // 적 타입 추가
     }
 
     private TileType[,] mapData;
@@ -56,7 +64,12 @@ public class MapGenerator : MonoBehaviour
 
         // 4. 미로 내부의 막다른 길에 보물상자 배치
         PlaceTreasureChest();
+
+        // 5. 남은 빈 바닥에 함정과 적 배치
+        PlaceTraps();
+        PlaceEnemies();
     }
+
     private void CarvePath(int x, int z)
     {
         mapData[x, z] = TileType.Floor;
@@ -126,7 +139,6 @@ public class MapGenerator : MonoBehaviour
     {
         List<Vector2Int> deadEnds = new List<Vector2Int>();
 
-        // 외곽 벽(테두리)을 제외한 내부 맵(1 ~ width-2)만 검사
         for (int x = 1; x < width - 1; x++)
         {
             for (int z = 1; z < height - 1; z++)
@@ -139,7 +151,6 @@ public class MapGenerator : MonoBehaviour
                     if (mapData[x, z + 1] == TileType.Wall) wallCount++;
                     if (mapData[x, z - 1] == TileType.Wall) wallCount++;
 
-                    // 3면이 벽으로 둘러싸여 있다면 막다른 길
                     if (wallCount == 3)
                     {
                         deadEnds.Add(new Vector2Int(x, z));
@@ -148,11 +159,59 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        // 막다른 길이 하나 이상 존재하면 무작위로 하나 골라서 상자 배치
         if (deadEnds.Count > 0)
         {
             Vector2Int chestPos = deadEnds[Random.Range(0, deadEnds.Count)];
             mapData[chestPos.x, chestPos.y] = TileType.Chest;
+        }
+    }
+
+    // 빈 바닥(Floor) 좌표들을 리스트로 가져오는 헬퍼 함수
+    private List<Vector2Int> GetAvailableFloorTiles()
+    {
+        List<Vector2Int> availableFloors = new List<Vector2Int>();
+        for (int x = 1; x < width - 1; x++)
+        {
+            for (int z = 1; z < height - 1; z++)
+            {
+                if (mapData[x, z] == TileType.Floor)
+                {
+                    availableFloors.Add(new Vector2Int(x, z));
+                }
+            }
+        }
+        return availableFloors;
+    }
+
+    // 함정 배치 로직
+    private void PlaceTraps()
+    {
+        List<Vector2Int> floorTiles = GetAvailableFloorTiles();
+        int countToPlace = Mathf.Min(trapCount, floorTiles.Count); // 바닥보다 많이 생성되는 것 방지
+
+        for (int i = 0; i < countToPlace; i++)
+        {
+            int randomIndex = Random.Range(0, floorTiles.Count);
+            Vector2Int pos = floorTiles[randomIndex];
+
+            mapData[pos.x, pos.y] = TileType.Trap; // 타일 타입을 함정으로 변경
+            floorTiles.RemoveAt(randomIndex);      // 중복 방지를 위해 리스트에서 제거
+        }
+    }
+
+    // 적 배치 로직
+    private void PlaceEnemies()
+    {
+        List<Vector2Int> floorTiles = GetAvailableFloorTiles();
+        int countToPlace = Mathf.Min(enemyCount, floorTiles.Count);
+
+        for (int i = 0; i < countToPlace; i++)
+        {
+            int randomIndex = Random.Range(0, floorTiles.Count);
+            Vector2Int pos = floorTiles[randomIndex];
+
+            mapData[pos.x, pos.y] = TileType.Enemy; // 타일 타입을 적으로 변경
+            floorTiles.RemoveAt(randomIndex);
         }
     }
 
@@ -169,8 +228,8 @@ public class MapGenerator : MonoBehaviour
 
                 TileType tileType = mapData[x, z];
 
-                // 바닥은 빈 공간이 아니면 무조건 먼저 깔기
-                if (tileType != TileType.Wall)
+                // 바닥 깔기 (단, 타일이 '벽'이거나 '함정'일 경우에는 깔지 않음)
+                if (tileType != TileType.Wall && tileType != TileType.Trap)
                 {
                     Instantiate(floorPrefab, basePos, Quaternion.identity, this.transform);
                 }
@@ -190,8 +249,15 @@ public class MapGenerator : MonoBehaviour
                         Instantiate(exitPrefab, elevatedPos, Quaternion.identity, this.transform);
                         break;
                     case TileType.Chest:
-                        // 상자를 바닥(basePos)에 둘지 올려둘지(elevatedPos) 프리팹 모양에 맞춰 선택하세요.
                         Instantiate(chestPrefab, elevatedPos, Quaternion.identity, this.transform);
+                        break;
+                    case TileType.Trap:
+                        // 함정은 바닥을 대체하므로 basePos (아래쪽) 에 생성
+                        Instantiate(trapPrefab, basePos, Quaternion.identity, this.transform);
+                        break;
+                    case TileType.Enemy:
+                        // 적은 바닥 위에 있으므로 elevatedPos (위쪽) 에 생성
+                        Instantiate(enemyPrefab, elevatedPos, Quaternion.identity, this.transform);
                         break;
                 }
             }

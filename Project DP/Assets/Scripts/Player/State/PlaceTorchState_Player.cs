@@ -24,7 +24,7 @@ public class PlaceTorchState_Player : PlayerBaseState
         if (lookDir != Vector3.zero)
             player.transform.rotation = Quaternion.LookRotation(lookDir);
 
-        // ★ 3. 횃불 설치 위치 계산 (해당 큐브의 표면 중앙에 맞추기) ★
+        // 3. 횃불 설치 위치 계산 (해당 큐브의 표면 중앙에 맞추기) ★
 
         // 3-1. 벽 오브젝트의 콜라이더에서 '정중앙(center)'과 '크기의 절반(extents)' 정보를 가져옵니다.
         Collider wallCollider = player.focusedObject.GetComponent<Collider>();
@@ -38,20 +38,24 @@ public class PlaceTorchState_Player : PlayerBaseState
             player.focusedHitNormal.z * wallExtents.z
         );
 
-        // 3-3. 벽 중앙 표면에서 횃불이 파묻히지 않게 수직 방향(Normal)으로 살짝(0.1f) 띄워줍니다.
+        // 3-3. 벽 중앙 표면에서 횃불이 파묻히지 않게 수직 방향(Normal)으로 살짝(0.2f) 띄워줍니다.
         Vector3 spawnPosition = wallCenter + surfaceOffset + (player.focusedHitNormal * 0.2f);
 
-        // 횃불의 등짝이 벽면(Normal)을 향하도록 회전값 설정
-        Quaternion spawnRotation = Quaternion.LookRotation(player.focusedHitNormal);
+        // ★ 수정된 부분: 횃불의 등짝이 벽면(Normal)을 향하게 한 뒤, 비스듬하게 기울입니다.
+        Quaternion baseRotation = Quaternion.LookRotation(player.focusedHitNormal);
 
-        // 4. 프리팹 생성 (벽면 정중앙 스냅 적용)
+        // 로컬 X축을 기준으로 30도 기울입니다. 
+        // (프리팹 모델의 기본 축에 따라 30 대신 -30, 혹은 X가 아닌 Z축을 변경해야 할 수도 있습니다)
+        Quaternion spawnRotation = baseRotation * Quaternion.Euler(30f, 0f, 0f);
+
+        // 4. 프리팹 생성 (벽면 정중앙 스냅 및 기울기 적용)
         Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation);
 
         // 5. 모션 재생 및 제자리 고정
         player.animator.CrossFadeInFixedTime(interactAnimHash, 0.1f);
         player.MoveCharacter(Vector3.zero);
 
-        Debug.Log($"<color=orange>벽 중앙에 횃불 설치 완료! 남은 개수: {player.torchCount}</color>");
+        Debug.Log($"<color=orange>벽 중앙에 비스듬히 횃불 설치 완료! 남은 개수: {player.torchCount}</color>");
     }
 
     public override void Update()
