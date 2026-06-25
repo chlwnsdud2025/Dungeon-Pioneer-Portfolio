@@ -16,12 +16,14 @@ public class MapGenerator : MonoBehaviour
     public GameObject entrancePrefab;
     public GameObject exitPrefab;
     public GameObject chestPrefab;
-    public GameObject trapPrefab;  // 함정 프리팹
-    public GameObject enemyPrefab; // 적 프리팹
+    public GameObject trapPrefab;
+    public GameObject enemyPrefab;
+    public GameObject pushablePrefab; // ★ 추가: 밀리는 오브젝트 프리팹
 
     [Header("Spawn Settings")]
-    public int trapCount = 3;  // 생성할 함정 개수
-    public int enemyCount = 3; // 생성할 적 개수
+    public int trapCount = 3;
+    public int enemyCount = 3;
+    public int pushableCount = 2;     // ★ 추가: 생성할 밀리는 오브젝트 개수
 
     public enum TileType
     {
@@ -31,8 +33,9 @@ public class MapGenerator : MonoBehaviour
         Entrance = 3,
         Exit = 4,
         Chest = 5,
-        Trap = 6,  // 함정 타입 추가
-        Enemy = 7  // 적 타입 추가
+        Trap = 6,
+        Enemy = 7,
+        Pushable = 8 // ★ 추가: 밀리는 오브젝트 타입
     }
 
     private TileType[,] mapData;
@@ -47,7 +50,6 @@ public class MapGenerator : MonoBehaviour
     {
         mapData = new TileType[width, height];
 
-        // 1. 모든 칸을 벽으로 초기화
         for (int x = 0; x < width; x++)
         {
             for (int z = 0; z < height; z++)
@@ -56,18 +58,14 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        // 2. 미로 길 뚫기
         CarvePath(1, 1);
-
-        // 3. 외곽 벽에 입구, 출구 배치
         PlaceEntranceAndExit();
-
-        // 4. 미로 내부의 막다른 길에 보물상자 배치
         PlaceTreasureChest();
 
-        // 5. 남은 빈 바닥에 함정과 적 배치
+        // 빈 바닥에 무작위 배치 요소들
         PlaceTraps();
         PlaceEnemies();
+        PlacePushables(); // ★ 추가됨
     }
 
     private void CarvePath(int x, int z)
@@ -101,7 +99,6 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    // 외곽 벽에 입구와 출구 2개만 배치하는 함수
     private void PlaceEntranceAndExit()
     {
         List<Vector2Int> edgeCandidates = new List<Vector2Int>();
@@ -126,7 +123,6 @@ public class MapGenerator : MonoBehaviour
             edgeCandidates[randomIndex] = temp;
         }
 
-        // 섞인 후보지 중 2곳에 입구와 출구 배치
         if (edgeCandidates.Count >= 2)
         {
             mapData[edgeCandidates[0].x, edgeCandidates[0].y] = TileType.Entrance;
@@ -134,7 +130,6 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    // 막다른 길에 보물상자 1개 배치
     private void PlaceTreasureChest()
     {
         List<Vector2Int> deadEnds = new List<Vector2Int>();
@@ -166,7 +161,6 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    // 빈 바닥(Floor) 좌표들을 리스트로 가져오는 헬퍼 함수
     private List<Vector2Int> GetAvailableFloorTiles()
     {
         List<Vector2Int> availableFloors = new List<Vector2Int>();
@@ -183,23 +177,21 @@ public class MapGenerator : MonoBehaviour
         return availableFloors;
     }
 
-    // 함정 배치 로직
     private void PlaceTraps()
     {
         List<Vector2Int> floorTiles = GetAvailableFloorTiles();
-        int countToPlace = Mathf.Min(trapCount, floorTiles.Count); // 바닥보다 많이 생성되는 것 방지
+        int countToPlace = Mathf.Min(trapCount, floorTiles.Count);
 
         for (int i = 0; i < countToPlace; i++)
         {
             int randomIndex = Random.Range(0, floorTiles.Count);
             Vector2Int pos = floorTiles[randomIndex];
 
-            mapData[pos.x, pos.y] = TileType.Trap; // 타일 타입을 함정으로 변경
-            floorTiles.RemoveAt(randomIndex);      // 중복 방지를 위해 리스트에서 제거
+            mapData[pos.x, pos.y] = TileType.Trap;
+            floorTiles.RemoveAt(randomIndex);
         }
     }
 
-    // 적 배치 로직
     private void PlaceEnemies()
     {
         List<Vector2Int> floorTiles = GetAvailableFloorTiles();
@@ -210,7 +202,23 @@ public class MapGenerator : MonoBehaviour
             int randomIndex = Random.Range(0, floorTiles.Count);
             Vector2Int pos = floorTiles[randomIndex];
 
-            mapData[pos.x, pos.y] = TileType.Enemy; // 타일 타입을 적으로 변경
+            mapData[pos.x, pos.y] = TileType.Enemy;
+            floorTiles.RemoveAt(randomIndex);
+        }
+    }
+
+    // ★ 추가: 밀리는 오브젝트 배치 로직
+    private void PlacePushables()
+    {
+        List<Vector2Int> floorTiles = GetAvailableFloorTiles();
+        int countToPlace = Mathf.Min(pushableCount, floorTiles.Count);
+
+        for (int i = 0; i < countToPlace; i++)
+        {
+            int randomIndex = Random.Range(0, floorTiles.Count);
+            Vector2Int pos = floorTiles[randomIndex];
+
+            mapData[pos.x, pos.y] = TileType.Pushable;
             floorTiles.RemoveAt(randomIndex);
         }
     }
@@ -223,12 +231,11 @@ public class MapGenerator : MonoBehaviour
             {
                 Vector3Int cellPos = new Vector3Int(x, 0, z);
 
-                // 기준 바닥 좌표
                 Vector3 basePos = grid.GetCellCenterWorld(cellPos);
-
                 TileType tileType = mapData[x, z];
 
                 // 바닥 깔기 (단, 타일이 '벽'이거나 '함정'일 경우에는 깔지 않음)
+                // 밀리는 오브젝트(Pushable)는 바닥 위에 올라가는 것이므로 여기서 정상적으로 바닥이 생성됩니다.
                 if (tileType != TileType.Wall && tileType != TileType.Trap)
                 {
                     Instantiate(floorPrefab, basePos, Quaternion.identity, this.transform);
@@ -252,12 +259,14 @@ public class MapGenerator : MonoBehaviour
                         Instantiate(chestPrefab, elevatedPos, Quaternion.identity, this.transform);
                         break;
                     case TileType.Trap:
-                        // 함정은 바닥을 대체하므로 basePos (아래쪽) 에 생성
                         Instantiate(trapPrefab, basePos, Quaternion.identity, this.transform);
                         break;
                     case TileType.Enemy:
-                        // 적은 바닥 위에 있으므로 elevatedPos (위쪽) 에 생성
                         Instantiate(enemyPrefab, elevatedPos, Quaternion.identity, this.transform);
+                        break;
+                    case TileType.Pushable:
+                        // ★ 추가: 적이나 상자처럼 바닥 위에(elevatedPos) 생성
+                        Instantiate(pushablePrefab, elevatedPos, Quaternion.identity, this.transform);
                         break;
                 }
             }

@@ -9516,6 +9516,14 @@ PrefabInstance:
       propertyPath: enemyPrefab
       value: 
       objectReference: {fileID: 1230236201331810707, guid: 1a8c9dfcc5af4264ba1951750e8de939, type: 3}
+    - target: {fileID: 1645826703064216107, guid: e907ece4985025c4aaebd4db75796597, type: 3}
+      propertyPath: pushableCount
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1645826703064216107, guid: e907ece4985025c4aaebd4db75796597, type: 3}
+      propertyPath: pushablePrefab
+      value: 
+      objectReference: {fileID: 919132149155446097, guid: 93dcaa36ba576a94ea3b64789cdf80ed, type: 3}
     - target: {fileID: 2936034796704451695, guid: e907ece4985025c4aaebd4db75796597, type: 3}
       propertyPath: m_Name
       value: MapGenerator_Test
