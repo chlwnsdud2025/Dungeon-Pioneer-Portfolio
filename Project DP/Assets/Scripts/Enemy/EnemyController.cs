@@ -44,8 +44,8 @@ public class EnemyController : MonoBehaviour
         stateMachine.AddState(new EnemyIdleState(this, stateMachine));
         stateMachine.AddState(new EnemyChaseState(this, stateMachine));
         stateMachine.AddState(new EnemyAttackState(this, stateMachine));
-        // stateMachine.AddState(new EnemyHitState(this, stateMachine));
-        // stateMachine.AddState(new EnemyDeadState(this, stateMachine));
+        stateMachine.AddState(new EnemyHitState(this, stateMachine));
+        stateMachine.AddState(new EnemyDeadState(this, stateMachine));
     }
 
     private void Start()
@@ -82,17 +82,18 @@ public class EnemyController : MonoBehaviour
     // 데미지 처리 (간이 버전)
     public void TakeDamage(float damage)
     {
-        if (currentHealth <= 0) return;
+        // 이미 죽은 상태(DeadState)라면 데미지를 무시
+        if (stateMachine.CurrentState is EnemyDeadState) return;
 
         currentHealth -= damage;
 
         if (currentHealth <= 0)
         {
-            // stateMachine.ChangeState<EnemyDeadState>();
+            stateMachine.ChangeState<EnemyDeadState>();
         }
         else
         {
-            // stateMachine.ChangeState<EnemyHitState>();
+            stateMachine.ChangeState<EnemyHitState>();
         }
     }
 

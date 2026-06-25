@@ -39,6 +39,7 @@ public class PlayerController : MonoBehaviour
     [Header("Light & Torch System")]
     public GameObject torchPrefab;   // 벽에 붙일 횃불 프리팹
     public int torchCount = 5;       // 가지고 있는 횃불 개수
+    public bool enableMultiTorch = false;
 
     [HideInInspector] public Vector3 focusedHitPoint;  // 레이저가 닿은 정확한 점
     [HideInInspector] public Vector3 focusedHitNormal; // 벽이 바라보는 방향
@@ -79,11 +80,11 @@ public class PlayerController : MonoBehaviour
         stateMachine.AddState(new JumpState_Player(this, stateMachine));
         stateMachine.AddState(new PushState_Player(this, stateMachine));
         stateMachine.AddState(new GuardState_Player(this, stateMachine));
-
-        // 상자 열기와 공격 State 추가
         stateMachine.AddState(new OpenChestState_Player(this, stateMachine));
         stateMachine.AddState(new AttackState_Player(this, stateMachine));
         stateMachine.AddState(new PlaceTorchState_Player(this, stateMachine));
+        stateMachine.AddState(new HitState_Player(this, stateMachine));
+        stateMachine.AddState(new DeadState_Player(this, stateMachine));
 
 
         // 입력 이벤트 구독
@@ -163,6 +164,8 @@ public class PlayerController : MonoBehaviour
     // ★ 적의 공격을 받았을 때 호출될 피격 함수 (방어 각도 계산 포함)
     public void TakeDamage(float damage, Transform attacker)
     {
+        if (stateMachine.CurrentState is DeadState_Player) return;
+
         // 1. 방어 상태인지 먼저 확인
         if (isGuarding && attacker != null)
         {
@@ -184,6 +187,7 @@ public class PlayerController : MonoBehaviour
                 }
                 return; // 방어했으므로 데미지는 입지 않고 종료
             }
+
         }
 
         // 방어 중이 아니거나 뒤통수를 맞았다면 데미지 적용
@@ -193,12 +197,12 @@ public class PlayerController : MonoBehaviour
         // 체력이 0 이하면 사망 처리
         if (currentHealth <= 0)
         {
-            Debug.Log("플레이어 사망 (Dead State 전환 필요)");
-            // stateMachine.ChangeState<DeadState_Player>();
+            Debug.Log("플레이어 사망");
+            stateMachine.ChangeState<DeadState_Player>();
         }
         else
         {
-            // stateMachine.ChangeState<HitState_Player>();
+            stateMachine.ChangeState<HitState_Player>();
         }
     }
 

@@ -9395,16 +9395,36 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
       propertyPath: torchCount
-      value: 10
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: attackRange
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
       propertyPath: torchPrefab
       value: 
       objectReference: {fileID: 2396172155099448275, guid: ffccb02d3cd937e4c92bde56576154da, type: 3}
     - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: attackDamage
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: interactRange
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
       propertyPath: cameraTransform
       value: 
       objectReference: {fileID: 11622201}
+    - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: enableMultiTorch
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2319019419240367516, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: sphereCastRadius
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
       propertyPath: m_Name
       value: Player

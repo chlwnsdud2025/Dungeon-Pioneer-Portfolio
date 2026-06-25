@@ -2,11 +2,10 @@ using UnityEngine;
 
 public class PlaceTorchState_Player : PlayerBaseState
 {
-    // 임시로 상자 여는 모션이나 범용 상호작용 모션을 사용합니다.
     private readonly int interactAnimHash = Animator.StringToHash("Interact_Torch");
 
     private float timer = 0f;
-    private float placeDuration = 0.5f; // 설치 모션 길이
+    private float placeDuration = 0.5f;
 
     public PlaceTorchState_Player(PlayerController player, PlayerStateMachine stateMachine) : base(player, stateMachine) { }
 
@@ -14,48 +13,83 @@ public class PlaceTorchState_Player : PlayerBaseState
     {
         timer = 0f;
 
-        // 1. 횃불 개수 감소
+        // 1. 횃불 개수는 1개만 차감
         player.torchCount--;
 
-        // 2. 캐릭터를 벽 쪽으로 자연스럽게 회전
-        // (벽의 법선 방향(hitNormal)의 반대 방향이 벽면을 정면으로 바라보는 방향입니다)
+        // 2. 캐릭터를 상호작용한 메인 벽 쪽으로 회전
         Vector3 lookDir = -player.focusedHitNormal;
         lookDir.y = 0f;
         if (lookDir != Vector3.zero)
             player.transform.rotation = Quaternion.LookRotation(lookDir);
 
-        // 3. 횃불 설치 위치 계산 (해당 큐브의 표면 중앙에 맞추기) ★
+        // ★ 3. 다중 설치(Multi-Torch) 모드
+        if (player.enableMultiTorch)
+        {
+            // (1) 상호작용한 벽의 중심 좌표 가져오기
+            Collider interactedWall = player.focusedObject.GetComponent<Collider>();
+            Vector3 wallCenter = interactedWall.bounds.center;
 
-        // 3-1. 벽 오브젝트의 콜라이더에서 '정중앙(center)'과 '크기의 절반(extents)' 정보를 가져옵니다.
-        Collider wallCollider = player.focusedObject.GetComponent<Collider>();
-        Vector3 wallCenter = wallCollider.bounds.center;
-        Vector3 wallExtents = wallCollider.bounds.extents;
+            // (2) 벽면(hitNormal) 방향으로 1칸 이동하여 '기준이 되는 빈 공간(바닥)'의 중심 좌표 구하기
+            Vector3 floorCenter = wallCenter + (player.focusedHitNormal * player.tileSize);
 
-        // 3-2. 벽이 바라보는 방향(Normal) 쪽에 해당하는 면의 중심점을 구합니다.
-        Vector3 surfaceOffset = new Vector3(
-            player.focusedHitNormal.x * wallExtents.x,
-            player.focusedHitNormal.y * wallExtents.y,
-            player.focusedHitNormal.z * wallExtents.z
-        );
+            // (3) 그 빈 공간을 중심으로 4방향(동, 서, 남, 북) 검사
+            Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
 
-        // 3-3. 벽 중앙 표면에서 횃불이 파묻히지 않게 수직 방향(Normal)으로 살짝(0.2f) 띄워줍니다.
-        Vector3 spawnPosition = wallCenter + surfaceOffset + (player.focusedHitNormal * 0.2f);
+            foreach (Vector3 dir in directions)
+            {
+                // 검사할 주변 타일의 중심 좌표 (기준 바닥 + 방향 * 타일사이즈)
+                Vector3 targetWallPos = floorCenter + (dir * player.tileSize);
 
-        // ★ 수정된 부분: 횃불의 등짝이 벽면(Normal)을 향하게 한 뒤, 비스듬하게 기울입니다.
-        Quaternion baseRotation = Quaternion.LookRotation(player.focusedHitNormal);
+                // 해당 좌표에 벽이 있는지 겹침 판정 (반경은 타일의 절반 크기인 0.4f 정도로 좁게 설정)
+                Collider[] hitColliders = Physics.OverlapSphere(targetWallPos, player.tileSize * 0.4f, player.interactableLayer);
 
-        // 로컬 X축을 기준으로 30도 기울입니다. 
-        // (프리팹 모델의 기본 축에 따라 30 대신 -30, 혹은 X가 아닌 Z축을 변경해야 할 수도 있습니다)
-        Quaternion spawnRotation = baseRotation * Quaternion.Euler(30f, 0f, 0f);
+                foreach (Collider col in hitColliders)
+                {
+                    if (col.GetComponent<WallObject>() != null)
+                    {
+                        // 벽이 발견되었다면, 벽이 '기준 바닥'을 바라보는 방향은 우리가 검사한 방향(dir)의 반대(-dir)가 됩니다.
+                        Vector3 normalTowardsFloor = -dir;
 
-        // 4. 프리팹 생성 (벽면 정중앙 스냅 및 기울기 적용)
-        Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation);
+                        SpawnTorchOnWall(col, normalTowardsFloor);
+                        break; // 해당 칸에서 벽을 하나 찾았으면 중복 방지를 위해 바로 다음 방향으로 넘어감
+                    }
+                }
+            }
+        }
+        else
+        {
+            // 기능이 꺼져있다면 기존처럼 쳐다본 벽 1개에만 설치
+            Collider wallCollider = player.focusedObject.GetComponent<Collider>();
+            SpawnTorchOnWall(wallCollider, player.focusedHitNormal);
+        }
 
-        // 5. 모션 재생 및 제자리 고정
+        // 4. 모션 재생 및 제자리 고정
         player.animator.CrossFadeInFixedTime(interactAnimHash, 0.1f);
         player.MoveCharacter(Vector3.zero);
 
-        Debug.Log($"<color=orange>벽 중앙에 비스듬히 횃불 설치 완료! 남은 개수: {player.torchCount}</color>");
+        Debug.Log($"<color=orange>다중 횃불 설치 완료! 남은 개수: {player.torchCount}</color>");
+    }
+
+    // 횃불의 위치를 계산하고 생성하는 공통 함수
+    private void SpawnTorchOnWall(Collider wallCollider, Vector3 hitNormal)
+    {
+        Vector3 wallCenter = wallCollider.bounds.center;
+        Vector3 wallExtents = wallCollider.bounds.extents;
+
+        Vector3 surfaceOffset = new Vector3(
+            hitNormal.x * wallExtents.x,
+            hitNormal.y * wallExtents.y,
+            hitNormal.z * wallExtents.z
+        );
+
+        // 벽면에서 살짝 띄우기 (0.2f)
+        Vector3 spawnPosition = wallCenter + surfaceOffset + (hitNormal * 0.2f);
+
+        // 벽면을 향하게 한 뒤 비스듬하게 꺾기
+        Quaternion baseRotation = Quaternion.LookRotation(hitNormal);
+        Quaternion spawnRotation = baseRotation * Quaternion.Euler(30f, 0f, 0f);
+
+        Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation);
     }
 
     public override void Update()
@@ -68,7 +102,6 @@ public class PlaceTorchState_Player : PlayerBaseState
         }
     }
 
-    // 설치 도중 캔슬 방지
     public override void OnInteractInput() { }
     public override void OnJumpInput() { }
     public override void OnAttackInput() { }

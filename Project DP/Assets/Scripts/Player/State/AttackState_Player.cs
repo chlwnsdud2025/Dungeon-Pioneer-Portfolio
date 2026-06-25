@@ -68,9 +68,9 @@ public class AttackState_Player : PlayerBaseState
         foreach (Collider enemy in hitEnemies)
         {
             // TODO: 나중에 슬라임(몬스터) 스크립트가 완성되면 아래처럼 데미지 함수를 호출합니다.
-            // enemy.GetComponent<Monster>().TakeDamage(player.attackDamage);
+            enemy.GetComponent<EnemyController>().TakeDamage(player.attackDamage);
 
-            Debug.Log($"<color=red>{enemy.name} 에게 기본 타격 적중!</color>");
+            //Debug.Log($"<color=red>{enemy.name} 에게 기본 타격 적중!</color>");
         }
     }
 
