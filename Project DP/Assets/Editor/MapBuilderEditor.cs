@@ -39,17 +39,18 @@ public class MapBuilderEditor : Editor
 
     private void CreateGhostMaterial()
     {
-        Shader shader = Shader.Find("Standard");
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+
         ghostMaterial = new Material(shader);
-        ghostMaterial.SetFloat("_Mode", 3); // Transparent
+        ghostMaterial.SetFloat("_Surface", 1);
+        ghostMaterial.SetFloat("_Blend", 0);
+        ghostMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         ghostMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
         ghostMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         ghostMaterial.SetInt("_ZWrite", 0);
-        ghostMaterial.DisableKeyword("_ALPHATEST_ON");
-        ghostMaterial.EnableKeyword("_ALPHABLEND_ON");
-        ghostMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        ghostMaterial.renderQueue = 3000;
-        ghostMaterial.color = new Color(0.2f, 1f, 0.2f, 0.6f);
+        ghostMaterial.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+        ghostMaterial.SetColor("_BaseColor", new Color(0.2f, 1f, 0.2f, 0.6f));
     }
 
     private void UpdateGhost()
@@ -70,8 +71,20 @@ public class MapBuilderEditor : Editor
         }
     }
 
+    private void CheckAndCreateContainer()
+    {
+        if (builder.tileContainer == null)
+        {
+            GameObject containerObj = new GameObject(builder.mapPrefabName + "_Root");
+            builder.tileContainer = containerObj.transform;
+            EditorUtility.SetDirty(builder);
+        }
+    }
+
     public override void OnInspectorGUI()
     {
+        EditorGUI.BeginChangeCheck();
+
         DrawDefaultInspector();
         UpdatePalette();
 
@@ -81,13 +94,15 @@ public class MapBuilderEditor : Editor
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("⚙️ Placement Settings", EditorStyles.boldLabel);
+
+        builder.tileContainer = (Transform)EditorGUILayout.ObjectField("타일 컨테이너 (부모)", builder.tileContainer, typeof(Transform), true);
+
         builder.currentHeight = EditorGUILayout.IntSlider("설치 높이 (층)", builder.currentHeight, 0, 10);
         builder.currentRotation = GUILayout.SelectionGrid(builder.currentRotation, rotationNames, 4);
 
         EditorGUILayout.Space();
         builder.useSelectiveEraser = EditorGUILayout.ToggleLeft(" 선택적 지우개 필터 (현재 선택된 타일만 지움)", builder.useSelectiveEraser);
 
-        // ★ 추가된 바닥 가이드 기능
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("🗺️ Map Guide", EditorStyles.boldLabel);
         GUILayout.BeginHorizontal();
@@ -96,39 +111,55 @@ public class MapBuilderEditor : Editor
         GUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
-        EditorGUILayout.HelpBox("Scene 뷰 조작법:\n[Shift + 좌클릭] : 타일 설치\n[Shift + 우클릭] : 타일 지우기\n[R 키] : 타일 90도 회전", MessageType.Info);
+        EditorGUILayout.HelpBox("Scene 뷰 조작법:\n[Shift + 좌클릭] : 타일 설치\n[Shift + 우클릭] : 타일 지우기\n[Shift + R 키] : 타일 90도 회전\n[Ctrl + 마우스 휠] : 브러시 크기 조절", MessageType.Info);
 
         EditorGUILayout.Space();
         if (GUILayout.Button("전체 맵 지우기", GUILayout.Height(30))) ClearMap();
 
+        // =========================================================
+        // ★ 추가됨: 불러오기 및 저장 UI
+        // =========================================================
         EditorGUILayout.Space();
-        EditorGUILayout.LabelField("💾 Save Map", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("📂 Load & Save Map", EditorStyles.boldLabel);
+
+        builder.prefabToLoad = (GameObject)EditorGUILayout.ObjectField("불러올 맵 프리팹", builder.prefabToLoad, typeof(GameObject), false);
+        if (GUILayout.Button("프리팹 불러오기 (수정 모드)", GUILayout.Height(30)))
+        {
+            LoadMapFromPrefab();
+        }
+
+        EditorGUILayout.Space();
         if (GUILayout.Button("프리팹으로 굽기 (저장/덮어쓰기)", GUILayout.Height(40))) SaveMapAsPrefab();
+        // =========================================================
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            SceneView.RepaintAll();
+        }
     }
 
-    // ★ 임시 바닥을 생성하는 함수
     private void CreateGuidePlane()
     {
-        RemoveGuidePlane(); // 중복 생성 방지
+        RemoveGuidePlane();
 
         GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
         plane.name = "Editor_GuidePlane";
         plane.transform.SetParent(builder.transform);
 
-        // 정중앙 좌표 계산
         float centerX = (builder.mapWidth - 1) * builder.tileSize / 2f;
         float centerZ = (builder.mapHeight - 1) * builder.tileSize / 2f;
-        // 바닥 타일과 Z-fighting(텍스처 겹침 껌뻑임)이 발생하지 않도록 y값을 살짝 낮춤
         plane.transform.position = new Vector3(centerX, -0.01f, centerZ);
 
-        // 유니티 기본 Plane은 10x10이므로 크기에 맞게 스케일링
         float scaleX = (builder.mapWidth * builder.tileSize) / 10f;
         float scaleZ = (builder.mapHeight * builder.tileSize) / 10f;
         plane.transform.localScale = new Vector3(scaleX, 1, scaleZ);
 
-        // 시각적으로 덜 눈부시게 어두운 회색 머티리얼 적용
-        Material mat = new Material(Shader.Find("Standard"));
-        mat.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        Material mat = new Material(shader);
+        mat.SetColor("_BaseColor", new Color(0.2f, 0.2f, 0.2f, 1f));
+
         plane.GetComponent<MeshRenderer>().sharedMaterial = mat;
     }
 
@@ -143,17 +174,31 @@ public class MapBuilderEditor : Editor
         Event e = Event.current;
         UpdateGhost();
 
-        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.R)
+        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.R && e.shift)
         {
             builder.currentRotation = (builder.currentRotation + 1) % 4;
+            if (ghostObject != null)
+            {
+                ghostObject.transform.rotation = Quaternion.Euler(0, builder.currentRotation * 90f, 0);
+            }
             Repaint();
+            SceneView.RepaintAll();
+            e.Use();
+        }
+
+        if (e.type == EventType.ScrollWheel && e.control)
+        {
+            if (e.delta.y > 0) builder.brushSize = Mathf.Max(1, builder.brushSize - 1);
+            else if (e.delta.y < 0) builder.brushSize = Mathf.Min(5, builder.brushSize + 1);
+
+            Repaint();
+            SceneView.RepaintAll();
             e.Use();
         }
 
         float currentYHeight = builder.currentHeight * builder.tileSize;
 
-        // ★ 허공에서도 볼 수 있는 전체 17x17 그리드 렌더링
-        Handles.color = new Color(1f, 1f, 1f, 0.15f); // 희미한 흰색
+        Handles.color = new Color(1f, 1f, 1f, 0.15f);
         float minBound = -builder.tileSize / 2f;
         float maxXBound = (builder.mapWidth - 1) * builder.tileSize + builder.tileSize / 2f;
         float maxZBound = (builder.mapHeight - 1) * builder.tileSize + builder.tileSize / 2f;
@@ -190,10 +235,7 @@ public class MapBuilderEditor : Editor
                     ghostObject.transform.position = new Vector3(gridX * builder.tileSize, currentYHeight, gridZ * builder.tileSize);
                     ghostObject.transform.rotation = Quaternion.Euler(0, builder.currentRotation * 90f, 0);
                 }
-                else
-                {
-                    ghostObject.SetActive(false);
-                }
+                else ghostObject.SetActive(false);
             }
 
             Handles.color = Color.green;
@@ -237,7 +279,7 @@ public class MapBuilderEditor : Editor
             if (ghostObject != null) ghostObject.SetActive(false);
         }
 
-        if (e.type == EventType.MouseMove) SceneView.RepaintAll();
+        if (e.type == EventType.MouseMove || e.type == EventType.ScrollWheel) SceneView.RepaintAll();
     }
 
     private void ApplyBrush(int centerX, int gridY, int centerZ, float spawnY, bool isPlace)
@@ -265,6 +307,8 @@ public class MapBuilderEditor : Editor
     {
         if (palette[builder.selectedPrefabIndex] == null) return;
 
+        CheckAndCreateContainer();
+
         Vector3Int gridPos = new Vector3Int(x, y, z);
 
         if (builder.placedTiles.ContainsKey(gridPos))
@@ -276,7 +320,8 @@ public class MapBuilderEditor : Editor
         GameObject newTile = (GameObject)PrefabUtility.InstantiatePrefab(palette[builder.selectedPrefabIndex]);
         newTile.transform.position = new Vector3(x * builder.tileSize, spawnY, z * builder.tileSize);
         newTile.transform.rotation = Quaternion.Euler(0, builder.currentRotation * 90f, 0);
-        newTile.transform.SetParent(builder.transform);
+
+        newTile.transform.SetParent(builder.tileContainer);
 
         builder.placedTiles.Add(gridPos, newTile);
         EditorUtility.SetDirty(builder);
@@ -305,28 +350,73 @@ public class MapBuilderEditor : Editor
 
     private void ClearMap()
     {
-        for (int i = builder.transform.childCount - 1; i >= 0; i--)
+        if (builder.tileContainer != null)
         {
-            GameObject child = builder.transform.GetChild(i).gameObject;
-            // ★ 맵을 지울 때 바닥 가이드는 지워지지 않도록 보호
-            if (child.name != "Editor_GuidePlane")
+            for (int i = builder.tileContainer.childCount - 1; i >= 0; i--)
             {
-                DestroyImmediate(child);
+                DestroyImmediate(builder.tileContainer.GetChild(i).gameObject);
             }
         }
         builder.placedTiles.Clear();
         EditorUtility.SetDirty(builder);
     }
 
+    // =========================================================
+    // ★ 추가됨: 불러오기 버튼 클릭 시 동작하는 로직
+    // =========================================================
+    private void LoadMapFromPrefab()
+    {
+        if (builder.prefabToLoad == null)
+        {
+            Debug.LogWarning("불러올 프리팹을 인스펙터 슬롯에 등록해주세요!");
+            return;
+        }
+
+        // 1. 기존 컨테이너 내부의 타일만 모두 지웁니다 (컨테이너 자체는 유지)
+        ClearMap();
+
+        // 만약 컨테이너가 실수로 지워져 없다면 다시 생성해줍니다.
+        CheckAndCreateContainer();
+
+        // 2. 프리팹을 씬에 임시로 생성하고 언팩(Unpack)합니다.
+        GameObject loadedMap = (GameObject)PrefabUtility.InstantiatePrefab(builder.prefabToLoad);
+        PrefabUtility.UnpackPrefabInstance(loadedMap, PrefabUnpackMode.OutermostRoot, InteractionMode.AutomatedAction);
+
+        // 3. 임시 생성된 맵의 모든 자식 타일들을 기존 tileContainer 안으로 이동시킵니다.
+        int childCount = loadedMap.transform.childCount;
+        for (int i = childCount - 1; i >= 0; i--)
+        {
+            loadedMap.transform.GetChild(i).SetParent(builder.tileContainer);
+        }
+
+        // 4. 알맹이(타일)가 모두 옮겨져 빈 껍데기가 된 프리팹 루트 오브젝트는 삭제합니다.
+        DestroyImmediate(loadedMap);
+
+        // 5. 인스펙터의 프리팹 이름과 컨테이너 이름을 불러온 원본 이름에 맞춰 깔끔하게 동기화합니다.
+        builder.mapPrefabName = builder.prefabToLoad.name;
+        builder.tileContainer.name = builder.mapPrefabName + "_Root";
+
+        // 6. 딕셔너리 동기화 (기존 타일들을 맵 에디터 내부 데이터에 등록)
+        builder.SyncPlacedTiles();
+
+        Debug.Log($"<color=cyan>맵 불러오기 완료! ({builder.prefabToLoad.name}) 기존 컨테이너 구조를 유지합니다.</color>");
+        EditorUtility.SetDirty(builder);
+    }
+
     private void SaveMapAsPrefab()
     {
-        // ★ 프리팹을 굽기 전에 임시 가이드 Plane을 먼저 삭제합니다. (프리팹에 쓰레기 데이터가 남지 않음)
-        RemoveGuidePlane();
+        if (builder.tileContainer == null)
+        {
+            Debug.LogWarning("저장할 타일이 없습니다! 씬에 타일을 먼저 설치해주세요.");
+            return;
+        }
 
         if (!System.IO.Directory.Exists(builder.savePath)) System.IO.Directory.CreateDirectory(builder.savePath);
         string fullPath = builder.savePath + builder.mapPrefabName + ".prefab";
+
         bool success;
-        PrefabUtility.SaveAsPrefabAsset(builder.gameObject, fullPath, out success);
+
+        PrefabUtility.SaveAsPrefabAsset(builder.tileContainer.gameObject, fullPath, out success);
 
         if (success) Debug.Log($"<color=green>맵 저장 성공! 경로: {fullPath}</color>");
         else Debug.LogError("맵 저장에 실패했습니다. 경로를 확인해주세요.");

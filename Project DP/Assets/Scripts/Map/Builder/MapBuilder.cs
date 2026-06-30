@@ -8,6 +8,8 @@ public class MapBuilder : MonoBehaviour
     public int mapHeight = 17;
     public float tileSize = 1f;
 
+    public Transform tileContainer;
+
     [Header("Brush Settings")]
     [Range(1, 5)]
     public int brushSize = 1;
@@ -15,12 +17,13 @@ public class MapBuilder : MonoBehaviour
     public int currentHeight = 0;
     public int currentRotation = 0;
 
-    // ★ 추가됨: 선택적 지우개 모드 On/Off
     public bool useSelectiveEraser = false;
 
-    [Header("Save Settings")]
+    [Header("Save & Load Settings")]
     public string mapPrefabName = "NewDungeonMap";
     public string savePath = "Assets/Prefabs/Maps/";
+    // ★ 추가됨: 에디터로 다시 불러와서 수정할 원본 프리팹
+    public GameObject prefabToLoad;
 
     [Header("Palette Prefabs")]
     public GameObject floorPrefab;
@@ -40,7 +43,10 @@ public class MapBuilder : MonoBehaviour
     public void SyncPlacedTiles()
     {
         placedTiles.Clear();
-        foreach (Transform child in transform)
+
+        if (tileContainer == null) return;
+
+        foreach (Transform child in tileContainer)
         {
             int x = Mathf.RoundToInt(child.position.x / tileSize);
             int y = Mathf.RoundToInt(child.position.y / tileSize);
