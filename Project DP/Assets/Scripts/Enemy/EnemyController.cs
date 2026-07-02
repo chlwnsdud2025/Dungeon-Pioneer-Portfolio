@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour
 {
@@ -8,6 +9,7 @@ public class EnemyController : MonoBehaviour
     [Header("Components")]
     public Animator animator;
     public CharacterController characterController;
+    [HideInInspector] public NavMeshAgent agent;
 
     [Header("Enemy Stats")]
     public float maxHealth = 20f;
@@ -20,6 +22,8 @@ public class EnemyController : MonoBehaviour
     public float attackCooldown = 2f;    // 공격 쿨타임
     public LayerMask playerLayer;        // 플레이어 레이어
     public LayerMask obstacleLayer;      // 벽 등 시야를 가리는 장애물 레이어
+
+    [HideInInspector] public Vector3 spawnPosition;
 
     [HideInInspector] public Transform target;
     [HideInInspector] public float lastAttackTime = -999f;
@@ -37,11 +41,14 @@ public class EnemyController : MonoBehaviour
         stateMachine = new EnemyStateMachine();
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        agent = GetComponent<NavMeshAgent>();
 
         currentHealth = maxHealth;
-
+        if (agent != null) agent.enabled = false;
+        
         // TODO: 나중에 상태 클래스들을 만들면 여기서 AddState 해줍니다.
         stateMachine.AddState(new EnemyIdleState(this, stateMachine));
+        stateMachine.AddState(new EnemyPatrolState(this, stateMachine));
         stateMachine.AddState(new EnemyChaseState(this, stateMachine));
         stateMachine.AddState(new EnemyAttackState(this, stateMachine));
         stateMachine.AddState(new EnemyHitState(this, stateMachine));

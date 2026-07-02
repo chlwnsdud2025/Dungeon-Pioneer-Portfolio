@@ -7,7 +7,9 @@ public class MapBuilderEditor : Editor
     private MapBuilder builder;
     private GameObject[] palette;
     private string[] paletteNames = { "Floor", "Wall", "Entrance", "Exit", "Chest", "Trap", "Enemy", "Pushable" };
-    private string[] rotationNames = { "0° (기본)", "90°", "180°", "270°" };
+
+    // ★ 팀원 피드백 반영: 각도 대신 직관적인 화살표(시선 방향)로 UI 텍스트 변경
+    private string[] rotationNames = { "↑ (앞/0°)", "→ (우/90°)", "↓ (뒤/180°)", "← (좌/270°)" };
 
     private GameObject ghostObject;
     private Material ghostMaterial;
@@ -98,6 +100,7 @@ public class MapBuilderEditor : Editor
         builder.tileContainer = (Transform)EditorGUILayout.ObjectField("타일 컨테이너 (부모)", builder.tileContainer, typeof(Transform), true);
 
         builder.currentHeight = EditorGUILayout.IntSlider("설치 높이 (층)", builder.currentHeight, 0, 10);
+        // 화살표 방향 UI가 그려지는 곳
         builder.currentRotation = GUILayout.SelectionGrid(builder.currentRotation, rotationNames, 4);
 
         EditorGUILayout.Space();
@@ -111,14 +114,11 @@ public class MapBuilderEditor : Editor
         GUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
-        EditorGUILayout.HelpBox("Scene 뷰 조작법:\n[Shift + 좌클릭] : 타일 설치\n[Shift + 우클릭] : 타일 지우기\n[Shift + R 키] : 타일 90도 회전\n[Ctrl + 마우스 휠] : 브러시 크기 조절", MessageType.Info);
+        EditorGUILayout.HelpBox("Scene 뷰 조작법:\n[Shift + 좌클릭] : 타일 설치\n[Shift + 우클릭] : 타일 지우기\n[Shift + R 키] : 타일 90도 우회전 (→)\n[Ctrl + 마우스 휠] : 브러시 크기 조절", MessageType.Info);
 
         EditorGUILayout.Space();
         if (GUILayout.Button("전체 맵 지우기", GUILayout.Height(30))) ClearMap();
 
-        // =========================================================
-        // ★ 추가됨: 불러오기 및 저장 UI
-        // =========================================================
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("📂 Load & Save Map", EditorStyles.boldLabel);
 
@@ -130,7 +130,6 @@ public class MapBuilderEditor : Editor
 
         EditorGUILayout.Space();
         if (GUILayout.Button("프리팹으로 굽기 (저장/덮어쓰기)", GUILayout.Height(40))) SaveMapAsPrefab();
-        // =========================================================
 
         if (EditorGUI.EndChangeCheck())
         {
@@ -361,9 +360,6 @@ public class MapBuilderEditor : Editor
         EditorUtility.SetDirty(builder);
     }
 
-    // =========================================================
-    // ★ 추가됨: 불러오기 버튼 클릭 시 동작하는 로직
-    // =========================================================
     private void LoadMapFromPrefab()
     {
         if (builder.prefabToLoad == null)
@@ -372,31 +368,24 @@ public class MapBuilderEditor : Editor
             return;
         }
 
-        // 1. 기존 컨테이너 내부의 타일만 모두 지웁니다 (컨테이너 자체는 유지)
         ClearMap();
 
-        // 만약 컨테이너가 실수로 지워져 없다면 다시 생성해줍니다.
         CheckAndCreateContainer();
 
-        // 2. 프리팹을 씬에 임시로 생성하고 언팩(Unpack)합니다.
         GameObject loadedMap = (GameObject)PrefabUtility.InstantiatePrefab(builder.prefabToLoad);
         PrefabUtility.UnpackPrefabInstance(loadedMap, PrefabUnpackMode.OutermostRoot, InteractionMode.AutomatedAction);
 
-        // 3. 임시 생성된 맵의 모든 자식 타일들을 기존 tileContainer 안으로 이동시킵니다.
         int childCount = loadedMap.transform.childCount;
         for (int i = childCount - 1; i >= 0; i--)
         {
             loadedMap.transform.GetChild(i).SetParent(builder.tileContainer);
         }
 
-        // 4. 알맹이(타일)가 모두 옮겨져 빈 껍데기가 된 프리팹 루트 오브젝트는 삭제합니다.
         DestroyImmediate(loadedMap);
 
-        // 5. 인스펙터의 프리팹 이름과 컨테이너 이름을 불러온 원본 이름에 맞춰 깔끔하게 동기화합니다.
         builder.mapPrefabName = builder.prefabToLoad.name;
         builder.tileContainer.name = builder.mapPrefabName + "_Root";
 
-        // 6. 딕셔너리 동기화 (기존 타일들을 맵 에디터 내부 데이터에 등록)
         builder.SyncPlacedTiles();
 
         Debug.Log($"<color=cyan>맵 불러오기 완료! ({builder.prefabToLoad.name}) 기존 컨테이너 구조를 유지합니다.</color>");

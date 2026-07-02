@@ -6,7 +6,7 @@ public class MapBuilder : MonoBehaviour
     [Header("Map Settings")]
     public int mapWidth = 17;
     public int mapHeight = 17;
-    public float tileSize = 1f;
+    public float tileSize = 3f;
 
     public Transform tileContainer;
 
