@@ -54,8 +54,6 @@ public class DungeonGenerator : MonoBehaviour
 
         Transform entranceTransform = null;
 
-        // 맵 하위의 모든 오브젝트(타일)를 검사하여 이름에 "Entrance"가 포함된 오브젝트를 찾습니다.
-        // 맵 에디터에서 entrancePrefab을 설치했으므로 이름으로 쉽게 찾을 수 있습니다.
         foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>())
         {
             if (child.name.Contains("Entrance"))
@@ -65,19 +63,30 @@ public class DungeonGenerator : MonoBehaviour
             }
         }
 
+        Vector3 spawnPosition = Vector3.zero;
+
         if (entranceTransform != null)
         {
-            // 입구 타일의 위치에서 플레이어를 스폰합니다. (바닥 타일에 파묻히지 않도록 높이 Y를 살짝 띄웁니다)
-            Vector3 spawnPosition = entranceTransform.position + Vector3.up * 1.5f;
-            Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
-
+            spawnPosition = entranceTransform.position + Vector3.up * 1.5f;
             Debug.Log("<color=yellow>플레이어가 던전 입구에 성공적으로 스폰되었습니다!</color>");
         }
         else
         {
-            // 만약 실수로 맵에 입구를 안 만들었을 경우를 대비한 예외 처리
             Debug.LogWarning("이 맵에는 'Entrance' 타일이 없습니다! 맵 원점(0,0,0)에 강제 스폰합니다.");
-            Instantiate(playerPrefab, Vector3.up * 1.5f, Quaternion.identity);
+            spawnPosition = Vector3.up * 1.5f;
+        }
+
+        // 1. 플레이어 스폰
+        GameObject spawnedPlayer = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
+
+        // ★ 2. 씬에 있는 메인 카메라를 찾아서, 방금 스폰한 플레이어를 타겟으로 지정해줍니다!
+        CameraFollow camFollow = Camera.main.GetComponent<CameraFollow>();
+        if (camFollow != null)
+        {
+            camFollow.target = spawnedPlayer.transform;
+
+            // 시작하자마자 카메라가 부드럽게 날아오지 않고 즉시 플레이어 위치로 순간이동하도록 위치 초기화
+            Camera.main.transform.position = spawnedPlayer.transform.position + camFollow.offset;
         }
     }
 }

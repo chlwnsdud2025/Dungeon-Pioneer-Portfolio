@@ -35,10 +35,5 @@ public class WalkState_Player : PlayerBaseState
 
         // 걷기 속도 적용하여 이동
         player.MoveCharacter(moveDir * player.walkSpeed * Time.deltaTime);
-    }
-
-   
-
-    // 카메라 방향을 기준으로 한 이동 벡터 계산 편의 메서드
-    
+    }    
 }

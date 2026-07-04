@@ -378,6 +378,7 @@ GameObject:
   - component: {fileID: 684660469168387659}
   - component: {fileID: 6511126527006146265}
   - component: {fileID: 4314640983286836420}
+  - component: {fileID: -3210819036615068057}
   m_Layer: 7
   m_Name: EnemyType_1
   m_TagString: Untagged
@@ -416,6 +417,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   animator: {fileID: 6511126527006146265}
   characterController: {fileID: 4314640983286836420}
+  agent: {fileID: 0}
   maxHealth: 100
   currentHealth: 100
   moveSpeed: 2
@@ -482,6 +484,28 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!195 &-3210819036615068057
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1230236201331810707}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1 &1666093129851877822
 GameObject:
   m_ObjectHideFlags: 0

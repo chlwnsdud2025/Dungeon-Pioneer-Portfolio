@@ -78,10 +78,14 @@ public abstract class PlayerBaseState
 
     protected virtual Vector3 CalculateMoveDirection()
     {
-        if (player.cameraTransform == null) return new Vector3(player.moveInput.x, 0, player.moveInput.y).normalized;
+        // 씬의 메인 카메라를 기준으로 방향을 계산합니다.
+        Transform camTransform = Camera.main.transform;
 
-        Vector3 camForward = player.cameraTransform.forward;
-        Vector3 camRight = player.cameraTransform.right;
+        if (camTransform == null)
+            return new Vector3(player.moveInput.x, 0, player.moveInput.y).normalized;
+
+        Vector3 camForward = camTransform.forward;
+        Vector3 camRight = camTransform.right;
         camForward.y = 0f;
         camRight.y = 0f;
         camForward.Normalize();
