@@ -79,7 +79,7 @@ public class DungeonGenerator : MonoBehaviour
         // 1. 플레이어 스폰
         GameObject spawnedPlayer = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
 
-        // ★ 2. 씬에 있는 메인 카메라를 찾아서, 방금 스폰한 플레이어를 타겟으로 지정해줍니다!
+        // 2. 씬에 있는 메인 카메라를 찾아서, 방금 스폰한 플레이어를 타겟으로 지정해줍니다!
         CameraFollow camFollow = Camera.main.GetComponent<CameraFollow>();
         if (camFollow != null)
         {
@@ -87,6 +87,12 @@ public class DungeonGenerator : MonoBehaviour
 
             // 시작하자마자 카메라가 부드럽게 날아오지 않고 즉시 플레이어 위치로 순간이동하도록 위치 초기화
             Camera.main.transform.position = spawnedPlayer.transform.position + camFollow.offset;
+        }
+
+        // ★ 수정된 부분: 함수 내부 환경이므로 매개변수명인 'mapInstance'를 넣어주어야 정상 작동합니다!
+        if (MinimapManager.Instance != null)
+        {
+            MinimapManager.Instance.InitializeMinimap(mapInstance);
         }
     }
 }

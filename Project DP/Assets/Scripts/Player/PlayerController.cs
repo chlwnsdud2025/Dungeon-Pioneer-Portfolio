@@ -109,6 +109,8 @@ public class PlayerController : MonoBehaviour
         HandleMovementInput();
         UpdateFocus(); // 매 프레임 내가 무엇을 쳐다보는지 업데이트
         stateMachine.Update();
+
+        
     }
 
     private void FixedUpdate()
