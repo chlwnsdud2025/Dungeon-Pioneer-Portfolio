@@ -26,8 +26,11 @@ public abstract class PlayerBaseState
 
     public virtual void OnJumpInput() {
 
-        stateMachine.ChangeState<JumpState_Player>();
-    
+        if (player.currentJumps < player.maxJumps)
+        {
+            stateMachine.ChangeState<JumpState_Player>();
+        }
+
     }
     public virtual void OnInteractInput()
     {

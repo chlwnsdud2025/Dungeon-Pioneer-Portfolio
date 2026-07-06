@@ -25,6 +25,8 @@ public class PlayerController : MonoBehaviour
     public float gravity = -9.81f;      // 기본 중력
     public float gravityMultiplier = 2f;// 중력 가속도 배수
     [HideInInspector] public float verticalVelocity;
+    public int maxJumps = 1; // 추후 유틸리티 스킬 해금 시 값 상승
+    [HideInInspector] public int currentJumps = 0;
 
     [Header("Interaction System")]
     public float interactRange = 1.5f;     // 상호작용 탐색 길이
@@ -110,7 +112,7 @@ public class PlayerController : MonoBehaviour
         UpdateFocus(); // 매 프레임 내가 무엇을 쳐다보는지 업데이트
         stateMachine.Update();
 
-        
+        Shader.SetGlobalVector("_PlayerPos", transform.position);
     }
 
     private void FixedUpdate()
@@ -153,6 +155,8 @@ public class PlayerController : MonoBehaviour
             {
                 verticalVelocity = -2f;
             }
+
+            currentJumps = 0;
         }
         else
         {
@@ -163,7 +167,6 @@ public class PlayerController : MonoBehaviour
         characterController.Move(motion);
     }
 
-    // ★ 적의 공격을 받았을 때 호출될 피격 함수 (방어 각도 계산 포함)
     public void TakeDamage(float damage, Transform attacker)
     {
         if (stateMachine.CurrentState is DeadState_Player) return;
