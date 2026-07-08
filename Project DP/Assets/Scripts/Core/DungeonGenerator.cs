@@ -13,9 +13,19 @@ public class DungeonGenerator : MonoBehaviour
     [Header("AI Navigation")]
     public NavMeshSurface navMeshSurface; // (선택 사항) 몬스터 길찾기용 Surface
 
+    // ★ 추가: 가장 최근에 생성한 맵/플레이어 참조. GameManager가 이 값을 읽어가서
+    //   층 전환 시 정리(Destroy)하거나 상태를 추적하는 데 사용합니다.
+    public GameObject LastSpawnedMap { get; private set; }
+    public GameObject LastSpawnedPlayer { get; private set; }
+
     private void Start()
     {
-        GenerateDungeonAndSpawnPlayer();
+        // ★ 변경: 씬에 GameManager가 있으면 GameManager가 인게임 루프(언제 생성할지)를 총괄하므로
+        //   여기서 중복 생성하지 않습니다. GameManager가 없는 테스트 씬 등에서는 기존처럼 자체적으로 생성합니다.
+        if (GameManager.Instance == null)
+        {
+            GenerateDungeonAndSpawnPlayer();
+        }
     }
 
     public void GenerateDungeonAndSpawnPlayer()
@@ -30,6 +40,7 @@ public class DungeonGenerator : MonoBehaviour
         int randomIndex = Random.Range(0, mapPrefabs.Length);
         GameObject selectedMapPrefab = mapPrefabs[randomIndex];
         GameObject spawnedMap = Instantiate(selectedMapPrefab, Vector3.zero, Quaternion.identity);
+        LastSpawnedMap = spawnedMap;
 
         Debug.Log($"<color=cyan>랜덤 던전 생성 완료: {spawnedMap.name}</color>");
 
@@ -78,6 +89,7 @@ public class DungeonGenerator : MonoBehaviour
 
         // 1. 플레이어 스폰
         GameObject spawnedPlayer = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
+        LastSpawnedPlayer = spawnedPlayer;
 
         // 2. 씬에 있는 메인 카메라를 찾아서, 방금 스폰한 플레이어를 타겟으로 지정해줍니다!
         CameraFollow camFollow = Camera.main.GetComponent<CameraFollow>();
@@ -89,7 +101,7 @@ public class DungeonGenerator : MonoBehaviour
             Camera.main.transform.position = spawnedPlayer.transform.position + camFollow.offset;
         }
 
-        // ★ 수정된 부분: 함수 내부 환경이므로 매개변수명인 'mapInstance'를 넣어주어야 정상 작동합니다!
+        // ★ 함수 내부 환경이므로 매개변수명인 'mapInstance'를 넣어주어야 정상 작동합니다!
         if (MinimapManager.Instance != null)
         {
             MinimapManager.Instance.InitializeMinimap(mapInstance);

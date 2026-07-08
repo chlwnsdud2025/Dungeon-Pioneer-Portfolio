@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
-    [Header("Grid System")]
-    public Grid grid;
+    // ★ 변경: Unity Grid 컴포넌트 대신 프로젝트 공통 GridSystem(ScriptableObject)을 사용합니다.
+    //   씬마다 Grid 컴포넌트를 따로 연결/동기화할 필요 없이 GridSystem.Instance 하나로 통일됩니다.
 
     [Header("Map Settings")]
     public int width = 17;
@@ -225,13 +225,16 @@ public class MapGenerator : MonoBehaviour
 
     private void SpawnPrefabs()
     {
+        // ★ 변경: 매번 GridSystem.Instance를 참조 (Resources/GridSystem.asset 하나로 프로젝트 전체 통일)
+        GridSystem gridSystem = GridSystem.Instance;
+
         for (int x = 0; x < width; x++)
         {
             for (int z = 0; z < height; z++)
             {
                 Vector3Int cellPos = new Vector3Int(x, 0, z);
 
-                Vector3 basePos = grid.GetCellCenterWorld(cellPos);
+                Vector3 basePos = gridSystem.GetCellCenterWorld(cellPos);
                 TileType tileType = mapData[x, z];
 
                 // 바닥 깔기 (단, 타일이 '벽'이거나 '함정'일 경우에는 깔지 않음)
@@ -242,7 +245,7 @@ public class MapGenerator : MonoBehaviour
                 }
 
                 // 위로 한 칸 솟아오를 위치
-                Vector3 elevatedPos = basePos + new Vector3(0, grid.cellSize.y, 0);
+                Vector3 elevatedPos = gridSystem.GetElevatedWorld(cellPos);
 
                 switch (tileType)
                 {
@@ -265,7 +268,7 @@ public class MapGenerator : MonoBehaviour
                         Instantiate(enemyPrefab, elevatedPos, Quaternion.identity, this.transform);
                         break;
                     case TileType.Pushable:
-                        // ★ 추가: 적이나 상자처럼 바닥 위에(elevatedPos) 생성
+                        // ★ 적이나 상자처럼 바닥 위에(elevatedPos) 생성
                         Instantiate(pushablePrefab, elevatedPos, Quaternion.identity, this.transform);
                         break;
                 }

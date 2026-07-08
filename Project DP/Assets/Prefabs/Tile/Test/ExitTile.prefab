@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8219122810723838711}
   - component: {fileID: 8826718742210396721}
   - component: {fileID: 7664375187726933390}
+  - component: {fileID: 3340171481947266814}
   m_Layer: 0
   m_Name: Primitive_Cube_Small_Color
   m_TagString: Untagged
@@ -106,12 +107,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 2, y: 2.0000005, z: 2.0000005}
   m_Center: {x: 0, y: 1.0000002, z: -0.00000017881393}
+--- !u!114 &3340171481947266814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2445766729020792126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87e452375d039904191528f2b16b62af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExitPoint
 --- !u!1 &2454555364651045917
 GameObject:
   m_ObjectHideFlags: 0

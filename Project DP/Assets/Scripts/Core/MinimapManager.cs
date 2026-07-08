@@ -16,7 +16,8 @@ public class MinimapManager : MonoBehaviour
 
     [Header("Grid Settings")]
     public Vector2Int gridSize = new Vector2Int(17, 17);
-    public float tileSize = 3f; // 3x3 타일 규격
+    // ★ 변경: tileSize를 직접 들고 있지 않고 GridSystem에서 읽어옵니다. (MapGenerator/MapBuilder와 항상 동일한 값 보장)
+    private float tileSize => GridSystem.Instance.TileSize;
 
     [Header("Tile Colors (Fog & Map)")]
     public Color unexploredColor = new Color(0f, 0f, 0f, 1f);

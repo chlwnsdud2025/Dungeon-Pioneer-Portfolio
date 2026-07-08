@@ -14,6 +14,8 @@ public class JumpState_Player : PlayerBaseState
     {
         isLongJump = player.isRunning;
 
+        if (player.currentJumps >= player.maxJumps) return;
+
         player.currentJumps++;
 
         // 시작하자마자 바로 Jumping 애니메이션 하나만 실행

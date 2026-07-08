@@ -1,5 +1,3 @@
-using NUnit.Framework.Interfaces;
-using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,7 +7,11 @@ public class PlayerController : MonoBehaviour
     public PlayerStateMachine stateMachine { get; private set; }
 
     [Header("Grid System")]
-    public float tileSize = 1f;
+    // ★ 변경: 더 이상 이 스크립트가 tileSize 값을 직접 들고 있지 않고,
+    //   프로젝트 공통 GridSystem(Assets/Resources/GridSystem.asset)에서 읽어옵니다.
+    //   (기존엔 기본값이 1이라 던전의 실제 타일 크기 3과 어긋나 있었습니다.
+    //    Push/Jump 이동 거리, GetCurrentGridPosition() 판정이 전부 이제 정확히 동기화됩니다)
+    public float tileSize => GridSystem.Instance.TileSize;
 
     [Header("Movement System")]
     public float walkSpeed = 4f;
@@ -204,6 +206,12 @@ public class PlayerController : MonoBehaviour
         {
             Debug.Log("플레이어 사망");
             stateMachine.ChangeState<DeadState_Player>();
+
+            // ★ 추가: GameManager에게 사망을 통보해서 GameOver 흐름(상태 전환, 타임스케일 정지 등)이 돌아가도록 함
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.ReportPlayerDeath();
+            }
         }
         else
         {
@@ -214,9 +222,9 @@ public class PlayerController : MonoBehaviour
     // 현재 플레이어가 밟고 있는 타일의 좌표를 반환하는 함수
     public Vector2Int GetCurrentGridPosition()
     {
-        int x = Mathf.RoundToInt(transform.position.x / tileSize);
-        int z = Mathf.RoundToInt(transform.position.z / tileSize);
-        return new Vector2Int(x, z);
+        // ★ 변경: GridSystem 기준으로 통일 (기존엔 로컬 tileSize 필드를 써서 던전 생성 좌표계와 어긋날 수 있었음)
+        Vector3Int cell = GridSystem.Instance.WorldToCell(transform.position);
+        return new Vector2Int(cell.x, cell.z);
     }
 
     private void UpdateFocus()

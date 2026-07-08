@@ -20,7 +20,11 @@ public class AttackState_Player : PlayerBaseState
         // 1. 공격 애니메이션 실행
         player.animator.CrossFadeInFixedTime(attackAnimHash, 0.1f);
 
-        // 2. 방향키를 누르고 공격했다면, 그 방향으로 즉시 캐릭터를 회전시킴 (이전 코드의 장점 반영)
+        // 2. 방향키를 누르고 공격했다면, 그 방향으로 즉시 캐릭터를 회전시킴
+        //    ★ 수정: 이 상태 클래스에서 따로 CalculateMoveDirection()을 재구현하지 않고
+        //      PlayerBaseState의 공통 로직(Camera.main 기준)을 그대로 사용합니다.
+        //      (기존에는 player.cameraTransform 기준의 별도 구현이 있어서, cameraTransform이
+        //       인스펙터에 연결되어 있지 않으면 공격 시에만 회전 방향이 다른 상태들과 어긋났습니다)
         Vector3 attackDir = CalculateMoveDirection();
         if (attackDir != Vector3.zero)
         {
@@ -72,20 +76,6 @@ public class AttackState_Player : PlayerBaseState
 
             //Debug.Log($"<color=red>{enemy.name} 에게 기본 타격 적중!</color>");
         }
-    }
-
-    private Vector3 CalculateMoveDirection()
-    {
-        if (player.cameraTransform == null) return new Vector3(player.moveInput.x, 0, player.moveInput.y).normalized;
-
-        Vector3 camForward = player.cameraTransform.forward;
-        Vector3 camRight = player.cameraTransform.right;
-        camForward.y = 0f;
-        camRight.y = 0f;
-        camForward.Normalize();
-        camRight.Normalize();
-
-        return (camRight * player.moveInput.x + camForward * player.moveInput.y).normalized;
     }
 
     // 공격 도중 다른 입력 막기
