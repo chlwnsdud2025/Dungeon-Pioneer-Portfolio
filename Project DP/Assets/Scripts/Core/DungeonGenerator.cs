@@ -40,11 +40,21 @@ public class DungeonGenerator : MonoBehaviour
         int randomIndex = Random.Range(0, mapPrefabs.Length);
         GameObject selectedMapPrefab = mapPrefabs[randomIndex];
         GameObject spawnedMap = Instantiate(selectedMapPrefab, Vector3.zero, Quaternion.identity);
+
+        // ★ 추가: MapBuilder로 에디터에서 손수 제작한 프리팹은 실제 타일들의 로컬 좌표가
+        //   (0,0,0)에서 시작하지 않을 수 있습니다 (에디터에서 어디에 배치하고 저장했는지에 따라 달라짐).
+        //   그 상태로 스폰하면 GridSystem 기준 좌표(WorldToCell)가 어긋나서
+        //   미니맵/상호작용 판정 등이 맵의 일부만 인식하는 문제가 생깁니다.
+        //   → 실제 타일들의 최소 좌표를 찾아서 GridSystem의 셀 (0,0)에 정확히 맞도록 맵 전체를 이동시켜
+        //     어떤 프리팹이 오든 항상 GridSystem과 정렬되도록 정규화합니다.
+        NormalizeMapOrigin(spawnedMap);
+
         LastSpawnedMap = spawnedMap;
 
         Debug.Log($"<color=cyan>랜덤 던전 생성 완료: {spawnedMap.name}</color>");
 
         // 2. 실시간 NavMesh 베이킹 (몬스터가 맵을 인식할 수 있도록 0.1초 만에 길을 굽습니다)
+        //    ★ 정규화(위치 이동) 이후에 베이킹해야 NavMesh도 실제 스폰 위치와 일치합니다.
         if (navMeshSurface != null)
         {
             navMeshSurface.BuildNavMesh();
@@ -53,6 +63,47 @@ public class DungeonGenerator : MonoBehaviour
 
         // 3. 입구(Entrance) 타일을 찾아 플레이어 스폰
         SpawnPlayer(spawnedMap);
+    }
+
+    /// <summary>
+    /// 스폰된 맵 인스턴스의 실제 타일 중 가장 작은 좌표를 찾아서,
+    /// 그 지점이 정확히 GridSystem.Origin(그리드 셀 (0,0))에 오도록 맵 전체를 평행 이동시킵니다.
+    /// MapGenerator로 만든 절차적 던전은 이미 (0,0,0) 기준이라 이동량이 0이 되고,
+    /// MapBuilder로 손수 제작해 저장한 프리팹은 필요한 만큼 자동 보정됩니다.
+    /// </summary>
+    private void NormalizeMapOrigin(GameObject mapInstance)
+    {
+        float minX = float.MaxValue;
+        float minZ = float.MaxValue;
+        bool foundAnyTile = false;
+
+        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>())
+        {
+            if (child == mapInstance.transform) continue;
+
+            // 맵을 구성하는 타일/오브젝트 태그 기준으로 실제 범위를 판단
+            if (!(child.CompareTag("Floor") || child.CompareTag("Wall") || child.CompareTag("Entrance") ||
+                  child.CompareTag("Exit") || child.CompareTag("Trap") || child.CompareTag("Chest") ||
+                  child.CompareTag("Pushable")))
+            {
+                continue;
+            }
+
+            foundAnyTile = true;
+            if (child.position.x < minX) minX = child.position.x;
+            if (child.position.z < minZ) minZ = child.position.z;
+        }
+
+        if (!foundAnyTile) return;
+
+        Vector3 origin = GridSystem.Instance.Origin;
+        Vector3 offset = new Vector3(origin.x - minX, 0f, origin.z - minZ);
+
+        if (offset.sqrMagnitude > 0.0001f)
+        {
+            Debug.Log($"<color=yellow>[DungeonGenerator] 맵 좌표를 GridSystem 원점에 맞춰 보정합니다. offset={offset}</color>");
+            mapInstance.transform.position += offset;
+        }
     }
 
     private void SpawnPlayer(GameObject mapInstance)
