@@ -8,9 +8,13 @@ public class TrapTile : MonoBehaviour
 
     private float lastTriggerTime = -999f;
 
+    private bool isFilled = false;
+
     // Enter 대신 Stay를 사용하여, 함정 위에 머무르는 동안 쿨타임마다 계속 데미지를 줍니다.
     private void OnTriggerStay(Collider other)
     {
+        if (isFilled) return;
+
         // 쿨타임 중이면 작동하지 않음
         if (Time.time < lastTriggerTime + triggerCooldown) return;
 
@@ -47,5 +51,15 @@ public class TrapTile : MonoBehaviour
     {
         Debug.Log("함정");
         // TODO: 가시가 튀어나오는 애니메이션이나 소리(AudioSource) 추가
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.GetComponent<PushableObject>() != null)
+        {
+            isFilled = true;
+            Debug.Log("함정이 밀려온 오브젝트로 메워졌습니다!");
+            // TODO: 필요하면 시각적으로 "메워짐" 표현(파티클/사운드 등) 추가
+        }
     }
 }

@@ -11,14 +11,15 @@ public class EnemyChaseState : EnemyBaseState
     {
         enemy.animator.CrossFadeInFixedTime(chaseAnimHash, 0.1f);
 
+        // ★ 추적 시작: NavMeshAgent를 켜고 목표 추적을 시작합니다.
         if (enemy.agent != null)
         {
             enemy.agent.enabled = true;
             if (enemy.agent.isOnNavMesh)
             {
                 enemy.agent.isStopped = false;
-                enemy.agent.speed = enemy.moveSpeed;
-                enemy.agent.stoppingDistance = enemy.attackRange * 0.8f;
+                enemy.agent.speed = enemy.moveSpeed; // 인스펙터의 이동 속도와 동기화
+                enemy.agent.stoppingDistance = enemy.attackRange * 0.8f; // 사거리 조금 앞에서 멈추도록 설정
             }
         }
     }

@@ -5,15 +5,14 @@ using UnityEngine.UI;
 /// <summary>
 /// 미니맵 전체를 오브젝트 "하나"(RawImage + 단일 Texture2D)로 그리는 매니저.
 ///
-/// ★ 기존 구조와 달라진 점 ★
-/// - 예전: 타일마다 Image 오브젝트(17*17개) + 플레이어/몬스터/상자마다 별도의 점(Dot) UI 오브젝트.
-///   → 지금: 그 전부를 매 프레임 하나의 Texture2D에 픽셀로 그려서 RawImage 한 개에만 표시.
-///     (오브젝트 개수: 17*17 + 엔티티 수 → 1개)
-/// - 좌표계: 자체적으로 맵 바운드를 추정하던 기존 방식 대신, 프로젝트 공통 GridSystem을 그대로 사용
-///   (MapGenerator가 만든 던전과 100% 동일한 격자 기준이라 별도 보정이 필요 없음)
-/// - 안개(Fog) 규칙 변경:
+/// ★ 장소(던전 층/마을/오버월드)별로 미니맵 상태를 분리 보관합니다 ★
+/// - WorldManager는 한 번 생성된 장소를 파괴하지 않고 SetActive로만 전환합니다. 그래서 미니맵도
+///   장소마다 별도의 텍스처/방문기록/엔티티 목록(LocationMinimapState)을 갖고 있다가, 그 장소로
+///   돌아오면 저장해둔 상태를 그대로 복원합니다 (탐색 흔적, 설치된 횃불, 적/상자 위치 전부 유지).
+/// - 좌표계: 프로젝트 공통 GridSystem을 그대로 사용 (MapGenerator가 만든 던전과 100% 동일한 격자 기준).
+/// - 안개(Fog) 규칙:
 ///     1) 플레이어가 "밟고 지나간" 타일 → 이후 계속 회색(방문 흔적)으로 남음
-///     2) 실시간으로 밝혀지는 범위는 사각형(3x3)이 아니라 플레이어 중심의 "원형" 범위
+///     2) 실시간으로 밝혀지는 범위는 플레이어 중심의 "원형" 범위
 ///     3) 횃불을 설치하면 미니맵에 아주 작은 점으로 표시되고, 횃불 주변도 원형으로 "영구히" 밝게 유지됨
 /// </summary>
 public class MinimapManager : MonoBehaviour
@@ -34,7 +33,7 @@ public class MinimapManager : MonoBehaviour
     public int pixelsPerTile = 8;
 
     [Header("Fog / Vision Settings")]
-    [Tooltip("플레이어 기준 실시간으로 밝혀지는 반경 (타일 단위, 기존 3x3 사각형을 대체)")]
+    [Tooltip("플레이어 기준 실시간으로 밝혀지는 반경 (타일 단위)")]
     public float playerVisionRadius = 1.5f;
     [Tooltip("횃불 기준 영구적으로 밝혀지는 반경 (타일 단위)")]
     public float torchVisionRadius = 1.2f;
@@ -51,29 +50,37 @@ public class MinimapManager : MonoBehaviour
     public Color playerColor = new Color(0.2f, 0.8f, 0.2f, 1f);
     public Color enemyColor = new Color(0.9f, 0.2f, 0.2f, 1f);
     public Color chestColor = new Color(0.9f, 0.9f, 0.2f, 1f);
-    public Color torchColor = new Color(1f, 0.6f, 0.1f, 1f); // ★ 아주 작게 표시할 횃불 아이콘 색
+    public Color torchColor = new Color(1f, 0.6f, 0.1f, 1f);
 
     [Header("Entity Marker Sizes (px, 텍스처 해상도 기준)")]
     public int playerDotRadiusPx = 3;
     public int enemyDotRadiusPx = 3;
     public int chestDotRadiusPx = 2;
-    public int torchDotRadiusPx = 1; // ★ 매우 작게
+    public int torchDotRadiusPx = 1;
 
     // ── 내부 데이터 ─────────────────────────────────────────────
     private enum TileKind { Unexplored = 0, Floor = 1, Wall = 2, Trap = 3 }
-    private TileKind[,] staticMapData;
-    private bool[,] visited;          // ★ 플레이어가 실제로 밟은 타일 (영구 회색 흔적용)
-    private bool[,] currentlyLitTiles; // 이번 프레임에 원형 시야 안에 들어온 타일 (엔티티 표시 판정용)
 
-    private Texture2D minimapTexture;
-    private Color[] pixelBuffer;
-    private int texWidth, texHeight;
+    // ★ 장소 하나 분량의 미니맵 상태를 통째로 보관하는 컨테이너.
+    //   장소를 나갔다 돌아와도 이 객체가 그대로 살아있으므로 탐색 흔적이 유지됩니다.
+    private class LocationMinimapState
+    {
+        public TileKind[,] staticMapData;
+        public bool[,] visited;
+        public bool[,] currentlyLitTiles;
+        public Texture2D texture;
+        public Color[] pixelBuffer;
+        public int texWidth, texHeight;
+        public readonly List<Transform> activePushables = new List<Transform>();
+        public readonly List<Transform> activeChests = new List<Transform>();
+        public readonly List<Transform> activeTorches = new List<Transform>();
+        public readonly List<EnemyController> activeEnemies = new List<EnemyController>();
+    }
+
+    private readonly Dictionary<LocationId, LocationMinimapState> locationStates = new Dictionary<LocationId, LocationMinimapState>();
+    private LocationMinimapState current;
 
     private Transform playerTransform;
-    private readonly List<Transform> activePushables = new List<Transform>();
-    private readonly List<Transform> activeChests = new List<Transform>();
-    private readonly List<Transform> activeTorches = new List<Transform>(); // ★ 런타임에 설치된 횃불들
-    private readonly List<EnemyController> activeEnemies = new List<EnemyController>();
     private readonly HashSet<Vector2Int> pushableTilesThisFrame = new HashSet<Vector2Int>();
 
     private void Awake()
@@ -81,82 +88,100 @@ public class MinimapManager : MonoBehaviour
         Instance = this;
     }
 
-    /// <summary>새 층(맵)이 생성될 때 DungeonGenerator에서 호출합니다.</summary>
-    public void InitializeMinimap(GameObject mapInstance, Transform newPlayer)
+    /// <summary>런을 새로 시작(재시작 포함)할 때 WorldManager.ResetWorld에서 호출. 저장된 모든 장소 상태를 지웁니다.</summary>
+    public void ResetAllLocations()
     {
-        staticMapData = new TileKind[gridSize.x, gridSize.y];
-        visited = new bool[gridSize.x, gridSize.y];
-        currentlyLitTiles = new bool[gridSize.x, gridSize.y];
+        locationStates.Clear();
+        current = null;
+    }
 
-        activePushables.Clear();
-        activeChests.Clear();
-        activeTorches.Clear();
-        activeEnemies.Clear();
+    /// <summary>
+    /// 장소를 새로 생성했거나 이미 방문한 장소로 되돌아올 때 WorldManager에서 호출합니다.
+    /// isNewLocation이 true면 locationInstance를 스캔해 새로 그리고, false면 저장된 상태를 그대로 복원합니다.
+    /// </summary>
+    public void SwitchLocation(LocationId id, GameObject locationInstance, bool isNewLocation, Transform playerRef)
+    {
+        playerTransform = playerRef;
 
-        // 1. 맵 오브젝트를 한 번 훑으며 태그 기반으로 정적 데이터 + 동적 추적 목록 구성
-        //    ★ 좌표 계산은 GridSystem.Instance.WorldToCell()로 통일 (자체 바운드 추정 로직 제거)
-        foreach (Transform obj in mapInstance.GetComponentsInChildren<Transform>())
+        if (isNewLocation || !locationStates.TryGetValue(id, out current))
         {
-            if (obj == mapInstance.transform) continue;
-
-            Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
-            if (!IsValidGrid(cell.x, cell.z)) continue;
-
-            if (obj.CompareTag("Wall"))
-            {
-                staticMapData[cell.x, cell.z] = TileKind.Wall;
-            }
-            else if (obj.CompareTag("Floor") || obj.CompareTag("Entrance") || obj.CompareTag("Exit"))
-            {
-                if (staticMapData[cell.x, cell.z] == TileKind.Unexplored)
-                    staticMapData[cell.x, cell.z] = TileKind.Floor;
-            }
-            else if (obj.CompareTag("Trap"))
-            {
-                staticMapData[cell.x, cell.z] = TileKind.Trap;
-            }
-            else if (obj.CompareTag("Pushable"))
-            {
-                activePushables.Add(obj);
-            }
-            else if (obj.CompareTag("Chest"))
-            {
-                activeChests.Add(obj);
-            }
+            current = BuildLocationState(locationInstance);
+            locationStates[id] = current;
         }
 
-        playerTransform = newPlayer;
+        if (minimapDisplay != null) minimapDisplay.texture = current.texture;
+        ApplyAspectRatio();
+    }
 
-        EnemyController[] enemies = FindObjectsByType<EnemyController>(FindObjectsSortMode.None);
-        activeEnemies.AddRange(enemies);
-
-        // 2. 텍스처 준비 (해상도가 바뀌지 않았다면 재사용)
-        texWidth = gridSize.x * pixelsPerTile;
-        texHeight = gridSize.y * pixelsPerTile;
-
-        if (minimapTexture == null || minimapTexture.width != texWidth || minimapTexture.height != texHeight)
+    private LocationMinimapState BuildLocationState(GameObject locationInstance)
+    {
+        var state = new LocationMinimapState
         {
-            minimapTexture = new Texture2D(texWidth, texHeight, TextureFormat.RGBA32, false);
-            minimapTexture.filterMode = FilterMode.Point;
-            minimapTexture.wrapMode = TextureWrapMode.Clamp;
-            pixelBuffer = new Color[texWidth * texHeight];
+            staticMapData = new TileKind[gridSize.x, gridSize.y],
+            visited = new bool[gridSize.x, gridSize.y],
+            currentlyLitTiles = new bool[gridSize.x, gridSize.y]
+        };
 
-            if (minimapDisplay != null) minimapDisplay.texture = minimapTexture;
+        if (locationInstance != null)
+        {
+            // 1. 장소 오브젝트를 한 번 훑으며 태그 기반으로 정적 데이터 + 동적 추적 목록 구성
+            //    좌표 계산은 GridSystem.Instance.WorldToCell()로 통일
+            foreach (Transform obj in locationInstance.GetComponentsInChildren<Transform>(true))
+            {
+                if (obj == locationInstance.transform) continue;
 
-            ApplyAspectRatio();
+                Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
+                if (!IsValidGrid(cell.x, cell.z)) continue;
+
+                if (obj.CompareTag("Wall"))
+                {
+                    state.staticMapData[cell.x, cell.z] = TileKind.Wall;
+                }
+                else if (obj.CompareTag("Floor") || obj.CompareTag("Entrance") || obj.CompareTag("Exit"))
+                {
+                    if (state.staticMapData[cell.x, cell.z] == TileKind.Unexplored)
+                        state.staticMapData[cell.x, cell.z] = TileKind.Floor;
+                }
+                else if (obj.CompareTag("Trap"))
+                {
+                    state.staticMapData[cell.x, cell.z] = TileKind.Trap;
+                }
+                else if (obj.CompareTag("Pushable"))
+                {
+                    state.activePushables.Add(obj);
+                }
+                else if (obj.CompareTag("Chest"))
+                {
+                    state.activeChests.Add(obj);
+                }
+            }
+
+            // ★ 중요: FindObjectsByType 대신 이 장소의 자식만 스캔합니다.
+            //   여러 장소가 동시에(하나는 활성, 나머지는 비활성) 씬에 존재하므로,
+            //   전역 검색을 쓰면 다른 층의 적까지 이 미니맵에 섞여버립니다.
+            EnemyController[] enemies = locationInstance.GetComponentsInChildren<EnemyController>(true);
+            state.activeEnemies.AddRange(enemies);
         }
+
+        // 2. 텍스처 준비
+        state.texWidth = gridSize.x * pixelsPerTile;
+        state.texHeight = gridSize.y * pixelsPerTile;
+        state.texture = new Texture2D(state.texWidth, state.texHeight, TextureFormat.RGBA32, false);
+        state.texture.filterMode = FilterMode.Point;
+        state.texture.wrapMode = TextureWrapMode.Clamp;
+        state.pixelBuffer = new Color[state.texWidth * state.texHeight];
+
+        return state;
     }
 
     /// <summary>
     /// 텍스처 비율을 AspectRatioFitter에 반영하고, 레이아웃을 즉시 강제 갱신합니다.
-    /// ★ 부모 패널 크기가 아직 확정되지 않은 시점(씬 시작 직후 등)에 InitializeMinimap이 호출돼도
-    ///   첫 프레임부터 타일맵 전체가 잘리거나 치우치지 않고 정확히 중앙에 맞도록 보장합니다.
     /// </summary>
     private void ApplyAspectRatio()
     {
-        if (minimapAspectFitter == null) return;
+        if (minimapAspectFitter == null || current == null) return;
 
-        minimapAspectFitter.aspectRatio = (float)texWidth / texHeight;
+        minimapAspectFitter.aspectRatio = (float)current.texWidth / current.texHeight;
 
         RectTransform rt = minimapAspectFitter.GetComponent<RectTransform>();
         if (rt != null)
@@ -167,23 +192,22 @@ public class MinimapManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 횃불을 설치했을 때 호출하여 미니맵에 등록합니다. (PlaceTorchState_Player에서 호출)
-    /// 등록된 횃불은 그 순간부터 매 프레임 작은 점으로 표시되고, 주변이 영구적으로 밝게 유지됩니다.
+    /// 횃불을 설치했을 때 호출하여 현재 장소의 미니맵에 등록합니다. (PlaceTorchState_Player에서 호출)
     /// </summary>
     public void RegisterTorch(Transform torchTransform)
     {
-        if (torchTransform != null) activeTorches.Add(torchTransform);
+        if (torchTransform != null && current != null) current.activeTorches.Add(torchTransform);
     }
 
     private void Update()
     {
-        if (minimapTexture == null || playerTransform == null) return;
+        if (current == null || current.texture == null || playerTransform == null) return;
 
         // ★ 플레이어가 현재 밟고 있는 타일을 "방문함"으로 영구 기록
         Vector3Int playerCell = GridSystem.Instance.WorldToCell(playerTransform.position);
         if (IsValidGrid(playerCell.x, playerCell.z))
         {
-            visited[playerCell.x, playerCell.z] = true;
+            current.visited[playerCell.x, playerCell.z] = true;
         }
 
         RenderMinimap();
@@ -191,12 +215,11 @@ public class MinimapManager : MonoBehaviour
 
     private void RenderMinimap()
     {
-        // 이번 프레임의 밀리는 오브젝트 위치 캐싱 (타일 색 계산 시 여러 번 재사용)
         pushableTilesThisFrame.Clear();
-        for (int i = activePushables.Count - 1; i >= 0; i--)
+        for (int i = current.activePushables.Count - 1; i >= 0; i--)
         {
-            Transform p = activePushables[i];
-            if (p == null) { activePushables.RemoveAt(i); continue; }
+            Transform p = current.activePushables[i];
+            if (p == null) { current.activePushables.RemoveAt(i); continue; }
             Vector3Int cell = GridSystem.Instance.WorldToCell(p.position);
             if (IsValidGrid(cell.x, cell.z)) pushableTilesThisFrame.Add(new Vector2Int(cell.x, cell.z));
         }
@@ -206,28 +229,28 @@ public class MinimapManager : MonoBehaviour
         {
             for (int tx = 0; tx < gridSize.x; tx++)
             {
-                currentlyLitTiles[tx, ty] = false;
-                Color baseColor = visited[tx, ty] ? visitedTrailColor : unexploredColor;
+                current.currentlyLitTiles[tx, ty] = false;
+                Color baseColor = current.visited[tx, ty] ? visitedTrailColor : unexploredColor;
                 PaintTileBlock(tx, ty, baseColor);
             }
         }
 
-        // 2. 플레이어의 실시간 원형 시야 반영 (진짜 타일 색으로 덮어씀)
+        // 2. 플레이어의 실시간 원형 시야 반영
         ApplyVisionCircle(playerTransform.position, playerVisionRadius);
 
         // 3. 설치된 횃불들의 영구 원형 시야 반영
-        for (int i = activeTorches.Count - 1; i >= 0; i--)
+        for (int i = current.activeTorches.Count - 1; i >= 0; i--)
         {
-            Transform torch = activeTorches[i];
-            if (torch == null) { activeTorches.RemoveAt(i); continue; }
+            Transform torch = current.activeTorches[i];
+            if (torch == null) { current.activeTorches.RemoveAt(i); continue; }
             ApplyVisionCircle(torch.position, torchVisionRadius);
         }
 
         // 4. 엔티티(플레이어/몬스터/상자/횃불) 점 찍기
         DrawEntities();
 
-        minimapTexture.SetPixels(pixelBuffer);
-        minimapTexture.Apply();
+        current.texture.SetPixels(current.pixelBuffer);
+        current.texture.Apply();
     }
 
     private void ApplyVisionCircle(Vector3 worldPos, float radiusInTiles)
@@ -236,9 +259,9 @@ public class MinimapManager : MonoBehaviour
         float radiusPx = radiusInTiles * pixelsPerTile;
 
         int minX = Mathf.Max(0, Mathf.FloorToInt(center.x - radiusPx));
-        int maxX = Mathf.Min(texWidth - 1, Mathf.CeilToInt(center.x + radiusPx));
+        int maxX = Mathf.Min(current.texWidth - 1, Mathf.CeilToInt(center.x + radiusPx));
         int minY = Mathf.Max(0, Mathf.FloorToInt(center.y - radiusPx));
-        int maxY = Mathf.Min(texHeight - 1, Mathf.CeilToInt(center.y + radiusPx));
+        int maxY = Mathf.Min(current.texHeight - 1, Mathf.CeilToInt(center.y + radiusPx));
 
         float radiusSq = radiusPx * radiusPx;
 
@@ -254,8 +277,8 @@ public class MinimapManager : MonoBehaviour
                 int ty = y / pixelsPerTile;
                 if (!IsValidGrid(tx, ty)) continue;
 
-                currentlyLitTiles[tx, ty] = true;
-                pixelBuffer[y * texWidth + x] = GetTrueTileColor(tx, ty);
+                current.currentlyLitTiles[tx, ty] = true;
+                current.pixelBuffer[y * current.texWidth + x] = GetTrueTileColor(tx, ty);
             }
         }
     }
@@ -264,7 +287,7 @@ public class MinimapManager : MonoBehaviour
     {
         if (pushableTilesThisFrame.Contains(new Vector2Int(tx, ty))) return pushWallColor;
 
-        switch (staticMapData[tx, ty])
+        switch (current.staticMapData[tx, ty])
         {
             case TileKind.Wall: return wallColor;
             case TileKind.Trap: return trapColor;
@@ -279,36 +302,36 @@ public class MinimapManager : MonoBehaviour
         DrawDot(playerTransform.position, playerColor, playerDotRadiusPx);
 
         // 몬스터 - 현재 밝혀진 타일 위에 있을 때만 표시
-        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        for (int i = current.activeEnemies.Count - 1; i >= 0; i--)
         {
-            EnemyController enemy = activeEnemies[i];
-            if (enemy == null) { activeEnemies.RemoveAt(i); continue; }
+            EnemyController enemy = current.activeEnemies[i];
+            if (enemy == null) { current.activeEnemies.RemoveAt(i); continue; }
 
             Vector3Int cell = GridSystem.Instance.WorldToCell(enemy.transform.position);
-            if (IsValidGrid(cell.x, cell.z) && currentlyLitTiles[cell.x, cell.z])
+            if (IsValidGrid(cell.x, cell.z) && current.currentlyLitTiles[cell.x, cell.z])
             {
                 DrawDot(enemy.transform.position, enemyColor, enemyDotRadiusPx);
             }
         }
 
         // 보물상자 - 현재 밝혀진 타일 위에 있을 때만 표시
-        for (int i = activeChests.Count - 1; i >= 0; i--)
+        for (int i = current.activeChests.Count - 1; i >= 0; i--)
         {
-            Transform chest = activeChests[i];
-            if (chest == null) { activeChests.RemoveAt(i); continue; }
+            Transform chest = current.activeChests[i];
+            if (chest == null) { current.activeChests.RemoveAt(i); continue; }
 
             Vector3Int cell = GridSystem.Instance.WorldToCell(chest.position);
-            if (IsValidGrid(cell.x, cell.z) && currentlyLitTiles[cell.x, cell.z])
+            if (IsValidGrid(cell.x, cell.z) && current.currentlyLitTiles[cell.x, cell.z])
             {
                 DrawDot(chest.position, chestColor, chestDotRadiusPx);
             }
         }
 
-        // ★ 횃불: 스스로 자기 주변을 밝히므로 항상 아주 작은 점으로 표시
-        for (int i = activeTorches.Count - 1; i >= 0; i--)
+        // 횃불: 스스로 자기 주변을 밝히므로 항상 아주 작은 점으로 표시
+        for (int i = current.activeTorches.Count - 1; i >= 0; i--)
         {
-            Transform torch = activeTorches[i];
-            if (torch == null) { activeTorches.RemoveAt(i); continue; }
+            Transform torch = current.activeTorches[i];
+            if (torch == null) { current.activeTorches.RemoveAt(i); continue; }
             DrawDot(torch.position, torchColor, torchDotRadiusPx);
         }
     }
@@ -318,9 +341,9 @@ public class MinimapManager : MonoBehaviour
         Vector2 center = WorldToPixel(worldPos);
 
         int minX = Mathf.Max(0, Mathf.FloorToInt(center.x - radiusPx));
-        int maxX = Mathf.Min(texWidth - 1, Mathf.CeilToInt(center.x + radiusPx));
+        int maxX = Mathf.Min(current.texWidth - 1, Mathf.CeilToInt(center.x + radiusPx));
         int minY = Mathf.Max(0, Mathf.FloorToInt(center.y - radiusPx));
-        int maxY = Mathf.Min(texHeight - 1, Mathf.CeilToInt(center.y + radiusPx));
+        int maxY = Mathf.Min(current.texHeight - 1, Mathf.CeilToInt(center.y + radiusPx));
 
         float radiusSq = radiusPx * radiusPx;
 
@@ -332,7 +355,7 @@ public class MinimapManager : MonoBehaviour
                 float dy = y + 0.5f - center.y;
                 if (dx * dx + dy * dy <= radiusSq)
                 {
-                    pixelBuffer[y * texWidth + x] = color;
+                    current.pixelBuffer[y * current.texWidth + x] = color;
                 }
             }
         }
@@ -360,10 +383,10 @@ public class MinimapManager : MonoBehaviour
 
         for (int y = 0; y < pixelsPerTile; y++)
         {
-            int row = (startY + y) * texWidth;
+            int row = (startY + y) * current.texWidth;
             for (int x = 0; x < pixelsPerTile; x++)
             {
-                pixelBuffer[row + startX + x] = color;
+                current.pixelBuffer[row + startX + x] = color;
             }
         }
     }

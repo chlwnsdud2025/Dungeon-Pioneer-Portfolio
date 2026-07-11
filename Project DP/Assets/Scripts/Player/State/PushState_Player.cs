@@ -5,11 +5,11 @@ public class PushState_Player : PlayerBaseState
     private readonly int pushMoveHash = Animator.StringToHash("Push_Move");
 
     private Transform targetObject;
+    private PushableObject targetPushable;
     private Vector3 objectStartPos, objectTargetPos;
     private Vector3 snappedPushDirection;
 
-    private float pushDuration = 0.5f; // 상자가 밀리는 데 걸리는 시간
-    private float moveTimer = 0f;
+    private float pushDuration = 0.5f;
 
     public PushState_Player(PlayerController player, PlayerStateMachine stateMachine) : base(player, stateMachine) { }
 
@@ -24,10 +24,10 @@ public class PushState_Player : PlayerBaseState
             return;
         }
 
-        // 1. 캐릭터가 바라보는 방향을 완벽한 상/하/좌/우(X, Z축)로 보정
+        targetPushable = targetObject.GetComponent<PushableObject>();
+
         snappedPushDirection = GetSnappedDirection(player.transform.forward);
 
-        // 2. 보정된 방향을 매개변수로 넣어 목표 타일이 비었는지 검사
         if (!CanPushObject(snappedPushDirection))
         {
             Debug.Log("<color=red>벽이나 장애물에 막혀 밀 수 없습니다!</color>");
@@ -35,36 +35,37 @@ public class PushState_Player : PlayerBaseState
             return;
         }
 
-        moveTimer = 0f;
-
-        // 3. 플레이어는 위치 이동 없이 제자리에서 방향만 맞추고 애니메이션 재생
         player.transform.rotation = Quaternion.LookRotation(snappedPushDirection);
         player.animator.CrossFadeInFixedTime(pushMoveHash, 0.1f);
 
-        // 4. 상자(밀리는 오브젝트)의 시작/목표 좌표만 계산
         objectStartPos = targetObject.position;
         objectTargetPos = objectStartPos + (snappedPushDirection * player.tileSize);
+
+        // ★ 실제 이동(수평 밀기 + 중력 합산)은 PushableObject가 전담합니다.
+        //   여기서는 "이 위치까지, 이 시간 동안 밀어줘"라고 요청만 합니다.
+        if (targetPushable != null)
+        {
+            targetPushable.BeginPush(objectTargetPos, pushDuration);
+        }
     }
 
     public override void Update()
     {
-        // 미는 동안 플레이어가 다른 곳으로 움직이지 않도록 제자리에 묶어둠 (중력은 유지)
         player.MoveCharacter(Vector3.zero);
 
-        moveTimer += Time.deltaTime;
-        float normalizedTime = moveTimer / pushDuration;
-
-        // ★ 플레이어 이동 코드를 삭제하고 상자만 보간 이동(Lerp) 처리
-        targetObject.position = Vector3.Lerp(objectStartPos, objectTargetPos, normalizedTime);
-
-        if (normalizedTime >= 1f)
+        // ★ 더 이상 여기서 Lerp/MovePosition을 직접 하지 않고, PushableObject에게 완료 여부만 물어봅니다.
+        //   (Rigidbody.MovePosition을 두 스크립트가 각자 호출하면 서로의 이동을 덮어써버리기 때문에,
+        //    이동의 소유권을 PushableObject 한 곳으로 합쳤습니다.)
+        if (targetPushable == null || targetPushable.IsPushComplete)
         {
-            // 상자 도착 후 오차 없는 완벽한 좌표 스냅
-            targetObject.position = objectTargetPos;
-
-            // 밀기 완료 후 다시 대기 상태로
             stateMachine.ChangeState<IdleState_Player>();
         }
+    }
+
+    public override void Exit()
+    {
+        // IsBeingPushed(깔기 판정 on/off)는 PushableObject가 자기 밀기 상태(isPushing)로 스스로 관리하므로
+        // 여기서 따로 꺼줄 것이 없습니다.
     }
 
     // 목표 위치에 벽이나 장애물이 없는지 검사

@@ -4,15 +4,18 @@ using UnityEngine;
 /// <summary>
 /// 게임 전체의 인게임 루프(상태 흐름)를 총괄하는 싱글턴 매니저.
 ///
-/// 흐름: Boot → GeneratingMap → Playing ⇄ Paused → (다음 층: GeneratingMap 반복) → GameOver / Victory
+/// 흐름: Boot → GeneratingMap → Playing ⇄ Paused → (층 이동: GeneratingMap 반복) → GameOver / Victory
 ///
-/// - 실제 맵 생성(던전 미로/이후 필드맵)은 DungeonGenerator(혹은 이후 만들 FieldGenerator)가 담당하고,
-///   GameManager는 "언제 생성을 시작할지 / 언제 다음 층으로 넘어갈지 / 언제 게임오버인지"만 결정합니다.
+/// - "지금 어느 장소에 있는지" "장소를 어떻게 만들고 전환하는지"는 WorldManager가 담당하고,
+///   GameManager는 던전 층 진행에 특화된 규칙(현재 몇 층인지, 몇 층에서 Victory인지)만 판단해서
+///   WorldManager.TravelTo를 호출합니다.
+/// - dungeonGenerator는 "층마다 겹치지 않는 맵을 배정"하는 런 시작 준비(PrepareNewRun)를 위해서만 참조합니다.
 /// - 플레이어/몬스터 FSM은 각자 스크립트가 그대로 담당하고, GameManager에는 "결과"만 통보(이벤트 호출)하면 됩니다.
 ///   예) 플레이어 HP가 0이 되면 PlayerController에서 GameManager.Instance.ReportPlayerDeath() 호출
 ///       출구 타일을 밟으면 ExitPoint.cs가 GameManager.Instance.ReportExitReached()를 자동 호출
-/// - 필드 맵을 나중에 추가할 때는 fieldGenerator 참조를 하나 더 두고,
-///   GenerateCurrentFloor()에서 층수/모드에 따라 dungeonGenerator/fieldGenerator 중 하나를 선택하도록 확장하면 됩니다.
+///       입구 타일을 밟으면 EntrancePoint.cs가 GameManager.Instance.ReportEntranceReached()를 자동 호출
+/// - 마을/오버월드로 나가는 흐름이 추가되면, 그 이동은 층 카운트와 무관하므로 LocationConnector가
+///   WorldManager.TravelTo를 직접 호출합니다 (GameManager를 거치지 않음).
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -25,29 +28,24 @@ public class GameManager : MonoBehaviour
         Playing,        // 정상 플레이 중
         Paused,         // 일시정지
         GameOver,       // 플레이어 사망
-        Victory         // 최종 클리어 (예: 마지막 층 탈출)
+        Victory         // 최종 클리어 (마지막 층 탈출)
     }
 
     [Header("Run 진행 상태")]
-    [Tooltip("현재 몇 번째 던전/층인지. 1부터 시작")]
+    [Tooltip("현재 몇 번째 던전 층인지. 1부터 시작")]
     public int currentFloor = 1;
     [Tooltip("이 층까지 가면 Victory 처리. 0이면 무제한(끝없이 다음 층 생성)")]
-    public int maxFloor = 0;
+    public int maxFloor = 5;
 
-    [Header("맵 생성기 연결")]
-    [Tooltip("던전(미로형) 맵 생성기. 씬의 DungeonGenerator를 연결하세요.")]
+    [Header("장소 이동 / 던전 생성 연결")]
+    [Tooltip("장소(던전 층/마을/오버월드) 이동을 총괄하는 매니저.")]
+    public WorldManager worldManager;
+    [Tooltip("던전 층 배정(중복 없는 셔플)을 준비시키기 위해 참조합니다.")]
     public DungeonGenerator dungeonGenerator;
-    // ★ 확장 지점: 필드 맵 생성기를 추가하게 되면 여기에 참조를 추가하고,
-    //   GenerateCurrentFloor()에서 currentFloor나 별도 모드 값에 따라 분기하면 됩니다.
-    // public FieldGenerator fieldGenerator;
 
     [Header("현재 상태 (읽기 전용, 디버그용)")]
     [SerializeField] private GameState currentState = GameState.Boot;
     public GameState CurrentState => currentState;
-
-    [Header("현재 런타임 참조 (읽기 전용)")]
-    public GameObject currentMapInstance;
-    public GameObject currentPlayer;
 
     // ── 이벤트: UI/사운드/이펙트 등이 구독해서 반응하도록 ──────────
     public event Action<GameState> OnStateChanged;
@@ -80,7 +78,11 @@ public class GameManager : MonoBehaviour
     {
         Time.timeScale = 1f;
         currentFloor = 1;
-        GenerateCurrentFloor();
+
+        dungeonGenerator.PrepareNewRun(maxFloor > 0 ? maxFloor : 1);
+        worldManager.ResetWorld();
+
+        EnterDungeonFloor(currentFloor, arrivalSpawnPointId: "Entrance");
     }
 
     /// <summary>출구를 밟는 등, 현재 층 클리어 시 호출 (ExitPoint.cs에서 자동 호출됨)</summary>
@@ -97,9 +99,10 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        GenerateCurrentFloor();
+        EnterDungeonFloor(currentFloor, "Entrance"); // 새 층의 '입구'에 스폰
     }
 
+    /// <summary>입구를 밟는 등, 이전 층으로 돌아갈 때 호출 (EntrancePoint.cs에서 자동 호출됨)</summary>
     public void ReportEntranceReached()
     {
         if (currentState != GameState.Playing) return;
@@ -108,7 +111,7 @@ public class GameManager : MonoBehaviour
         if (currentFloor <= 1) return;
 
         currentFloor--;
-        GenerateCurrentFloor();
+        EnterDungeonFloor(currentFloor, "Exit"); // 이전 층의 '출구'(원래 나갔던 자리)에 스폰
     }
 
     /// <summary>플레이어 사망 시 PlayerController 등에서 호출</summary>
@@ -138,39 +141,25 @@ public class GameManager : MonoBehaviour
     public void RestartRun()
     {
         Time.timeScale = 1f;
-        CleanupCurrentMap();
-        StartRun();
+        StartRun(); // StartRun 내부에서 기존 장소/플레이어를 전부 정리하고 다시 섞음
     }
 
     // ── 내부 로직 ────────────────────────────────────────────────
 
-    private void GenerateCurrentFloor()
+    private void EnterDungeonFloor(int floor, string arrivalSpawnPointId)
     {
         SetState(GameState.GeneratingMap);
-        CleanupCurrentMap();
 
-        if (dungeonGenerator == null)
+        if (worldManager == null || dungeonGenerator == null)
         {
-            Debug.LogError("[GameManager] DungeonGenerator가 연결되어 있지 않습니다! 인스펙터를 확인해주세요.");
+            Debug.LogError("[GameManager] WorldManager/DungeonGenerator가 연결되어 있지 않습니다! 인스펙터를 확인해주세요.");
             return;
         }
 
-        dungeonGenerator.GenerateDungeonAndSpawnPlayer();
+        worldManager.TravelTo(new LocationId(LocationType.Dungeon, floor), arrivalSpawnPointId);
 
-        // DungeonGenerator가 생성 직후 기록해둔 참조를 그대로 받아옴
-        currentMapInstance = dungeonGenerator.LastSpawnedMap;
-        currentPlayer = dungeonGenerator.LastSpawnedPlayer;
-
-        OnFloorStarted?.Invoke(currentFloor);
+        OnFloorStarted?.Invoke(floor);
         SetState(GameState.Playing);
-    }
-
-    private void CleanupCurrentMap()
-    {
-        if (currentMapInstance != null) Destroy(currentMapInstance);
-        if (currentPlayer != null) Destroy(currentPlayer);
-        currentMapInstance = null;
-        currentPlayer = null;
     }
 
     private void SetState(GameState newState)

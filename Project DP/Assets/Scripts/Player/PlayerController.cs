@@ -156,9 +156,8 @@ public class PlayerController : MonoBehaviour
             if (verticalVelocity < 0.0f)
             {
                 verticalVelocity = -2f;
+                currentJumps = 0; // "땅에 붙어있음"이 아니라 "떨어지다가 착지함"일 때만 리셋
             }
-
-            currentJumps = 0;
         }
         else
         {

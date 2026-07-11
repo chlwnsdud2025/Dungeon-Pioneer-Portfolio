@@ -378,7 +378,7 @@ GameObject:
   - component: {fileID: 684660469168387659}
   - component: {fileID: 6511126527006146265}
   - component: {fileID: 4314640983286836420}
-  - component: {fileID: -3210819036615068057}
+  - component: {fileID: 8446700503289496035}
   m_Layer: 7
   m_Name: EnemyType_1
   m_TagString: Enemy
@@ -484,7 +484,7 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
---- !u!195 &-3210819036615068057
+--- !u!195 &8446700503289496035
 NavMeshAgent:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

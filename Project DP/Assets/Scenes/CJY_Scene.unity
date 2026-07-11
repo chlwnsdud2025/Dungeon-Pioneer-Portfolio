@@ -2393,6 +2393,7 @@ GameObject:
   - component: {fileID: 626846871}
   - component: {fileID: 626846870}
   - component: {fileID: 626846869}
+  - component: {fileID: 626846873}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -2428,7 +2429,7 @@ MonoBehaviour:
   m_OverrideTileSize: 0
   m_TileSize: 256
   m_OverrideVoxelSize: 0
-  m_VoxelSize: 0.33333334
+  m_VoxelSize: 0.16666667
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
@@ -2445,11 +2446,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   currentFloor: 1
-  maxFloor: 0
+  maxFloor: 5
+  worldManager: {fileID: 626846873}
   dungeonGenerator: {fileID: 626846871}
   currentState: 0
-  currentMapInstance: {fileID: 0}
-  currentPlayer: {fileID: 0}
 --- !u!114 &626846871
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2468,8 +2468,6 @@ MonoBehaviour:
   - {fileID: 2395053248955542235, guid: 5b843e84a3268c94ba999afcac8b1ebd, type: 3}
   - {fileID: 7062325555338704864, guid: 5788893dbebb0d5439d786ef5644048d, type: 3}
   - {fileID: 6965686946543385256, guid: d6e361583c957624db20b6c4b9a7b00c, type: 3}
-  playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
-  navMeshSurface: {fileID: 626846869}
 --- !u!4 &626846872
 Transform:
   m_ObjectHideFlags: 0
@@ -2485,6 +2483,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &626846873
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626846868}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c33a1f5ab9330644a2c7dfd57a2d12e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldManager
+  dungeonProvider: {fileID: 626846871}
+  townProvider: {fileID: 0}
+  overworldProvider: {fileID: 0}
+  playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+  navMeshSurface: {fileID: 626846869}
 --- !u!4 &631863205 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5540165784306780980, guid: 561c89787d34bcd48ae579be4ddc6685, type: 3}

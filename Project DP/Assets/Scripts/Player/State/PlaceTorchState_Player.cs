@@ -89,7 +89,13 @@ public class PlaceTorchState_Player : PlayerBaseState
         Quaternion baseRotation = Quaternion.LookRotation(hitNormal);
         Quaternion spawnRotation = baseRotation * Quaternion.Euler(30f, 0f, 0f);
 
-        GameObject spawnedTorch = Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation);
+        // ★ 현재 활성화된 장소(층)의 자식으로 부모를 지정합니다. 그래야 이 장소를 나갈 때
+        //   WorldManager가 SetActive(false)로 비활성화하면 횃불도 함께 꺼지고, 다시 돌아오면
+        //   함께 다시 켜집니다 (씬 루트에 그냥 생성하면 층을 나가도 계속 남아있게 됩니다).
+        Transform parentLocation = WorldManager.Instance != null
+            ? WorldManager.Instance.CurrentLocationInstance?.transform
+            : null;
+        GameObject spawnedTorch = Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation, parentLocation);
 
         // ★ 추가: 새 미니맵 구조에 이 횃불을 등록.
         //   등록된 순간부터 미니맵에 아주 작은 점으로 표시되고, 주변이 원형으로 영구히 밝게 유지됩니다.

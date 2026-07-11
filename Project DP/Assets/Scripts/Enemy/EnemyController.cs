@@ -45,7 +45,7 @@ public class EnemyController : MonoBehaviour
 
         currentHealth = maxHealth;
         if (agent != null) agent.enabled = false;
-        
+
         // TODO: 나중에 상태 클래스들을 만들면 여기서 AddState 해줍니다.
         stateMachine.AddState(new EnemyIdleState(this, stateMachine));
         stateMachine.AddState(new EnemyPatrolState(this, stateMachine));
