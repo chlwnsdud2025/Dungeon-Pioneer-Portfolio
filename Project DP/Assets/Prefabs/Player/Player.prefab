@@ -2235,7 +2235,7 @@ MonoBehaviour:
   gravity: -9.81
   gravityMultiplier: 2
   verticalVelocity: 0
-  maxJumps: 3
+  maxJumps: 1
   currentJumps: 0
   interactRange: 1
   sphereCastRadius: 0.5
