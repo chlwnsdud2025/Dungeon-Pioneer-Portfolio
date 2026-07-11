@@ -152,10 +152,9 @@ public class DungeonGenerator : MonoBehaviour
             Camera.main.transform.position = spawnedPlayer.transform.position + camFollow.offset;
         }
 
-        // ★ 함수 내부 환경이므로 매개변수명인 'mapInstance'를 넣어주어야 정상 작동합니다!
         if (MinimapManager.Instance != null)
         {
-            MinimapManager.Instance.InitializeMinimap(mapInstance);
+            MinimapManager.Instance.InitializeMinimap(mapInstance, spawnedPlayer.transform);
         }
     }
 }

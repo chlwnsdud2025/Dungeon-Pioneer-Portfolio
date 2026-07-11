@@ -82,7 +82,7 @@ public class MinimapManager : MonoBehaviour
     }
 
     /// <summary>새 층(맵)이 생성될 때 DungeonGenerator에서 호출합니다.</summary>
-    public void InitializeMinimap(GameObject mapInstance)
+    public void InitializeMinimap(GameObject mapInstance, Transform newPlayer)
     {
         staticMapData = new TileKind[gridSize.x, gridSize.y];
         visited = new bool[gridSize.x, gridSize.y];
@@ -125,7 +125,7 @@ public class MinimapManager : MonoBehaviour
             }
         }
 
-        playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
+        playerTransform = newPlayer;
 
         EnemyController[] enemies = FindObjectsByType<EnemyController>(FindObjectsSortMode.None);
         activeEnemies.AddRange(enemies);

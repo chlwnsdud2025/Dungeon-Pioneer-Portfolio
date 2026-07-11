@@ -14,13 +14,15 @@ public class EnemyPatrolState : EnemyBaseState
     {
         enemy.animator.CrossFadeInFixedTime(walkAnimHash, 0.1f);
 
-        // ★ 순찰 시작: NavMeshAgent 켜기
         if (enemy.agent != null)
         {
             enemy.agent.enabled = true;
-            enemy.agent.isStopped = false;
-            enemy.agent.speed = enemy.moveSpeed * 0.5f; // 순찰은 추적보다 천천히 걷게 설정
-            enemy.agent.stoppingDistance = 0f; // 목표 타일에 정확히 서도록 설정
+            if (enemy.agent.isOnNavMesh)
+            {
+                enemy.agent.isStopped = false;
+                enemy.agent.speed = enemy.moveSpeed * 0.5f;
+                enemy.agent.stoppingDistance = 0f;
+            }
         }
 
         SetNewPatrolDestination();

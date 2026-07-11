@@ -100,6 +100,17 @@ public class GameManager : MonoBehaviour
         GenerateCurrentFloor();
     }
 
+    public void ReportEntranceReached()
+    {
+        if (currentState != GameState.Playing) return;
+
+        // 1층에서는 더 내려갈 층이 없으므로 무시
+        if (currentFloor <= 1) return;
+
+        currentFloor--;
+        GenerateCurrentFloor();
+    }
+
     /// <summary>플레이어 사망 시 PlayerController 등에서 호출</summary>
     public void ReportPlayerDeath()
     {
