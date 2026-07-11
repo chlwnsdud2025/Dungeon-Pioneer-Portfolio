@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
+using Unity.AI.Navigation;
 
 /// <summary>
 /// LocationType.Dungeon 장소를 만들어내는 provider.
@@ -66,9 +68,166 @@ public class DungeonGenerator : MonoBehaviour, ILocationProvider
         root.Initialize(id);
         RegisterEntranceExitSpawnPoints(spawnedMap, root);
 
+        // ★ 파여있는 TrapTile은 주변 바닥과 높이 차이 때문에 NavMesh가 별개의 섬으로 구워집니다.
+        //   Trap 타일을 "Trap" NavMesh 영역으로 표시해둡니다 (베이크 전에 붙어있어야 반영됨).
+        //   실제로 다리(NavMeshLink)를 놓는 건 베이크된 표면 좌표가 필요해서 OnNavMeshBaked에서 합니다.
+        TagTrapAreas(spawnedMap);
+
         Debug.Log($"<color=cyan>{floor}층 던전 생성 완료: {spawnedMap.name}</color>");
 
         return spawnedMap;
+    }
+
+    /// <summary>WorldManager가 NavMesh를 굽고 난 직후 호출됩니다. Trap 타일마다 벽이 아닌 인접 칸으로 다리를 놓습니다.</summary>
+    public void OnNavMeshBaked(GameObject locationInstance)
+    {
+        CreateTrapNavMeshBridges(locationInstance);
+    }
+
+    /// <summary>맵 안의 모든 Trap 타일에 NavMeshModifier를 붙여 "Trap" NavMesh 영역으로 표시합니다.</summary>
+    private void TagTrapAreas(GameObject mapInstance)
+    {
+        int trapArea = NavMesh.GetAreaFromName("Trap");
+        if (trapArea < 0)
+        {
+            Debug.LogWarning("[DungeonGenerator] NavMesh Areas에 \"Trap\" 영역이 없습니다. " +
+                "Window > AI > Navigation의 Areas 탭에서 빈 슬롯 이름을 \"Trap\"으로 설정해주세요.");
+            return;
+        }
+
+        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
+        {
+            if (!child.CompareTag("Trap")) continue;
+
+            NavMeshModifier modifier = child.GetComponent<NavMeshModifier>();
+            if (modifier == null) modifier = child.gameObject.AddComponent<NavMeshModifier>();
+            modifier.overrideArea = true;
+            modifier.area = trapArea;
+        }
+    }
+
+    /// <summary>
+    /// 맵 안의 모든 Trap 타일에 대해, 벽이 아닌 상하좌우 인접 칸마다 NavMeshLink를 놓아
+    /// 높이 차이로 끊긴 NavMesh를 이어줍니다. 타일 오브젝트의 피벗이나 그리드 계산으로 높이를
+    /// 추측하지 않고, 각 타일 내부의 실제 모델링(자식 Renderer)의 바운즈 윗면을 직접 구해서 사용합니다.
+    /// </summary>
+    private void CreateTrapNavMeshBridges(GameObject mapInstance)
+    {
+        int trapArea = NavMesh.GetAreaFromName("Trap");
+        if (trapArea < 0) return; // TagTrapAreas에서 이미 경고를 남겼으므로 여기선 조용히 종료
+
+        float tileSize = GridSystem.Instance.TileSize;
+        float sampleRadius = tileSize * 0.5f;
+        Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+
+        var trapTiles = new List<Transform>();
+        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
+        {
+            if (child.CompareTag("Trap")) trapTiles.Add(child);
+        }
+
+        foreach (Transform trap in trapTiles)
+        {
+            if (!TryGetTileTopSurface(trap, out Vector3 trapSurfaceSeed))
+            {
+                Debug.LogWarning($"[DungeonGenerator] {trap.name}에서 모델링(Renderer)을 찾지 못해 표면 높이를 계산할 수 없습니다.");
+                continue;
+            }
+
+            if (!NavMesh.SamplePosition(trapSurfaceSeed, out NavMeshHit trapHit, sampleRadius, NavMesh.AllAreas))
+            {
+                Debug.LogWarning($"[DungeonGenerator] {trap.name}(표면 시드={trapSurfaceSeed}) 근처에서 " +
+                    $"NavMesh 표면을 찾지 못해 다리를 만들지 못했습니다.");
+                continue;
+            }
+
+            Vector3Int trapCell = GridSystem.Instance.WorldToCell(trap.position);
+
+            foreach (Vector3 dir in directions)
+            {
+                Vector3Int neighborCell = trapCell + new Vector3Int(Mathf.RoundToInt(dir.x), 0, Mathf.RoundToInt(dir.z));
+                if (!TryFindOpenNeighborTile(mapInstance, neighborCell, out Transform neighborTileObj)) continue; // 벽이거나 타일이 없으면 다리가 필요 없음
+                if (neighborTileObj == null) continue;
+
+                if (!TryGetTileTopSurface(neighborTileObj, out Vector3 neighborSurfaceSeed))
+                {
+                    Debug.LogWarning($"[DungeonGenerator] {neighborTileObj.name}에서 모델링(Renderer)을 찾지 못해 표면 높이를 계산할 수 없습니다.");
+                    continue;
+                }
+
+                if (!NavMesh.SamplePosition(neighborSurfaceSeed, out NavMeshHit neighborHit, sampleRadius, NavMesh.AllAreas))
+                {
+                    Debug.LogWarning($"[DungeonGenerator] {trap.name}의 {dir} 방향 이웃(표면 시드={neighborSurfaceSeed}) " +
+                        $"근처에서 NavMesh 표면을 찾지 못해 그쪽 다리를 만들지 못했습니다.");
+                    continue;
+                }
+
+                GameObject bridgeObj = new GameObject($"TrapBridge_{trap.name}_{dir}");
+                bridgeObj.transform.SetParent(mapInstance.transform);
+                bridgeObj.transform.position = trapHit.position;
+
+                NavMeshLink link = bridgeObj.AddComponent<NavMeshLink>();
+                link.startPoint = Vector3.zero;
+                link.endPoint = bridgeObj.transform.InverseTransformPoint(neighborHit.position);
+                link.width = tileSize * 0.5f;
+                link.bidirectional = true;
+                link.area = trapArea;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 타일 오브젝트(빈 부모) 내부의 실제 모델링(자식 Renderer)을 찾아, 그 렌더링 바운즈의 윗면 중심
+    /// 좌표를 반환합니다. 부모의 피벗이 어디에 있든 상관없이 "실제로 밟는 표면"을 정확히 구합니다.
+    /// </summary>
+    private bool TryGetTileTopSurface(Transform tile, out Vector3 topSurfacePoint)
+    {
+        Renderer renderer = tile.GetComponentInChildren<Renderer>();
+        if (renderer == null)
+        {
+            topSurfacePoint = tile.position;
+            return false;
+        }
+
+        Bounds bounds = renderer.bounds;
+        topSurfacePoint = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+        return true;
+    }
+
+    /// <summary>
+    /// targetCell 칸에 Wall이 없고 실제 타일(Floor/Entrance/Exit/Chest/Trap/Pushable)이 있는지 확인합니다.
+    /// 발견한 타일 오브젝트도 반환합니다(Floor/Trap을 우선으로 선택 - 바닥 높이에 있을 가능성이 가장 높음).
+    /// </summary>
+    private bool TryFindOpenNeighborTile(GameObject mapInstance, Vector3Int targetCell, out Transform tileObject)
+    {
+        tileObject = null;
+        bool hasWall = false;
+        bool hasTile = false;
+
+        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
+        {
+            if (child == mapInstance.transform) continue;
+
+            Vector3Int cell = GridSystem.Instance.WorldToCell(child.position);
+            if (cell.x != targetCell.x || cell.z != targetCell.z) continue;
+
+            // ★ 같은 칸에 Wall이 있으면 스캔 순서와 무관하게 무조건 막힘으로 취급
+            if (child.CompareTag("Wall")) { hasWall = true; tileObject = null; break; }
+
+            if (child.CompareTag("Floor") || child.CompareTag("Trap"))
+            {
+                hasTile = true;
+                tileObject = child; // 바닥 높이에 있을 가능성이 가장 높은 태그를 우선으로 채택
+            }
+            else if (child.CompareTag("Entrance") || child.CompareTag("Exit") ||
+                     child.CompareTag("Chest") || child.CompareTag("Pushable"))
+            {
+                hasTile = true;
+                if (tileObject == null) tileObject = child; // Floor/Trap을 못 찾았을 때의 대안
+            }
+        }
+
+        return hasTile && !hasWall;
     }
 
     private void NormalizeMapOrigin(GameObject mapInstance)

@@ -84,17 +84,18 @@ public class WorldManager : MonoBehaviour
         }
 
         bool isNewLocation = !loadedLocations.TryGetValue(destination, out GameObject instance);
+        ILocationProvider usedProvider = null;
 
         if (isNewLocation)
         {
-            ILocationProvider provider = GetProvider(destination);
-            if (provider == null)
+            usedProvider = GetProvider(destination);
+            if (usedProvider == null)
             {
                 Debug.LogError($"[WorldManager] {destination}을(를) 생성할 provider가 연결되어 있지 않습니다.");
                 return;
             }
 
-            instance = provider.CreateLocation(destination);
+            instance = usedProvider.CreateLocation(destination);
             loadedLocations[destination] = instance;
         }
         else
@@ -108,6 +109,13 @@ public class WorldManager : MonoBehaviour
         if (navMeshSurface != null)
         {
             navMeshSurface.BuildNavMesh();
+        }
+
+        // ★ 처음 생성한 층일 때만: 베이크가 끝난 직후 provider에게 후처리(예: Trap NavMeshLink 생성)를
+        //   맡깁니다. 재방문 시에는 이미 만들어진 결과물이 그대로 남아있으므로 다시 만들 필요가 없습니다.
+        if (isNewLocation)
+        {
+            usedProvider.OnNavMeshBaked(instance);
         }
 
         PlacePlayer(instance, arrivalSpawnPointId);

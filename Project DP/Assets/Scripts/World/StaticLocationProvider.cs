@@ -34,4 +34,9 @@ public class StaticLocationProvider : MonoBehaviour, ILocationProvider
 
         return instance;
     }
+
+    public void OnNavMeshBaked(GameObject locationInstance)
+    {
+        // 마을/오버월드는 현재 베이크 후처리가 필요 없습니다.
+    }
 }

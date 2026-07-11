@@ -36,8 +36,20 @@ public class EnemyController : MonoBehaviour
     public float gravityMultiplier = 2f;
     [HideInInspector] public float verticalVelocity;
 
+    [Header("Trap 회피/허용 (NavMesh Area Cost)")]
+    [Tooltip("순찰 중 함정을 얼마나 꺼릴지 (클수록 회피). NavMesh Areas에 \"Trap\" 영역이 있어야 동작합니다.")]
+    public float trapAvoidCost = 10f;
+    [Tooltip("추격 중 함정을 지나갈 때의 비용 (평범한 바닥과 비슷하게 낮게 둠)")]
+    public float trapAllowCost = 1f;
+
+    private int trapAreaIndex;
+
     private void Awake()
     {
+        // ★ NavMesh.GetAreaFromName처럼 엔진 API를 호출하는 코드는 필드 초기화식/정적 생성자에서
+        //   실행하면 안 되고(Unity가 막음), 반드시 Awake/Start 같은 인스턴스 메서드 안에서 호출해야 합니다.
+        trapAreaIndex = NavMesh.GetAreaFromName("Trap");
+
         stateMachine = new EnemyStateMachine();
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
@@ -84,6 +96,18 @@ public class EnemyController : MonoBehaviour
 
         motion.y = verticalVelocity * Time.deltaTime;
         characterController.Move(motion);
+    }
+
+    /// <summary>
+    /// true면 함정을 꺼려서 우회하고(순찰 중 기본), false면 평범한 바닥처럼 취급해서 밟고 지나갑니다(추격 중).
+    /// NavMesh Areas 설정(Window > AI > Navigation > Areas)에 "Trap"이라는 이름의 영역이 있어야 동작합니다.
+    /// </summary>
+    public void SetTrapAvoidance(bool avoid)
+    {
+        // ★ SetAreaCost는 에이전트가 켜져 있고 실제로 NavMesh 위에 배치된 상태에서만 호출할 수 있습니다.
+        //   (Awake 시점처럼 아직 꺼져있거나 NavMesh에 놓이기 전이면 예외가 발생하므로 반드시 가드해야 합니다.)
+        if (trapAreaIndex < 0 || agent == null || !agent.enabled || !agent.isOnNavMesh) return;
+        agent.SetAreaCost(trapAreaIndex, avoid ? trapAvoidCost : trapAllowCost);
     }
 
     // 데미지 처리 (간이 버전)

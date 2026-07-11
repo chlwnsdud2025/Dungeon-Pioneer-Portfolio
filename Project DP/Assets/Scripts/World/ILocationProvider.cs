@@ -18,4 +18,11 @@ public interface ILocationProvider
     /// 스폰 포인트로 등록되어 있어야 합니다.
     /// </summary>
     GameObject CreateLocation(LocationId id);
+
+    /// <summary>
+    /// 이 장소가 처음 생성된 후, WorldManager가 NavMesh를 굽고 난 직후 호출됩니다.
+    /// NavMesh.SamplePosition처럼 "실제로 구워진 표면 좌표"가 필요한 후처리(예: NavMeshLink 생성)를
+    /// 여기서 하면 됩니다. 필요 없는 provider는 빈 메서드로 구현하면 됩니다.
+    /// </summary>
+    void OnNavMeshBaked(GameObject locationInstance);
 }

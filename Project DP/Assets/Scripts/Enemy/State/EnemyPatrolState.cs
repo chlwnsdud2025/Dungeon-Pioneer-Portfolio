@@ -23,6 +23,9 @@ public class EnemyPatrolState : EnemyBaseState
                 enemy.agent.isStopped = false;
                 enemy.agent.speed = enemy.moveSpeed * 0.5f; // 순찰은 추적보다 천천히 걷게 설정
                 enemy.agent.stoppingDistance = 0f; // 목표 타일에 정확히 서도록 설정
+
+                // ★ 순찰 중에는 함정을 피해서 우회하도록 설정 (에이전트가 NavMesh에 올라간 뒤에만 호출 가능)
+                enemy.SetTrapAvoidance(true);
             }
         }
 
