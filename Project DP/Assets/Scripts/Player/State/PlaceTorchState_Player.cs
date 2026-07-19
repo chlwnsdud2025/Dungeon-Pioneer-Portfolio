@@ -73,6 +73,15 @@ public class PlaceTorchState_Player : PlayerBaseState
     // 횃불의 위치를 계산하고 생성하는 공통 함수
     private void SpawnTorchOnWall(Collider wallCollider, Vector3 hitNormal)
     {
+        // ★ 함정 벽이면 횃불을 붙이지 않고 함정만 발동시킨다.
+        //   (횃불 개수는 Enter()에서 이미 1개 차감되었으므로 '소모 + 미설치'가 성립)
+        WallTrap wallTrap = wallCollider.GetComponentInParent<WallTrap>();
+        if (wallTrap != null)
+        {
+            wallTrap.Activate(hitNormal);
+            return;
+        }
+
         Vector3 wallCenter = wallCollider.bounds.center;
         Vector3 wallExtents = wallCollider.bounds.extents;
 
