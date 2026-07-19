@@ -2499,7 +2499,7 @@ MonoBehaviour:
   townProvider: {fileID: 0}
   overworldProvider: {fileID: 0}
   playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
-  navMeshSurface: {fileID: 626846869}
+  navMeshSurface: {fileID: 0}
 --- !u!4 &631863205 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5540165784306780980, guid: 561c89787d34bcd48ae579be4ddc6685, type: 3}

@@ -29,14 +29,51 @@ public class MapBuilderEditor : Editor
         if (ghostMaterial != null) DestroyImmediate(ghostMaterial);
     }
 
+    private const int TrapPaletteIndex = 5; // paletteNames에서 "Trap"의 위치
+
     private void UpdatePalette()
     {
         palette = new GameObject[]
         {
             builder.floorPrefab, builder.wallPrefab, builder.entrancePrefab,
-            builder.exitPrefab, builder.chestPrefab, builder.trapPrefab,
+            builder.exitPrefab, builder.chestPrefab, GetSelectedTrapPrefab(),
             builder.enemyPrefab, builder.pushablePrefab
         };
+    }
+
+    // 팔레트의 Trap 슬롯에 쓸, 현재 선택된 함정 프리팹을 반환합니다.
+    private GameObject GetSelectedTrapPrefab()
+    {
+        if (builder.trapPrefabs == null || builder.trapPrefabs.Count == 0) return null;
+        int idx = Mathf.Clamp(builder.selectedTrapIndex, 0, builder.trapPrefabs.Count - 1);
+        return builder.trapPrefabs[idx];
+    }
+
+    // 'Trap' 팔레트 선택 시, 등록된 함정 프리팹 목록에서 하나를 고르는 하위 선택 UI.
+    private void DrawTrapVariantSelector()
+    {
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("🪤 Trap 종류", EditorStyles.miniBoldLabel);
+
+        if (builder.trapPrefabs == null || builder.trapPrefabs.Count == 0)
+        {
+            EditorGUILayout.HelpBox("MapBuilder의 'Trap Prefabs' 목록이 비어 있습니다. 인스펙터에서 함정 프리팹을 등록하세요.", MessageType.Warning);
+            return;
+        }
+
+        string[] names = new string[builder.trapPrefabs.Count];
+        for (int i = 0; i < names.Length; i++)
+            names[i] = builder.trapPrefabs[i] != null ? builder.trapPrefabs[i].name : "(비어있음)";
+
+        int clamped = Mathf.Clamp(builder.selectedTrapIndex, 0, names.Length - 1);
+        int newIndex = GUILayout.SelectionGrid(clamped, names, 3);
+
+        if (newIndex != builder.selectedTrapIndex)
+        {
+            builder.selectedTrapIndex = newIndex;
+            lastGhostIndex = -1; // 고스트를 새로 선택한 함정으로 다시 생성하도록 강제
+            EditorUtility.SetDirty(builder);
+        }
     }
 
     private void CreateGhostMaterial()
@@ -93,6 +130,12 @@ public class MapBuilderEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("🎨 Tile Palette", EditorStyles.boldLabel);
         builder.selectedPrefabIndex = GUILayout.SelectionGrid(builder.selectedPrefabIndex, paletteNames, 4);
+
+        // 'Trap' 팔레트가 선택됐을 때만, 어떤 함정 종류를 칠할지 하위 선택 UI를 표시합니다.
+        if (builder.selectedPrefabIndex == TrapPaletteIndex)
+        {
+            DrawTrapVariantSelector();
+        }
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("⚙️ Placement Settings", EditorStyles.boldLabel);
@@ -171,6 +214,7 @@ public class MapBuilderEditor : Editor
     private void OnSceneGUI()
     {
         Event e = Event.current;
+        UpdatePalette(); // Trap 종류 변경 등이 즉시 고스트/설치에 반영되도록 팔레트를 갱신
         UpdateGhost();
 
         if (e.type == EventType.KeyDown && e.keyCode == KeyCode.R && e.shift)

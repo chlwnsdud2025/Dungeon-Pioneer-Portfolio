@@ -35,12 +35,15 @@ public class MapBuilder : MonoBehaviour
     public GameObject entrancePrefab;
     public GameObject exitPrefab;
     public GameObject chestPrefab;
-    public GameObject trapPrefab;
+    [Tooltip("여러 함정 프리팹을 등록해두고, 에디터 팔레트에서 'Trap' 선택 시 그 중 하나를 골라 칠합니다.")]
+    public List<GameObject> trapPrefabs = new List<GameObject>();
     public GameObject enemyPrefab;
     public GameObject pushablePrefab;
 
     [HideInInspector]
     public int selectedPrefabIndex = 0;
+    [HideInInspector]
+    public int selectedTrapIndex = 0; // 팔레트에서 'Trap' 선택 시, 어떤 함정 종류를 쓸지의 인덱스
 
     public Dictionary<Vector3Int, GameObject> placedTiles = new Dictionary<Vector3Int, GameObject>();
 
