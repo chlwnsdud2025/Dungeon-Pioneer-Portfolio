@@ -206,10 +206,10 @@ public class PlayerController : MonoBehaviour
             Debug.Log("플레이어 사망");
             stateMachine.ChangeState<DeadState_Player>();
 
-            // ★ 추가: GameManager에게 사망을 통보해서 GameOver 흐름(상태 전환, 타임스케일 정지 등)이 돌아가도록 함
-            if (GameManager.Instance != null)
+            // ★ 추가: DungeonManager에게 사망을 통보해서 GameOver 흐름(상태 전환, 타임스케일 정지 등)이 돌아가도록 함
+            if (DungeonManager.Instance != null)
             {
-                GameManager.Instance.ReportPlayerDeath();
+                DungeonManager.Instance.ReportPlayerDeath();
             }
         }
         else

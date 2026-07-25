@@ -4,15 +4,13 @@ using UnityEngine.AI;
 using Unity.AI.Navigation;
 
 /// <summary>
-/// LocationType.Dungeon 장소를 만들어내는 provider.
-/// 런 시작 시 등록된 맵 프리팹들의 순서를 한 번 섞어서 층마다 서로 다른 맵이 배정되도록 하고,
-/// 실제 인스턴스 생성/좌표 정규화/스폰 지점 등록을 담당합니다.
-///
-/// 이 클래스는 "어떻게 던전을 만들지"만 알고, "지금 어느 장소에 있는지" "플레이어를 어디로 옮길지"는
-/// 전혀 모릅니다 (그 책임은 WorldManager에 있습니다). 그래야 나중에 마을/오버월드가 추가돼도
-/// 이 클래스나 WorldManager를 서로 건드리지 않고 StaticLocationProvider 하나만 새로 만들면 됩니다.
+/// 던전 층 프리팹을 만들어내는 생성기. DungeonManager가 소유하며 다음 3가지를 제공합니다:
+///  - PrepareNewRun: 런 시작 시 맵 프리팹 순서를 한 번 섞어 층마다 다른 맵이 배정되게 함
+///  - CreateLocation: 해당 층 프리팹을 인스턴스화 + 좌표 정규화 + 스폰 지점 등록 + Trap 영역 태깅
+///  - OnNavMeshBaked: NavMesh 베이크 직후 Trap 타일에 NavMeshLink 다리를 놓는 후처리
+/// "어떻게 던전을 만들지"만 알고, "지금 어느 층인지/플레이어를 어디로 옮길지"는 DungeonManager가 담당합니다.
 /// </summary>
-public class DungeonGenerator : MonoBehaviour, ILocationProvider
+public class DungeonGenerator : MonoBehaviour
 {
     [Header("Dungeon Prefabs")]
     [Tooltip("에디터로 구워둔 맵 프리팹들을 배열에 넣어주세요. 런 하나당 중복 없이 배정되므로, " +
@@ -21,9 +19,7 @@ public class DungeonGenerator : MonoBehaviour, ILocationProvider
 
     private List<int> shuffledPrefabIndices;
 
-    public bool CanProvide(LocationId id) => id.type == LocationType.Dungeon;
-
-    /// <summary>런 시작(재시작 포함) 시 GameManager.StartRun에서 호출해서 층 배정을 새로 섞습니다.</summary>
+    /// <summary>런 시작(재시작 포함) 시 DungeonManager.StartRun에서 호출해서 층 배정을 새로 섞습니다.</summary>
     public void PrepareNewRun(int totalFloors)
     {
         if (mapPrefabs.Length < totalFloors)

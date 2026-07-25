@@ -1,8 +1,7 @@
 using System;
 
 /// <summary>
-/// 장소의 큰 분류. 새로운 종류의 장소(예: 마을, 오버월드/지형)가 추가되면 여기에 값만 추가하고,
-/// 그 장소를 실제로 만들어내는 ILocationProvider 구현체를 하나 작성해 WorldManager에 연결하면 됩니다.
+/// 장소의 큰 분류. 현재는 Dungeon만 실제로 사용됩니다(층 번호를 index로 구분).
 /// </summary>
 public enum LocationType
 {

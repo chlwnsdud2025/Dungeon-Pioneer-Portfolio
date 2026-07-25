@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// - WorldManager는 한 번 생성된 장소를 파괴하지 않고 SetActive로만 전환합니다. 그래서 미니맵도
 ///   장소마다 별도의 텍스처/방문기록/엔티티 목록(LocationMinimapState)을 갖고 있다가, 그 장소로
 ///   돌아오면 저장해둔 상태를 그대로 복원합니다 (탐색 흔적, 설치된 횃불, 적/상자 위치 전부 유지).
-/// - 좌표계: 프로젝트 공통 GridSystem을 그대로 사용 (MapGenerator가 만든 던전과 100% 동일한 격자 기준).
+/// - 좌표계: 프로젝트 공통 GridSystem을 그대로 사용 (던전 맵과 100% 동일한 격자 기준).
 /// - 안개(Fog) 규칙:
 ///     1) 플레이어가 "밟고 지나간" 타일 → 이후 계속 회색(방문 흔적)으로 남음
 ///     2) 실시간으로 밝혀지는 범위는 플레이어 중심의 "원형" 범위
@@ -27,7 +27,7 @@ public class MinimapManager : MonoBehaviour
     public AspectRatioFitter minimapAspectFitter;
 
     [Header("Grid Settings")]
-    [Tooltip("맵의 가로/세로 타일 개수. MapGenerator의 width/height와 반드시 동일해야 합니다.")]
+    [Tooltip("맵의 가로/세로 타일 개수. 던전 맵(MapBuilder) 크기와 반드시 동일해야 합니다.")]
     public Vector2Int gridSize = new Vector2Int(17, 17);
     [Tooltip("타일 1칸을 텍스처 몇 픽셀로 그릴지. 값이 클수록 원형 시야 경계가 부드러워집니다.")]
     public int pixelsPerTile = 8;
@@ -88,7 +88,7 @@ public class MinimapManager : MonoBehaviour
         Instance = this;
     }
 
-    /// <summary>런을 새로 시작(재시작 포함)할 때 WorldManager.ResetWorld에서 호출. 저장된 모든 장소 상태를 지웁니다.</summary>
+    /// <summary>런을 새로 시작(재시작 포함)할 때 DungeonManager에서 호출. 저장된 모든 장소 상태를 지웁니다.</summary>
     public void ResetAllLocations()
     {
         locationStates.Clear();
