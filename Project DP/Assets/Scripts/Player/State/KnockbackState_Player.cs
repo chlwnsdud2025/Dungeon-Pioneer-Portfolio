@@ -3,8 +3,8 @@ using UnityEngine;
 /// <summary>
 /// RollingRock 등에 부딪혔을 때 진입하는 넉백(넘어짐) 상태.
 ///  - 넘어지는 애니메이션("Knockback")을 재생하고
-///  - 부딪힌 반대 방향으로 살짝(점점 감속하며) 밀리며
-///  - 상태가 지속되는 동안 무적(isInvincible)이라 RollingRock에 다시 스쳐도 피해를 받지 않습니다.
+///  - 부딪힌 반대 방향으로 정해진 '거리'(player.knockbackDistance)만큼 감속하며 밀려나고
+///  - 정해진 '시간'(player.knockbackTime = 넘어져 있는 시간) 동안 무적이며, 그 시간이 지나면 일어나 Idle로 복귀합니다.
 ///
 /// 진입은 PlayerController.ApplyKnockback()을 통해서만 이뤄지며, 밀림 방향은 player.knockbackDirection로 전달됩니다.
 /// </summary>
@@ -12,7 +12,8 @@ public class KnockbackState_Player : PlayerBaseState
 {
     private readonly int knockbackAnimHash = Animator.StringToHash("Knockback"); // 넘어지는 애니메이션
 
-    private float timer;
+    private float timer;         // 남은 넉백(넘어져 있는) 시간
+    private float initialSpeed;  // 감속 시작 속도 (총 이동거리가 knockbackDistance가 되도록 계산)
     private Vector3 knockDir;
 
     public KnockbackState_Player(PlayerController player, PlayerStateMachine stateMachine) : base(player, stateMachine) { }
@@ -25,7 +26,13 @@ public class KnockbackState_Player : PlayerBaseState
         knockDir = player.knockbackDirection;
         knockDir.y = 0f;
 
-        timer = player.knockbackDuration;
+        timer = player.knockbackTime;
+
+        // 선형 감속(속도 v0 → 0)에서 총 이동거리 = 0.5 * v0 * T 이므로,
+        // 원하는 거리(knockbackDistance)를 정확히 밀려나려면 v0 = 2 * 거리 / 시간.
+        initialSpeed = player.knockbackTime > 0f
+            ? (3f * player.knockbackDistance / player.knockbackTime)   // 2f → 3f
+            : 0f;
 
         // 넘어지는 애니메이션 재생
         player.animator.CrossFadeInFixedTime(knockbackAnimHash, 0.1f);
@@ -37,13 +44,15 @@ public class KnockbackState_Player : PlayerBaseState
         {
             timer -= Time.deltaTime;
 
-            // 처음엔 빠르게, 끝으로 갈수록 느리게 감속하며 밀림 (timer/duration : 1 → 0)
-            float factor = player.knockbackDuration > 0f ? (timer / player.knockbackDuration) : 0f;
-            player.MoveCharacter(knockDir * player.knockbackSpeed * factor * Time.deltaTime);
+            // 남은 시간 비율의 '제곱'으로 감속 → 처음에 훨씬 빠르게 밀리고 빠르게 멈춰 눕습니다.
+            float u = Mathf.Clamp01(player.knockbackTime > 0f ? timer / player.knockbackTime : 0f);
+            float factor = u * u;   // ← 제곱 (front-load 강화)
+            float curSpeed = initialSpeed * factor;
+            player.MoveCharacter(knockDir * curSpeed * Time.deltaTime);
             return;
         }
 
-        // 넉백 종료 → 대기 상태로 복귀 (Exit에서 무적 해제)
+        // 넘어져 있는 시간 종료 → 일어나서 대기 상태로 복귀 (Exit에서 무적 해제)
         stateMachine.ChangeState<IdleState_Player>();
     }
 

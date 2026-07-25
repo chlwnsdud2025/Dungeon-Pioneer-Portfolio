@@ -61,10 +61,10 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public bool isGuarding = false; // 현재 방어 상태인지 판별
 
     [Header("Knockback System")]
-    [Tooltip("넉백(넘어짐) 상태의 지속 시간(초). 이 시간 동안 무적이며, 넘어지는 애니메이션 길이에 맞추세요.")]
-    public float knockbackDuration = 0.6f;
-    [Tooltip("넉백 시작 순간의 밀림 속도. 시간이 지날수록 감속하여 멈춥니다.")]
-    public float knockbackSpeed = 6f;
+    [Tooltip("넉백으로 밀려날 총 거리(월드 단위). 이 거리만큼 감속하며 밀려납니다.")]
+    public float knockbackDistance = 2f;
+    [Tooltip("넘어져 있는 시간(초). 이 시간 동안 무적이며, 넘어지는 애니메이션 길이에 맞추세요.")]
+    public float knockbackTime = 0.6f;
 
     [HideInInspector] public bool isInvincible = false;   // 무적(피해 무시) 상태 - 넉백 중 등
     [HideInInspector] public Vector3 knockbackDirection;  // 이번 넉백에서 밀려날 방향(수평)

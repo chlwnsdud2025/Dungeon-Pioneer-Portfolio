@@ -2,14 +2,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // RollingRockTrap이 오브젝트 풀에서 꺼내 굴리는 돌 하나.
-// Launch()로 방향/속도를 받아 직선으로 굴러가며, 벽(wallLayer)에 닿으면 풀로 반환됩니다.
-// 이동/충돌은 캐스트(SphereCast/OverlapSphere)로 처리하므로 이 오브젝트에는 Rigidbody/Collider가 필요 없습니다.
+// Launch()로 방향/속도를 받아 직선으로 굴러갑니다.
+//
+// [하이브리드 충돌 처리]
+//  - 벽(wallLayer) 감지: SphereCast로 '예측' 감지 → 벽에 닿기 직전에 깔끔하게 사라짐(파고들지 않음).
+//  - 피격 판정: 트리거 콜라이더 + OnTriggerEnter로 처리.
+//    ★ 이 프리팹에는 [Collider(IsTrigger=true)] + [Kinematic Rigidbody]가 필요합니다.
+//      (돌은 transform으로 이동하므로 Rigidbody는 반드시 Kinematic이어야 하며, Awake에서 강제로 맞춰줍니다.)
 public class RollingRock : MonoBehaviour
 {
     [Header("Roll Visual")]
     [Tooltip("굴러가는 시각 표현 대상(비우면 자기 자신). 이동 방향은 별도로 저장하므로 회전시켜도 경로에 영향 없음.")]
     public Transform visual;
-    [Tooltip("돌 반지름. 벽 감지 반경 및 구르는 회전량 계산에 사용됩니다.")]
+    [Tooltip("돌 반지름. 벽 감지 반경 및 구르는 회전량 계산에 사용됩니다. (트리거 콜라이더 크기도 이에 맞추세요)")]
     public float rockRadius = 0.5f;
 
     [Header("Wall Collision")]
@@ -19,10 +24,8 @@ public class RollingRock : MonoBehaviour
     public float maxTravelDistance = 30f;
 
     [Header("Damage")]
-    [Tooltip("지나가며 주는 데미지. 0이면 데미지 없음.")]
+    [Tooltip("지나가며 주는 데미지. 0이면 데미지 없음. (플레이어는 넉백, 적은 일반 피격)")]
     public float damage = 20f;
-    [Tooltip("데미지 판정 대상 레이어(Player/Enemy).")]
-    public LayerMask victimLayer = ~0;
 
     private Vector3 moveDirection;   // 월드 기준 진행 방향(발사 시 고정)
     private float speed;
@@ -30,6 +33,21 @@ public class RollingRock : MonoBehaviour
     private bool active;
     private float traveled;
     private readonly HashSet<int> damagedIds = new HashSet<int>(); // 이번 발사에서 이미 때린 대상
+
+    private void Awake()
+    {
+        // 트리거 피격 판정에는 Rigidbody가 필요하고, 이동은 transform으로 하므로 반드시 Kinematic이어야 합니다.
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            Debug.LogWarning("[RollingRock] 트리거 피격 판정을 위해 Kinematic Rigidbody가 필요합니다. 프리팹에 추가해주세요.", this);
+        }
+        else
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+    }
 
     // RollingRockTrap.SpawnRock()에서 호출됩니다.
     public void Launch(Vector3 worldDir, float moveSpeed, RollingRockTrap pool)
@@ -48,7 +66,7 @@ public class RollingRock : MonoBehaviour
 
         float step = speed * Time.deltaTime;
 
-        // 1. 벽 감지: 진행 방향으로 돌 반경만큼 캐스트해서, 이번 프레임에 닿을 벽이 있으면 사라짐
+        // 1. 벽 감지: 진행 방향으로 돌 반경만큼 캐스트해서, 이번 프레임에 닿을 벽이 있으면 사라짐 (예측 → 벽 파고들지 않음)
         if (Physics.SphereCast(transform.position, rockRadius, moveDirection,
                 out RaycastHit _, step + rockRadius, wallLayer, QueryTriggerInteraction.Ignore))
         {
@@ -69,31 +87,30 @@ public class RollingRock : MonoBehaviour
             v.Rotate(rollAxis, deg, Space.World);
         }
 
-        // 4. 데미지 판정 (같은 대상은 이번 발사에서 한 번만)
-        if (damage > 0f)
-        {
-            Collider[] hits = Physics.OverlapSphere(transform.position, rockRadius, victimLayer);
-            foreach (Collider col in hits)
-            {
-                PlayerController player = col.GetComponent<PlayerController>();
-                if (player != null && damagedIds.Add(player.GetInstanceID()))
-                {
-                    // RollingRock에 맞으면 일반 피격이 아니라 '넉백(넘어짐)'으로 처리.
-                    // 굴러가는 방향(moveDirection)으로 밀리고, 넉백 동안 무적이라 재충돌은 무시됩니다.
-                    player.ApplyKnockback(damage, moveDirection);
-                    continue;
-                }
+        // 4. 최대 이동 거리 초과 시 회수
+        if (traveled >= maxTravelDistance) Despawn();
+    }
 
-                EnemyController enemy = col.GetComponent<EnemyController>();
-                if (enemy != null && damagedIds.Add(enemy.GetInstanceID()))
-                {
-                    enemy.TakeDamage(damage);
-                }
-            }
+    // 피격 판정: 트리거 콜라이더로 처리. 같은 대상은 이번 발사에서 한 번만 맞습니다.
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!active || damage <= 0f) return;
+
+        // 콜라이더가 자식에 있을 수도 있으므로 부모까지 탐색
+        PlayerController player = other.GetComponentInParent<PlayerController>();
+        if (player != null && damagedIds.Add(player.GetInstanceID()))
+        {
+            // RollingRock에 맞으면 일반 피격이 아니라 '넉백(넘어짐)'으로 처리.
+            // 굴러가는 방향(moveDirection)으로 밀리고, 넉백 동안 무적이라 재충돌은 무시됩니다.
+            player.ApplyKnockback(damage, moveDirection);
+            return;
         }
 
-        // 5. 최대 이동 거리 초과 시 회수
-        if (traveled >= maxTravelDistance) Despawn();
+        EnemyController enemy = other.GetComponentInParent<EnemyController>();
+        if (enemy != null && damagedIds.Add(enemy.GetInstanceID()))
+        {
+            enemy.TakeDamage(damage);
+        }
     }
 
     private void Despawn()

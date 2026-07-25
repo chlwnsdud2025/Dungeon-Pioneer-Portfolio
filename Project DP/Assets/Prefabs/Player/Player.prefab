@@ -2259,6 +2259,10 @@ MonoBehaviour:
   currentHealth: 0
   blockAngle: 120
   isGuarding: 0
+  knockbackDistance: 3.5
+  knockbackTime: 1.2
+  isInvincible: 0
+  knockbackDirection: {x: 0, y: 0, z: 0}
   animator: {fileID: 1420990249998602008}
   characterController: {fileID: 6805572603305499790}
   cameraTransform: {fileID: 0}
