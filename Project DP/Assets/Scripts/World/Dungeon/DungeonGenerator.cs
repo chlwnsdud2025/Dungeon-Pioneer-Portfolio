@@ -257,7 +257,22 @@ public class DungeonGenerator : MonoBehaviour
         if (offset.sqrMagnitude > 0.0001f)
         {
             Debug.Log($"<color=yellow>[DungeonGenerator] 맵 좌표를 GridSystem 원점에 맞춰 보정합니다. offset={offset}</color>");
+
+            // ★ CharacterController가 켜진 채로 (부모)transform을 옮기면, CC가 내부 캐시 위치로 되돌려버려서
+            //   맵(타일)은 옮겨졌는데 적만 원래 자리에 남습니다. 이동이 실제로 반영되도록 잠깐 껐다가 원래 상태로 되돌립니다.
+            //   (DungeonManager.PlacePlayer가 플레이어에게 하는 처리와 동일한 이유입니다.)
+            CharacterController[] controllers = mapInstance.GetComponentsInChildren<CharacterController>(true);
+            bool[] wasEnabled = new bool[controllers.Length];
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                wasEnabled[i] = controllers[i].enabled;
+                controllers[i].enabled = false;
+            }
+
             mapInstance.transform.position += offset;
+
+            for (int i = 0; i < controllers.Length; i++)
+                controllers[i].enabled = wasEnabled[i]; // 원래 켜져 있던 것만 다시 켬
         }
     }
 
