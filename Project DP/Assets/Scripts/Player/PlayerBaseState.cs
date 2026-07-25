@@ -53,16 +53,16 @@ public abstract class PlayerBaseState
                 return;
             }
 
-            // ★ 3. 벽인지 확인 (그리고 횃불이 남아있는지)
+            // ★ 3. 벽인지 확인 (횃불이 남아있고, 지금 보고 있는 '면'에 아직 횃불이 없을 때만)
             WallObject wall = player.focusedObject.GetComponent<WallObject>();
-            if (wall != null && player.torchCount > 0)
+            if (wall != null)
             {
-                stateMachine.ChangeState<PlaceTorchState_Player>();
-                return;
-            }
-            else if (wall != null && player.torchCount <= 0)
-            {
-                Debug.Log("<color=red>횃불이 부족합니다!</color>");
+                if (player.torchCount <= 0)
+                    Debug.Log("<color=red>횃불이 부족합니다!</color>");
+                else if (!player.enableMultiTorch && wall.HasTorchOnFace(player.focusedHitNormal))
+                    Debug.Log("<color=yellow>이 벽면에는 이미 횃불이 설치되어 있습니다.</color>");
+                else
+                    stateMachine.ChangeState<PlaceTorchState_Player>();
             }
         }
     }

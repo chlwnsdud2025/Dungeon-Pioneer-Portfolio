@@ -73,6 +73,10 @@ public class PlaceTorchState_Player : PlayerBaseState
     // 횃불의 위치를 계산하고 생성하는 공통 함수
     private void SpawnTorchOnWall(Collider wallCollider, Vector3 hitNormal)
     {
+        // ★ 이 '면'에 이미 횃불이 설치됐으면 중복 설치하지 않는다. (벽 하나라도 면마다 따로 관리)
+        WallObject wall = wallCollider.GetComponentInParent<WallObject>();
+        if (wall != null && wall.HasTorchOnFace(hitNormal)) return;
+
         // ★ 함정 벽이면 횃불을 붙이지 않고 함정만 발동시킨다.
         //   (횃불 개수는 Enter()에서 이미 1개 차감되었으므로 '소모 + 미설치'가 성립)
         WallTrap wallTrap = wallCollider.GetComponentInParent<WallTrap>();
@@ -105,6 +109,9 @@ public class PlaceTorchState_Player : PlayerBaseState
             ? DungeonManager.Instance.CurrentLocationInstance?.transform
             : null;
         GameObject spawnedTorch = Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation, parentLocation);
+
+        // ★ 이 면에 횃불이 설치됨 → 다음부터 '이 면'에는 중복 설치 방지 (다른 면엔 여전히 설치 가능)
+        if (wall != null) wall.MarkTorchPlaced(hitNormal);
 
         // ★ 추가: 새 미니맵 구조에 이 횃불을 등록.
         //   등록된 순간부터 미니맵에 아주 작은 점으로 표시되고, 주변이 원형으로 영구히 밝게 유지됩니다.
