@@ -134,7 +134,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5097338708859366984}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: EntranceTile
   m_TagString: Entrance
   m_Icon: {fileID: 0}
@@ -172,9 +172,9 @@ GameObject:
   - component: {fileID: 6431713444211440136}
   - component: {fileID: 2527537240401009395}
   - component: {fileID: 3421652412875184669}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: stairs_walled
-  m_TagString: Untagged
+  m_TagString: Entrance
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

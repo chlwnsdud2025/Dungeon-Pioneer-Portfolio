@@ -44,11 +44,12 @@ public abstract class PlayerBaseState
                 return;
             }
 
-            // 2. 밀 수 있는 물체인지 확인
+            // 2. 밀 수 있는 물체인지 확인 (단, 함정을 메워 잠긴 오브젝트는 밀 수 없음)
             PushableObject pushObj = player.focusedObject.GetComponent<PushableObject>();
             if (pushObj != null)
             {
-                stateMachine.ChangeState<PushState_Player>();
+                if (!pushObj.IsLocked)
+                    stateMachine.ChangeState<PushState_Player>();
                 return;
             }
 

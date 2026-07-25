@@ -14,9 +14,9 @@ GameObject:
   - component: {fileID: 6590847486642510254}
   - component: {fileID: 3579408673584330708}
   - component: {fileID: 422798306581084461}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: stairs_wide
-  m_TagString: Untagged
+  m_TagString: Exit
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -157,7 +157,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5097338708859366984}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: ExitTile
   m_TagString: Exit
   m_Icon: {fileID: 0}

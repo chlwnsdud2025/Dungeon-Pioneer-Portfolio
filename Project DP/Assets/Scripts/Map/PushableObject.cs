@@ -24,6 +24,11 @@ public class PushableObject : MonoBehaviour
     public bool IsBeingPushed => isPushing;
     public bool IsPushComplete => !isPushing;
 
+    // ★ 함정을 메운 뒤에는 잠겨서 더 이상 밀 수 없게 됩니다. (TrapTile이 Lock()을 호출)
+    private bool isLocked;
+    public bool IsLocked => isLocked;
+    public void Lock() => isLocked = true;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();

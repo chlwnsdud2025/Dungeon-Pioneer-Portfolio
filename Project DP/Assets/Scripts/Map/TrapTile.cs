@@ -99,12 +99,15 @@ public class TrapTile : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponent<PushableObject>() != null)
+        PushableObject pushable = other.GetComponent<PushableObject>();
+        if (pushable != null)
         {
             isFilled = true;
-            Debug.Log("함정이 밀려온 오브젝트로 메워졌습니다!");
-            // ★ 추가: 메워지면 가시를 완전히 내려서 더 이상 튀어나오지 않게 함
+            // ★ 메워지면 가시를 완전히 내려서 더 이상 튀어나오지 않게 함
             spikeGoingUp = false;
+            // ★ 함정을 메운 오브젝트는 다시 밀 수 없도록 잠급니다 (한 번 더 밀어서 빠지는 것 방지)
+            pushable.Lock();
+            Debug.Log("함정이 밀려온 오브젝트로 메워졌습니다! (해당 오브젝트 잠김)");
         }
     }
 }
