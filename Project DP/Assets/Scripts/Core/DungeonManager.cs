@@ -24,9 +24,12 @@ using Unity.AI.Navigation;
 ///   ReturnToOverworld()  — 1층 입구로 나갈 때 (EntrancePoint)
 /// 오버월드 → 던전 '진입'은 오버월드 씬의 DungeonEntrance가 담당합니다(이 스크립트를 거치지 않음).
 /// </summary>
-public class DungeonManager : MonoBehaviour
+public class DungeonManager : MonoBehaviour, IRegionProvider
 {
     public static DungeonManager Instance { get; private set; }
+
+    /// <summary>이 매니저가 있는 던전 씬의 지역은 항상 Dungeon입니다. (IRegionProvider)</summary>
+    public RegionType Region => RegionType.Dungeon;
 
     [Header("Run 진행 상태")]
     [Tooltip("현재 몇 번째 던전 층인지. 1부터 시작")]
@@ -69,6 +72,8 @@ public class DungeonManager : MonoBehaviour
             return;
         }
         Instance = this;
+
+        RegionState.SetCurrent(this); // 던전 씬에 들어왔음을 전역에 알림 (HUD의 지역 표시 등에서 참조)
     }
 
     private void Start()
