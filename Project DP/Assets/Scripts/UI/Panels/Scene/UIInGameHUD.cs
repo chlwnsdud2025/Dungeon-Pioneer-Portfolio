@@ -34,7 +34,6 @@ public class UIInGameHUD : UIScene
 
     // ── 내부 캐시 ──
     private PlayerController _player;
-    private MinimapManager _boundMinimap; // 현재 연결돼 있는 미니맵 인스턴스
     private string _lastRegionLabel;
 
     public override void OnBeforeShow()
@@ -53,19 +52,22 @@ public class UIInGameHUD : UIScene
 
     private void Refresh()
     {
-        BindMinimapIfNeeded();
+        RefreshMinimap();
         RefreshHealth();
         RefreshRegion();
     }
 
-    // 미니맵: MinimapManager는 던전 씬마다 새로 생기므로, 인스턴스가 바뀌면 위젯을 다시 연결한다.
-    private void BindMinimapIfNeeded()
+    // 미니맵: MinimapManager가 그리는 '현재 층' 텍스처를 매 프레임 그대로 가져와 표시합니다.
+    // 층을 오가면 MinimapManager.CurrentTexture가 바뀌므로 자동으로 최신 층 미니맵이 보입니다.
+    private void RefreshMinimap()
     {
-        if (MinimapManager.Instance == _boundMinimap) return;
+        if (minimapImage == null) return;
 
-        _boundMinimap = MinimapManager.Instance;
-        if (_boundMinimap != null)
-            _boundMinimap.BindDisplay(minimapImage, minimapFitter);
+        MinimapManager mm = MinimapManager.Instance;
+        Texture tex = mm != null ? mm.CurrentTexture : null;
+
+        if (minimapImage.texture != tex) minimapImage.texture = tex;
+        if (minimapFitter != null && tex != null) minimapFitter.aspectRatio = mm.CurrentAspect;
     }
 
     private void RefreshHealth()

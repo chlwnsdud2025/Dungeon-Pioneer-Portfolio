@@ -96,21 +96,13 @@ public class MinimapManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 미니맵을 그릴 표시 위젯을 외부에서 연결합니다. (예: 전역 HUD가 자기 RawImage를 넘겨줌)
-    /// MinimapManager는 던전 씬마다 새로 생기고 HUD는 전역이라 수명이 달라서, HUD 쪽에서 이 메서드로 이어줍니다.
-    /// 이미 로드된 장소가 있으면 그 텍스처를 즉시 위젯에 반영합니다.
+    /// 현재 층 미니맵 텍스처. 전역 HUD가 매 프레임 이 값을 읽어서 RawImage에 그대로 표시합니다.
+    /// 층을 오가면 current가 바뀌므로 이 텍스처도 자동으로 최신 층 것으로 바뀝니다. (없으면 null)
     /// </summary>
-    public void BindDisplay(RawImage display, AspectRatioFitter fitter)
-    {
-        minimapDisplay = display;
-        minimapAspectFitter = fitter;
+    public Texture CurrentTexture => current != null ? current.texture : null;
 
-        if (current != null && display != null)
-        {
-            display.texture = current.texture;
-            ApplyAspectRatio();
-        }
-    }
+    /// <summary>현재 층 미니맵 텍스처의 가로/세로 비율. (HUD의 AspectRatioFitter에 적용)</summary>
+    public float CurrentAspect => (current != null && current.texHeight > 0) ? (float)current.texWidth / current.texHeight : 1f;
 
     /// <summary>
     /// 장소를 새로 생성했거나 이미 방문한 장소로 되돌아올 때 WorldManager에서 호출합니다.
