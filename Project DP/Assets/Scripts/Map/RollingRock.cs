@@ -78,7 +78,9 @@ public class RollingRock : MonoBehaviour
                 PlayerController player = col.GetComponent<PlayerController>();
                 if (player != null && damagedIds.Add(player.GetInstanceID()))
                 {
-                    player.TakeDamage(damage, transform);
+                    // RollingRock에 맞으면 일반 피격이 아니라 '넉백(넘어짐)'으로 처리.
+                    // 굴러가는 방향(moveDirection)으로 밀리고, 넉백 동안 무적이라 재충돌은 무시됩니다.
+                    player.ApplyKnockback(damage, moveDirection);
                     continue;
                 }
 

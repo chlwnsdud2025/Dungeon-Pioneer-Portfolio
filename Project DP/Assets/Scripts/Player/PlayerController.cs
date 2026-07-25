@@ -60,6 +60,15 @@ public class PlayerController : MonoBehaviour
 
     [HideInInspector] public bool isGuarding = false; // 현재 방어 상태인지 판별
 
+    [Header("Knockback System")]
+    [Tooltip("넉백(넘어짐) 상태의 지속 시간(초). 이 시간 동안 무적이며, 넘어지는 애니메이션 길이에 맞추세요.")]
+    public float knockbackDuration = 0.6f;
+    [Tooltip("넉백 시작 순간의 밀림 속도. 시간이 지날수록 감속하여 멈춥니다.")]
+    public float knockbackSpeed = 6f;
+
+    [HideInInspector] public bool isInvincible = false;   // 무적(피해 무시) 상태 - 넉백 중 등
+    [HideInInspector] public Vector3 knockbackDirection;  // 이번 넉백에서 밀려날 방향(수평)
+
     [Header("Components")]
     public Animator animator;
     public CharacterController characterController;
@@ -88,6 +97,7 @@ public class PlayerController : MonoBehaviour
         stateMachine.AddState(new AttackState_Player(this, stateMachine));
         stateMachine.AddState(new PlaceTorchState_Player(this, stateMachine));
         stateMachine.AddState(new HitState_Player(this, stateMachine));
+        stateMachine.AddState(new KnockbackState_Player(this, stateMachine));
         stateMachine.AddState(new DeadState_Player(this, stateMachine));
 
 
@@ -171,6 +181,7 @@ public class PlayerController : MonoBehaviour
     public void TakeDamage(float damage, Transform attacker)
     {
         if (stateMachine.CurrentState is DeadState_Player) return;
+        if (isInvincible) return; // 무적(넉백 i-frame 등) 중에는 모든 피해 무시
 
         // 1. 방어 상태인지 먼저 확인
         if (isGuarding && attacker != null)
@@ -216,6 +227,34 @@ public class PlayerController : MonoBehaviour
         {
             stateMachine.ChangeState<HitState_Player>();
         }
+    }
+
+    /// <summary>
+    /// RollingRock 등에 부딪혔을 때 호출. 피해를 주고, 죽지 않았다면 넉백(넘어짐) 상태로 전환합니다.
+    /// knockDir(수평) 방향으로 살짝 밀리며, 넉백 상태 동안은 무적이라 추가 피해를 받지 않습니다.
+    /// </summary>
+    public void ApplyKnockback(float damage, Vector3 knockDir)
+    {
+        if (stateMachine.CurrentState is DeadState_Player) return;
+        if (isInvincible) return; // 이미 넉백/무적 중이면 무시 (RollingRock 재충돌 무시 효과)
+
+        currentHealth -= damage;
+        Debug.Log($"<color=orange>넉백! 남은 체력: {currentHealth}</color>");
+
+        // 이 피해로 죽었다면 넉백 대신 사망 처리
+        if (currentHealth <= 0)
+        {
+            stateMachine.ChangeState<DeadState_Player>();
+            if (DungeonManager.Instance != null) DungeonManager.Instance.ReportPlayerDeath();
+            return;
+        }
+
+        Vector3 dir = knockDir;
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 0.0001f) dir = -transform.forward; // 방향 정보가 없으면 뒤로 밀림
+        knockbackDirection = dir.normalized;
+
+        stateMachine.ChangeState<KnockbackState_Player>();
     }
 
     // 현재 플레이어가 밟고 있는 타일의 좌표를 반환하는 함수
