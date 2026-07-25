@@ -324,7 +324,7 @@ MonoBehaviour:
   maxFloor: 5
   dungeonGenerator: {fileID: 1405164311}
   playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
-  navMeshSurface: {fileID: 0}
+  navMeshSurface: {fileID: 626846869}
   overworldSceneName: Overworld
   victoryReturnDelay: 3
   deathReturnDelay: 3
