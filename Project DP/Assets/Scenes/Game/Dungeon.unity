@@ -494,6 +494,55 @@ MonoBehaviour:
   enemyDotRadiusPx: 8
   chestDotRadiusPx: 5
   torchDotRadiusPx: 5
+--- !u!1 &1566138931
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1566138933}
+  - component: {fileID: 1566138932}
+  m_Layer: 0
+  m_Name: GridSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1566138932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566138931}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0322aa0ef159fa469923071ab9373fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GridVisualizer
+  width: 17
+  height: 17
+  yHeight: 0
+  lineColor: {r: 1, g: 1, b: 1, a: 0.25}
+  onlyWhenSelected: 0
+--- !u!4 &1566138933
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1566138931}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1699566965
 GameObject:
   m_ObjectHideFlags: 0
@@ -615,7 +664,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 0}
-  offset: {x: 0, y: 8, z: -4}
+  offset: {x: 0, y: 8, z: -5.5}
   smoothSpeed: 10
 --- !u!114 &1877881931
 MonoBehaviour:
@@ -754,7 +803,8 @@ MonoBehaviour:
   detectionMask:
     serializedVersion: 2
     m_Bits: 64
-  fadedAlpha: 0.25
+  ditherShader: {fileID: -6465566751694194690, guid: a25f7c14fb107904d80c0418ab056f25, type: 3}
+  occludedFade: 0.45
   fadeSpeed: 8
 --- !u!1 &2053090090
 GameObject:
@@ -843,3 +893,4 @@ SceneRoots:
   - {fileID: 540842393}
   - {fileID: 2053090093}
   - {fileID: 418315268}
+  - {fileID: 1566138933}
