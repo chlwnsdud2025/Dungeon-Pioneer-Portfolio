@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// 항상 떠 있는 인게임 HUD. 세 가지를 한 화면에 묶습니다:
@@ -32,9 +33,16 @@ public class UIInGameHUD : UIScene
     [SerializeField] private string overworldLabel = "Overworld";
     [SerializeField] private string townLabel = "Town";
 
+
+    [Header("Inventory")]
+    [SerializeField] private GameObject inventoryPanel;
+
+
     // ── 내부 캐시 ──
     private PlayerController _player;
     private string _lastRegionLabel;
+
+
 
     public override void OnBeforeShow()
     {
@@ -44,6 +52,18 @@ public class UIInGameHUD : UIScene
         _lastRegionLabel = null;
         Refresh();
     }
+    private void OnEnable()
+    {
+        if (inventoryPanel != null) inventoryPanel.SetActive(false);   // 시작은 닫힘
+        if (InputManager.Instance != null)
+            InputManager.Instance.OnInventoryToggle += ToggleInventory;
+    }
+    private void OnDisable()
+    {
+        if (InputManager.Instance != null)
+            InputManager.Instance.OnInventoryToggle -= ToggleInventory;
+    }
+
 
     private void Update()
     {
@@ -118,6 +138,20 @@ public class UIInGameHUD : UIScene
             regionText.text = label;
         }
     }
+    public void ToggleInventory()
+    {
+        if (inventoryPanel == null) return;
+        bool open = !inventoryPanel.activeSelf;
+        inventoryPanel.SetActive(open);
+
+        Cursor.visible = open;                                     // 드래그하려면 커서 표시
+        Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
+
+        if (InputManager.Instance != null)
+            InputManager.Instance.SetGameplayEnabled(!open);      // 열면 이동/공격 차단
+    }
+
+
 
     // 플레이어는 각 씬에 태그 "Player"로 존재합니다. 없으면(아직 스폰 전/씬 전환 직후) null 반환.
     private PlayerController FindPlayer()

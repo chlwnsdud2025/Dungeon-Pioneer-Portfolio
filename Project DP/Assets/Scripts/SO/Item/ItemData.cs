@@ -1,26 +1,60 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>아이템의 큰 분류. 새 분류(재료/퀘스트 등)가 생기면 여기 값 추가 + 파생 클래스 하나 만들면 됩니다.</summary>
 public enum ItemCategory { Equipment, Consumable }
+public enum EquipmentSlot { Helmet, Armor, Weapon, Shield }
 
-/// <summary>
-/// 모든 아이템 SO의 공통 부모. 이름/아이콘/설명/중첩 같은 공통 정보를 담고,
-/// 실제 카테고리(장비/소모)와 세부 데이터는 파생 클래스가 정의합니다.
-/// 추상 클래스라 이 자체로는 애셋을 못 만들고, EquipmentItemData/ConsumableItemData로만 생성됩니다.
-/// </summary>
 public abstract class ItemData : ScriptableObject
 {
     [Header("기본 정보")]
-    [Tooltip("저장/조회용 고유 ID (겹치지 않게)")]
     public string itemId;
     public string displayName;
     [TextArea(2, 4)] public string description;
     public Sprite icon;
 
+    [Header("인벤토리 그리드")]
+    public Vector2Int gridSize = Vector2Int.one;
+    [HideInInspector] public bool[] shapeMask;             
+
+    [Header("아이콘 배치 (그리드 기준)")]
+    [Tooltip("바운딩 박스 대비 이미지 배율")] public float iconScale = 1f;
+    [Tooltip("칸 단위 이미지 이동 오프셋")] public Vector2 iconOffset = Vector2.zero;
+
     [Header("중첩")]
-    public bool isStackable = false;
+    public bool isStackable;
     [Min(1)] public int maxStackSize = 1;
 
-    /// <summary>이 아이템의 카테고리. 파생 클래스가 반환 (분기/필터에 사용).</summary>
     public abstract ItemCategory Category { get; }
+
+    public int GridWidth => Mathf.Max(1, gridSize.x);
+    public int GridHeight => Mathf.Max(1, gridSize.y);
+
+    /// <summary>(x,y) 칸이 점유되는지. 좌상단 (0,0), y는 아래로 증가.
+    /// 마스크가 없으면 전체 사각형으로 간주(사각형 아이템 하위호환).</summary>
+    public bool IsCellOccupied(int x, int y)
+    {
+        if (x < 0 || x >= GridWidth || y < 0 || y >= GridHeight) return false;
+        if (shapeMask == null || shapeMask.Length != GridWidth * GridHeight) return true;
+        return shapeMask[y * GridWidth + x];
+    }
+
+    /// <summary>실제로 차지하는 칸 수 (인벤토리 무게/용량 계산 등에 유용).</summary>
+    public int OccupiedCellCount
+    {
+        get
+        {
+            if (shapeMask == null || shapeMask.Length != GridWidth * GridHeight)
+                return GridWidth * GridHeight;
+            int n = 0; foreach (bool b in shapeMask) if (b) n++; return n;
+        }
+    }
+
+    /// <summary>점유하는 칸들의 (x,y) 오프셋. 인벤토리 배치 판정에 사용.</summary>
+    public IEnumerable<Vector2Int> OccupiedCells()
+    {
+        for (int y = 0; y < GridHeight; y++)
+            for (int x = 0; x < GridWidth; x++)
+                if (IsCellOccupied(x, y))
+                    yield return new Vector2Int(x, y);
+    }
 }

@@ -239,6 +239,34 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""isPartOfComposite"": false
                 }
             ]
+        },
+        {
+            ""name"": ""UIControll"",
+            ""id"": ""9aa4d97c-351c-423c-b2c6-03672dbb40f3"",
+            ""actions"": [
+                {
+                    ""name"": ""Inventory"",
+                    ""type"": ""Button"",
+                    ""id"": ""5f1de9a0-f9be-4004-9731-d23e40910963"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""46a614b3-055f-4e7d-b786-0cd92803ed10"",
+                    ""path"": ""<Keyboard>/i"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Inventory"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
         }
     ],
     ""controlSchemes"": []
@@ -250,11 +278,15 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_PlayerControll_Interact = m_PlayerControll.FindAction("Interact", throwIfNotFound: true);
         m_PlayerControll_Attack = m_PlayerControll.FindAction("Attack", throwIfNotFound: true);
         m_PlayerControll_Guard = m_PlayerControll.FindAction("Guard", throwIfNotFound: true);
+        // UIControll
+        m_UIControll = asset.FindActionMap("UIControll", throwIfNotFound: true);
+        m_UIControll_Inventory = m_UIControll.FindAction("Inventory", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
     {
         UnityEngine.Debug.Assert(!m_PlayerControll.enabled, "This will cause a leak and performance issues, PlayerInputActions.PlayerControll.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_UIControll.enabled, "This will cause a leak and performance issues, PlayerInputActions.UIControll.Disable() has not been called.");
     }
 
     /// <summary>
@@ -466,6 +498,102 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     /// Provides a new <see cref="PlayerControllActions" /> instance referencing this action map.
     /// </summary>
     public PlayerControllActions @PlayerControll => new PlayerControllActions(this);
+
+    // UIControll
+    private readonly InputActionMap m_UIControll;
+    private List<IUIControllActions> m_UIControllActionsCallbackInterfaces = new List<IUIControllActions>();
+    private readonly InputAction m_UIControll_Inventory;
+    /// <summary>
+    /// Provides access to input actions defined in input action map "UIControll".
+    /// </summary>
+    public struct UIControllActions
+    {
+        private @PlayerInputActions m_Wrapper;
+
+        /// <summary>
+        /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public UIControllActions(@PlayerInputActions wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "UIControll/Inventory".
+        /// </summary>
+        public InputAction @Inventory => m_Wrapper.m_UIControll_Inventory;
+        /// <summary>
+        /// Provides access to the underlying input action map instance.
+        /// </summary>
+        public InputActionMap Get() { return m_Wrapper.m_UIControll; }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
+        public void Enable() { Get().Enable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
+        public void Disable() { Get().Disable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
+        public bool enabled => Get().enabled;
+        /// <summary>
+        /// Implicitly converts an <see ref="UIControllActions" /> to an <see ref="InputActionMap" /> instance.
+        /// </summary>
+        public static implicit operator InputActionMap(UIControllActions set) { return set.Get(); }
+        /// <summary>
+        /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <param name="instance">Callback instance.</param>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
+        /// </remarks>
+        /// <seealso cref="UIControllActions" />
+        public void AddCallbacks(IUIControllActions instance)
+        {
+            if (instance == null || m_Wrapper.m_UIControllActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_UIControllActionsCallbackInterfaces.Add(instance);
+            @Inventory.started += instance.OnInventory;
+            @Inventory.performed += instance.OnInventory;
+            @Inventory.canceled += instance.OnInventory;
+        }
+
+        /// <summary>
+        /// Removes <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <remarks>
+        /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
+        /// </remarks>
+        /// <seealso cref="UIControllActions" />
+        private void UnregisterCallbacks(IUIControllActions instance)
+        {
+            @Inventory.started -= instance.OnInventory;
+            @Inventory.performed -= instance.OnInventory;
+            @Inventory.canceled -= instance.OnInventory;
+        }
+
+        /// <summary>
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="UIControllActions.UnregisterCallbacks(IUIControllActions)" />.
+        /// </summary>
+        /// <seealso cref="UIControllActions.UnregisterCallbacks(IUIControllActions)" />
+        public void RemoveCallbacks(IUIControllActions instance)
+        {
+            if (m_Wrapper.m_UIControllActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        /// <summary>
+        /// Replaces all existing callback instances and previously registered input action callbacks associated with them with callbacks provided via <param cref="instance" />.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
+        /// </remarks>
+        /// <seealso cref="UIControllActions.AddCallbacks(IUIControllActions)" />
+        /// <seealso cref="UIControllActions.RemoveCallbacks(IUIControllActions)" />
+        /// <seealso cref="UIControllActions.UnregisterCallbacks(IUIControllActions)" />
+        public void SetCallbacks(IUIControllActions instance)
+        {
+            foreach (var item in m_Wrapper.m_UIControllActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_UIControllActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    /// <summary>
+    /// Provides a new <see cref="UIControllActions" /> instance referencing this action map.
+    /// </summary>
+    public UIControllActions @UIControll => new UIControllActions(this);
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "PlayerControll" which allows adding and removing callbacks.
     /// </summary>
@@ -508,5 +636,20 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnGuard(InputAction.CallbackContext context);
+    }
+    /// <summary>
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UIControll" which allows adding and removing callbacks.
+    /// </summary>
+    /// <seealso cref="UIControllActions.AddCallbacks(IUIControllActions)" />
+    /// <seealso cref="UIControllActions.RemoveCallbacks(IUIControllActions)" />
+    public interface IUIControllActions
+    {
+        /// <summary>
+        /// Method invoked when associated input action "Inventory" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnInventory(InputAction.CallbackContext context);
     }
 }
