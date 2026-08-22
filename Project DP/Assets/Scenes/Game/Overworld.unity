@@ -1927,6 +1927,42 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 87686069661794953, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: -123388228327263382, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+    - target: {fileID: 87686069661794953, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 5841620844538509439, guid: 8749356aaca4fc147ab4d6fa65cdef6f, type: 3}
+    - target: {fileID: 202188663679375549, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: -2411995115122161221, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+    - target: {fileID: 1814671843709559082, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: -409257593384186912, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+    - target: {fileID: 3457772057877977346, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: -8963014954032880872, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+    - target: {fileID: 3484576578202725584, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 2207939906835315374, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+    - target: {fileID: 3484576578202725584, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 5841620844538509439, guid: 8749356aaca4fc147ab4d6fa65cdef6f, type: 3}
+    - target: {fileID: 3798548740729212334, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4552306151051564413, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+    - target: {fileID: 3974836481192095815, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 1878232383230736444, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
     - target: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
       propertyPath: m_Name
       value: Player
