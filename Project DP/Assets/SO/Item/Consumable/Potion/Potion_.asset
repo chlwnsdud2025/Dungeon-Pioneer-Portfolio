@@ -22,4 +22,4 @@ MonoBehaviour:
   iconOffset: {x: 0, y: 0}
   isStackable: 1
   maxStackSize: 99
-  healAmount: 1
+  healAmount: 30

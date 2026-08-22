@@ -9,20 +9,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41b02a4bfe0354b43949c1149915cb2b, type: 3}
-  m_Name: Weapon_
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponItemData
+  m_Script: {fileID: 11500000, guid: 7bc1066a238d240478dc5e1c008f810a, type: 3}
+  m_Name: Shield_Test
+  m_EditorClassIdentifier: Assembly-CSharp::ShieldItemData
   itemId: 
   displayName: 
   description: 
-  icon: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  gridSize: {x: 2, y: 3}
-  shapeMask: 010101010001
+  icon: {fileID: 0}
+  gridSize: {x: 1, y: 1}
+  shapeMask: 01
   iconScale: 1
-  iconOffset: {x: 0, y: -0.5}
+  iconOffset: {x: 0, y: 0}
   isStackable: 0
   maxStackSize: 1
   requiredLevel: 0
-  attack: 10
-  attackRange: 10
-  attackSpeed: 0
+  defense: 0
+  blockChance: 0
+  equipPrefab: {fileID: 0}
