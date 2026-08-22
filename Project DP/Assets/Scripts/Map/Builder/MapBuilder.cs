@@ -7,10 +7,12 @@ public class MapBuilder : MonoBehaviour
     public int mapWidth = 17;
     public int mapHeight = 17;
 
-    // ★ 변경: tileSize를 이 스크립트가 직접 들고 있지 않고, 프로젝트 공통 GridSystem에서 읽어옵니다.
-    //   값을 바꾸고 싶으면 Assets/Resources/GridSystem.asset의 Tile Size를 수정하세요.
-    //   (MapBuilderEditor.cs 등 기존에 builder.tileSize를 참조하던 코드는 그대로 동작합니다)
-    public float tileSize => GridSystem.Instance.TileSize;
+    // GridSystem을 기본으로 쓰되, 오버월드(KayKit 1유닛 타일)처럼 칸 크기가 다를 때 override 합니다.
+    // 0 이하면 GridSystem.TileSize(던전=3)를 사용합니다.
+    [Tooltip("0 이하면 GridSystem.TileSize 사용. 오버월드 Plane(scale 1)은 spacing=2 → 2로 설정하세요.")]
+    public float tileSizeOverride = 0f;
+
+    public float tileSize => tileSizeOverride > 0f ? tileSizeOverride : GridSystem.Instance.TileSize;
 
     public Transform tileContainer;
 
@@ -53,10 +55,18 @@ public class MapBuilder : MonoBehaviour
 
         if (tileContainer == null) return;
 
+        float size = tileSize;
+        float height = tileSizeOverride > 0f ? tileSizeOverride : GridSystem.Instance.TileHeight;
+
         foreach (Transform child in tileContainer)
         {
-            // ★ 변경: GridSystem의 WorldToCell로 통일 (MapGenerator/MinimapManager와 동일한 변환 규칙 사용)
-            Vector3Int pos = GridSystem.Instance.WorldToCell(child.position);
+            // MapBuilder가 쓰는 tileSize와 동일한 규칙으로 셀을 계산합니다.
+            // (오버월드 override=1일 때 GridSystem.WorldToCell(3)을 쓰면 칸이 뭉개집니다)
+            Vector3 p = child.position;
+            Vector3Int pos = new Vector3Int(
+                Mathf.RoundToInt(p.x / size),
+                Mathf.RoundToInt(p.y / height),
+                Mathf.RoundToInt(p.z / size));
 
             if (!placedTiles.ContainsKey(pos))
             {
