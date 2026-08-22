@@ -15,10 +15,10 @@ MonoBehaviour:
   itemId: Potion
   displayName: Potion
   description: Potion
-  icon: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+  icon: {fileID: 21300000, guid: bca3fe560ada5474c87bfd950c7ad88c, type: 3}
   gridSize: {x: 1, y: 1}
   shapeMask: 01
-  iconScale: 1
+  iconScale: 0.8
   iconOffset: {x: 0, y: 0}
   isStackable: 1
   maxStackSize: 99

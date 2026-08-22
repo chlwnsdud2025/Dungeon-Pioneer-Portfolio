@@ -3179,6 +3179,8 @@ MonoBehaviour:
   potion: {fileID: 11400000, guid: fe88487ce13397a44aeb76afb8b8ddd8, type: 2}
   sword: {fileID: 11400000, guid: 980ae683a6915e146b33da948c8017c6, type: 2}
   shield: {fileID: 11400000, guid: 77d480681da72b64e9d09c44f5b81cf2, type: 2}
+  helmet: {fileID: 11400000, guid: 1702a1834fd18f94fbb17565824ea717, type: 2}
+  armor: {fileID: 11400000, guid: 2bba5611f58450348be3c987d17d96f7, type: 2}
 --- !u!114 &8253063535592924875
 MonoBehaviour:
   m_ObjectHideFlags: 0

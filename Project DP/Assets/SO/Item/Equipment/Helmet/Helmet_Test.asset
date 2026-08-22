@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c0c3836ee9978f41bfaa4a00d25901c, type: 3}
+  m_Name: Helmet_Test
+  m_EditorClassIdentifier: Assembly-CSharp::HelmetItemData
+  itemId: 
+  displayName: "\uAE30\uC0AC \uD22C\uAD6C"
+  description: "\uAE30\uC0AC\uC758 \uD22C\uAD6C\uC785\uB2C8\uB2E4"
+  icon: {fileID: 0}
+  gridSize: {x: 2, y: 2}
+  shapeMask: 01010101
+  iconScale: 1
+  iconOffset: {x: 0, y: 0}
+  isStackable: 0
+  maxStackSize: 1
+  requiredLevel: 0
+  defense: 15
+  headMesh: {fileID: 1980654953083619707, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
+  accessoryMesh: {fileID: -3175723430499807473, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
+  material: {fileID: -1418784290425750361, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}

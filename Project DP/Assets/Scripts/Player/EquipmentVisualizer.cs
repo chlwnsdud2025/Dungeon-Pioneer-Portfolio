@@ -1,46 +1,76 @@
 using UnityEngine;
 
 /// <summary>
-/// 장비 장착/해제 시 3D 모델을 handslot에 교체하는 비주얼 컴포넌트.
-/// EquipmentHolder.OnEquipmentChanged를 구독하여 무기·방패를 Instantiate/Destroy한다.
+/// 장비 장착/해제 시 3D 모델을 교체하는 비주얼 컴포넌트.
+///  · 무기/방패 → handslot에 프리팹 Instantiate/Destroy
+///  · 헬멧     → Head SkinnedMeshRenderer 메시+머티리얼 교체, 악세사리 on/off
+///  · 갑옷     → Body/Arm/Leg SkinnedMeshRenderer 메시+머티리얼 교체
 /// Player 오브젝트에 부착한다.
-/// 프리팹 자체의 localPosition/Rotation/Scale을 그대로 사용한다.
 /// </summary>
 public class EquipmentVisualizer : MonoBehaviour
 {
-    [Header("Hand Slots (Rig_Medium 본 하위)")]
-    [Tooltip("오른손 무기 슬롯 — Rig_Medium > … > hand.r > handslot.r")]
-    [SerializeField] private Transform weaponSlot;
+    // ── 무기/방패 (Instantiate 방식) ──
 
-    [Tooltip("왼손 방패 슬롯 — Rig_Medium > … > hand.l > handslot.l")]
-    [SerializeField] private Transform shieldSlot;
+    [Header("Hand Slots")]
+    [SerializeField] private Transform weaponSlot;       // handslot.r
+    [SerializeField] private Transform shieldSlot;       // handslot.l
 
-    [Header("기본 장비 프리팹 (비장착 시 표시)")]
+    [Header("기본 무기/방패 프리팹")]
     [SerializeField] private GameObject defaultWeaponPrefab;
     [SerializeField] private GameObject defaultShieldPrefab;
 
+    // ── 헬멧/갑옷 (Mesh Swap 방식) ──
+
+    [Header("Body Part Renderers (기본 캐릭터 모델)")]
+    [SerializeField] private SkinnedMeshRenderer headRenderer;
+    [SerializeField] private SkinnedMeshRenderer bodyRenderer;
+    [SerializeField] private SkinnedMeshRenderer armLeftRenderer;
+    [SerializeField] private SkinnedMeshRenderer armRightRenderer;
+    [SerializeField] private SkinnedMeshRenderer legLeftRenderer;
+    [SerializeField] private SkinnedMeshRenderer legRightRenderer;
+
+    [Header("Head Accessory (Hat/Helmet 등)")]
+    [SerializeField] private SkinnedMeshRenderer headAccessoryRenderer;
+
+    // ── Private ──
+
     private EquipmentHolder _holder;
+
+    // 무기/방패 인스턴스 추적
     private GameObject _currentWeapon;
     private GameObject _currentShield;
-
-    // 현재 표시 중인 프리팹을 추적 — 같은 프리팹이면 재생성하지 않음
     private GameObject _activeWeaponPrefab;
     private GameObject _activeShieldPrefab;
+
+    // 기본 메시/머티리얼 백업 (해제 시 복원용)
+    private Mesh _defaultHeadMesh;
+    private Mesh _defaultBodyMesh;
+    private Mesh _defaultArmLeftMesh;
+    private Mesh _defaultArmRightMesh;
+    private Mesh _defaultLegLeftMesh;
+    private Mesh _defaultLegRightMesh;
+    private Mesh _defaultAccessoryMesh;
+
+    private Material _defaultHeadMaterial;
+    private Material _defaultBodyMaterial;
+    private Material _defaultAccessoryMaterial;
 
     private void Awake()
     {
         _holder = GetComponent<EquipmentHolder>();
 
-        // 프리팹에 미리 배치된 기본 장비(sword_A, shield_A 등)를 현재 비주얼로 인식
+        // 기존 handslot 자식을 현재 비주얼로 인식
         if (weaponSlot != null && weaponSlot.childCount > 0)
             _currentWeapon = weaponSlot.GetChild(0).gameObject;
         if (shieldSlot != null && shieldSlot.childCount > 0)
             _currentShield = shieldSlot.GetChild(0).gameObject;
+
+        // 기본 메시/머티리얼 백업
+        CaptureDefaults();
     }
 
     private void Start()
     {
-        // 게임 시작 시 기본 장비 비주얼로 초기화
         RefreshVisuals();
     }
 
@@ -56,14 +86,43 @@ public class EquipmentVisualizer : MonoBehaviour
             _holder.OnEquipmentChanged -= RefreshVisuals;
     }
 
-    // ── 비주얼 갱신 ──
+    // ── 기본값 백업 ──
 
-    /// <summary>장비 슬롯 전체를 현재 장착 상태에 맞게 갱신한다.</summary>
+    private void CaptureDefaults()
+    {
+        if (headRenderer != null)
+        {
+            _defaultHeadMesh = headRenderer.sharedMesh;
+            _defaultHeadMaterial = headRenderer.sharedMaterial;
+        }
+        if (bodyRenderer != null)
+        {
+            _defaultBodyMesh = bodyRenderer.sharedMesh;
+            _defaultBodyMaterial = bodyRenderer.sharedMaterial;
+        }
+        if (armLeftRenderer != null)  _defaultArmLeftMesh  = armLeftRenderer.sharedMesh;
+        if (armRightRenderer != null) _defaultArmRightMesh = armRightRenderer.sharedMesh;
+        if (legLeftRenderer != null)  _defaultLegLeftMesh  = legLeftRenderer.sharedMesh;
+        if (legRightRenderer != null) _defaultLegRightMesh = legRightRenderer.sharedMesh;
+
+        if (headAccessoryRenderer != null)
+        {
+            _defaultAccessoryMesh = headAccessoryRenderer.sharedMesh;
+            _defaultAccessoryMaterial = headAccessoryRenderer.sharedMaterial;
+        }
+    }
+
+    // ── 전체 갱신 ──
+
     private void RefreshVisuals()
     {
         RefreshWeapon();
         RefreshShield();
+        RefreshHelmet();
+        RefreshArmor();
     }
+
+    // ── 무기 (Instantiate) ──
 
     private void RefreshWeapon()
     {
@@ -77,6 +136,8 @@ public class EquipmentVisualizer : MonoBehaviour
         SpawnInSlot(weaponSlot, prefab, ref _currentWeapon, ref _activeWeaponPrefab);
     }
 
+    // ── 방패 (Instantiate) ──
+
     private void RefreshShield()
     {
         if (shieldSlot == null) return;
@@ -89,30 +150,113 @@ public class EquipmentVisualizer : MonoBehaviour
         SpawnInSlot(shieldSlot, prefab, ref _currentShield, ref _activeShieldPrefab);
     }
 
-    /// <summary>
-    /// handslot 하위의 기존 오브젝트를 제거하고 새 프리팹을 생성한다.
-    /// 프리팹에 설정된 localPosition/Rotation/Scale을 그대로 유지한다.
-    /// 이미 같은 프리팹이 표시 중이면 아무것도 하지 않는다.
-    /// </summary>
     private void SpawnInSlot(Transform slot, GameObject prefab,
                              ref GameObject currentInstance, ref GameObject activePrefab)
     {
-        // 같은 프리팹이면 교체 불필요
         if (prefab == activePrefab && currentInstance != null)
             return;
 
-        // 기존 오브젝트 제거
         if (currentInstance != null)
             Destroy(currentInstance);
 
         currentInstance = null;
         activePrefab = null;
 
-        // 새 프리팹 생성 — worldPositionStays: false로 프리팹의 로컬 Transform을 그대로 사용
         if (prefab != null)
         {
             currentInstance = Instantiate(prefab, slot, false);
             activePrefab = prefab;
         }
+    }
+
+    // ── 헬멧 (Mesh Swap) ──
+
+    private void RefreshHelmet()
+    {
+        if (headRenderer == null) return;
+
+        var equipped = _holder.GetEquipped(EquipmentSlot.Helmet);
+
+        if (equipped?.Data is HelmetItemData helmet)
+        {
+            // 머리 메시 교체
+            if (helmet.headMesh != null)
+            {
+                headRenderer.sharedMesh = helmet.headMesh;
+                if (helmet.material != null)
+                    headRenderer.sharedMaterial = helmet.material;
+            }
+
+            // 악세사리 (Hat → Helmet 등)
+            if (headAccessoryRenderer != null)
+            {
+                if (helmet.accessoryMesh != null)
+                {
+                    headAccessoryRenderer.sharedMesh = helmet.accessoryMesh;
+                    if (helmet.material != null)
+                        headAccessoryRenderer.sharedMaterial = helmet.material;
+                    headAccessoryRenderer.gameObject.SetActive(true);
+                }
+                else
+                {
+                    // 악세사리 메시가 없으면 숨김
+                    headAccessoryRenderer.gameObject.SetActive(false);
+                }
+            }
+        }
+        else
+        {
+            // 헬멧 미장착 → 기본 복원
+            headRenderer.sharedMesh = _defaultHeadMesh;
+            headRenderer.sharedMaterial = _defaultHeadMaterial;
+
+            if (headAccessoryRenderer != null)
+            {
+                headAccessoryRenderer.sharedMesh = _defaultAccessoryMesh;
+                headAccessoryRenderer.sharedMaterial = _defaultAccessoryMaterial;
+                headAccessoryRenderer.gameObject.SetActive(true);
+            }
+        }
+    }
+
+    // ── 갑옷 (Mesh Swap) ──
+
+    private void RefreshArmor()
+    {
+        if (bodyRenderer == null) return;
+
+        var equipped = _holder.GetEquipped(EquipmentSlot.Armor);
+
+        if (equipped?.Data is ArmorItemData armor)
+        {
+            SwapRenderer(bodyRenderer,     armor.bodyMesh,     armor.material, _defaultBodyMesh,     _defaultBodyMaterial);
+            SwapRenderer(armLeftRenderer,  armor.armLeftMesh,  armor.material, _defaultArmLeftMesh,  _defaultBodyMaterial);
+            SwapRenderer(armRightRenderer, armor.armRightMesh, armor.material, _defaultArmRightMesh, _defaultBodyMaterial);
+            SwapRenderer(legLeftRenderer,  armor.legLeftMesh,  armor.material, _defaultLegLeftMesh,  _defaultBodyMaterial);
+            SwapRenderer(legRightRenderer, armor.legRightMesh, armor.material, _defaultLegRightMesh, _defaultBodyMaterial);
+        }
+        else
+        {
+            // 갑옷 미장착 → 기본 복원
+            SwapRenderer(bodyRenderer,     null, null, _defaultBodyMesh,     _defaultBodyMaterial);
+            SwapRenderer(armLeftRenderer,  null, null, _defaultArmLeftMesh,  _defaultBodyMaterial);
+            SwapRenderer(armRightRenderer, null, null, _defaultArmRightMesh, _defaultBodyMaterial);
+            SwapRenderer(legLeftRenderer,  null, null, _defaultLegLeftMesh,  _defaultBodyMaterial);
+            SwapRenderer(legRightRenderer, null, null, _defaultLegRightMesh, _defaultBodyMaterial);
+        }
+    }
+
+    /// <summary>
+    /// SkinnedMeshRenderer의 메시와 머티리얼을 교체한다.
+    /// newMesh가 null이면 기본값(fallback)으로 복원한다.
+    /// </summary>
+    private static void SwapRenderer(SkinnedMeshRenderer renderer,
+                                     Mesh newMesh, Material newMat,
+                                     Mesh fallbackMesh, Material fallbackMat)
+    {
+        if (renderer == null) return;
+
+        renderer.sharedMesh     = newMesh != null ? newMesh : fallbackMesh;
+        renderer.sharedMaterial = newMat  != null ? newMat  : fallbackMat;
     }
 }

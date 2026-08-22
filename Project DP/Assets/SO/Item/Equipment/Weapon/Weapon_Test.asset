@@ -13,17 +13,17 @@ MonoBehaviour:
   m_Name: Weapon_Test
   m_EditorClassIdentifier: Assembly-CSharp::WeaponItemData
   itemId: 
-  displayName: 
-  description: 
-  icon: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  gridSize: {x: 2, y: 3}
-  shapeMask: 010101010001
+  displayName: "\uBC14\uC2A4\uD0C0\uB4DC \uC18C\uB4DC"
+  description: "\uBC14\uC2A4\uD0C0\uB4DC \uC18C\uB4DC \uC785\uB2C8\uB2E4"
+  icon: {fileID: 21300000, guid: 582cf941e4f8bd84fa8fe6431dc1de22, type: 3}
+  gridSize: {x: 1, y: 3}
+  shapeMask: 010101
   iconScale: 1
-  iconOffset: {x: 0, y: -0.5}
+  iconOffset: {x: 0, y: 0}
   isStackable: 0
   maxStackSize: 1
   requiredLevel: 0
   attack: 30
   attackRange: 10
   attackSpeed: 0
-  equipPrefab: {fileID: 1011547581244740807, guid: 6452a1c56ed2f41429131108356db56f, type: 3}
+  equipPrefab: {fileID: 4586024170654886514, guid: f36b88841e52b2f44a7f5987b01578e5, type: 3}

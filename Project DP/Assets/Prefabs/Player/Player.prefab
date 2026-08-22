@@ -1311,10 +1311,13 @@ MonoBehaviour:
   shieldSlot: {fileID: 3123365679964967902}
   defaultWeaponPrefab: {fileID: 6525839021517972822, guid: 4f5608ea7224dac4aabdd35351382b60, type: 3}
   defaultShieldPrefab: {fileID: 2052530004992794073, guid: 945729e8baa43134eb53ed1c1d78dd37, type: 3}
-  weaponPositionOffset: {x: 0, y: 0, z: 0}
-  weaponRotationOffset: {x: -90, y: 0, z: 0}
-  shieldPositionOffset: {x: 0, y: 0, z: 0.2}
-  shieldRotationOffset: {x: -90, y: 0, z: 0}
+  headRenderer: {fileID: 3484576578202725584}
+  bodyRenderer: {fileID: 202188663679375549}
+  armLeftRenderer: {fileID: 3974836481192095815}
+  armRightRenderer: {fileID: 3798548740729212334}
+  legLeftRenderer: {fileID: 1814671843709559082}
+  legRightRenderer: {fileID: 3457772057877977346}
+  headAccessoryRenderer: {fileID: 87686069661794953}
 --- !u!1 &4810704672648079690
 GameObject:
   m_ObjectHideFlags: 0
