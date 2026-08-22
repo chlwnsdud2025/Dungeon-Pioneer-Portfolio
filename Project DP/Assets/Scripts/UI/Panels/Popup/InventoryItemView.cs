@@ -5,7 +5,8 @@ using TMPro;
 
 public class InventoryItemView : MonoBehaviour,
     IBeginDragHandler, IDragHandler, IEndDragHandler,
-    IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
+    IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler,
+    IPointerClickHandler
 {
     [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text countText;
@@ -86,5 +87,16 @@ public class InventoryItemView : MonoBehaviour,
     public void OnPointerExit(PointerEventData e)
     {
         ItemTooltipView.Instance?.Hide();
+    }
+
+    // ── 우클릭: 컨텍스트 메뉴 ──
+    public void OnPointerClick(PointerEventData e)
+    {
+        if (e.button != PointerEventData.InputButton.Right) return;
+        if (isDragging || Item == null) return;
+
+        // 툴팁 숨기고 컨텍스트 메뉴 표시
+        ItemTooltipView.Instance?.Hide();
+        ItemContextMenu.Instance?.Show(Item, e.position);
     }
 }

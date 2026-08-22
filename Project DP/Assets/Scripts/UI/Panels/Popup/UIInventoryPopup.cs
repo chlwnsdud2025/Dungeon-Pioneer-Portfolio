@@ -13,8 +13,10 @@ public class UIInventoryPopup : UIPopup
     [SerializeField] private Inventory inventory;          // 같은 프리팹 안의 Inventory
     [SerializeField] private UIEquipPanel equipPanel;      // 장비 패널
     [SerializeField] private ItemTooltipView tooltip;      // 아이템 툴팁
+    [SerializeField] private ItemContextMenu contextMenu;  // 우클릭 컨텍스트 메뉴
 
     private EquipmentHolder _holder;
+    private PlayerController _player;
 
     public Inventory Inventory => inventory;
 
@@ -28,8 +30,9 @@ public class UIInventoryPopup : UIPopup
         if (InputManager.Instance != null)
             InputManager.Instance.SetGameplayEnabled(false);
 
-        // 툴팁 전역 인스턴스 설정
+        // 전역 인스턴스 설정
         if (tooltip != null) ItemTooltipView.Instance = tooltip;
+        if (contextMenu != null) ItemContextMenu.Instance = contextMenu;
 
         // Player의 EquipmentHolder를 찾아 장비 패널에 바인딩
         BindEquipment();
@@ -43,6 +46,7 @@ public class UIInventoryPopup : UIPopup
         if (InputManager.Instance != null)
             InputManager.Instance.SetGameplayEnabled(true);
 
+        if (contextMenu != null) contextMenu.Hide();
         if (tooltip != null) tooltip.Hide();
         if (equipPanel != null) equipPanel.Unbind();
 
@@ -51,19 +55,22 @@ public class UIInventoryPopup : UIPopup
 
     private void BindEquipment()
     {
-        if (equipPanel == null) return;
-
         // Player 찾기
         var playerGo = GameObject.FindGameObjectWithTag("Player");
         if (playerGo == null) return;
 
+        _player = playerGo.GetComponent<PlayerController>();
         _holder = playerGo.GetComponent<EquipmentHolder>();
-        if (_holder == null) return;
 
         // EquipmentHolder 초기화 (최초 1회)
-        if (!_holder.IsInitialized)
+        if (_holder != null && !_holder.IsInitialized)
             _holder.Init(inventory);
 
-        equipPanel.Bind(_holder);
+        if (equipPanel != null && _holder != null)
+            equipPanel.Bind(_holder);
+
+        // 컨텍스트 메뉴에 공통 참조 바인딩
+        if (contextMenu != null)
+            contextMenu.Bind(inventory, _holder, _player);
     }
 }
