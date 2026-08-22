@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,13 +14,18 @@ public class InventoryGridView : MonoBehaviour
     [SerializeField] private InventoryItemView itemPrefab;  // 아이템 아이콘
 
     [Header("설정")]
-    [SerializeField] private float cellSize = 64f;
+    [SerializeField] private RectTransform panelRect;      // 패널 전체 크기 기준 (인스펙터에서 연결)
+    private float cellSize;                                 // 패널 크기에서 자동 산출
 
     [SerializeField] private RectTransform highlightRoot;
     [SerializeField] private RectTransform dragLayer;
     private Camera uiCam;
     private bool built;
-    private readonly System.Collections.Generic.List<Image> highlightPool = new();
+    private readonly List<Image> highlightPool = new();
+
+    // ── 아이템 뷰 풀링 ──
+    private readonly Queue<InventoryItemView> _viewPool = new();
+    private readonly List<InventoryItemView> _activeViews = new();
 
     public Inventory Inventory => inventory;
     public RectTransform DragLayer => dragLayer;
@@ -34,12 +41,27 @@ public class InventoryGridView : MonoBehaviour
 
     private void OnEnable()
     {
-        if (!EnsureReady()) return;          // 준비 안 됐으면 조용히 대기 (다음 활성화 때 다시 시도)
+        if (!EnsureReady())
+        {
+            // 레이아웃이 아직 준비 안 됐으면 1프레임 뒤 재시도
+            StartCoroutine(DelayedInit());
+            return;
+        }
         inventory.OnChanged += Rebuild;
         Rebuild();
     }
+
+    private IEnumerator DelayedInit()
+    {
+        yield return null;                   // 1프레임 대기 — 레이아웃 계산 완료
+        if (!EnsureReady()) yield break;     // 그래도 안 되면 포기
+        inventory.OnChanged += Rebuild;
+        Rebuild();
+    }
+
     private void OnDisable()
     {
+        StopAllCoroutines();                 // 대기 중이던 DelayedInit 정리
         if (inventory != null) inventory.OnChanged -= Rebuild;
     }
 
@@ -51,7 +73,17 @@ public class InventoryGridView : MonoBehaviour
         if (inventory == null) inventory = GetComponentInParent<Inventory>(true);
         if (inventory == null || inventory.Grid == null) return false;
 
-        if (!built) { BuildCells(); built = true; }   // 배경 칸은 최초 1회만
+        if (!built)
+        {
+            // OnEnable 시점에 RectTransform 레이아웃이 아직 계산 안 됐을 수 있으므로 강제 갱신
+            Canvas.ForceUpdateCanvases();
+
+            RectTransform pr = panelRect != null ? panelRect : (RectTransform)transform;
+            if (pr.rect.width <= 0f || pr.rect.height <= 0f) return false;
+
+            BuildCells();
+            built = true;
+        }
         return true;
     }
 
@@ -59,6 +91,12 @@ public class InventoryGridView : MonoBehaviour
     private void BuildCells()
     {
         int w = inventory.Grid.Width, h = inventory.Grid.Height;
+
+        // panelRect 기준으로 cellSize 자동 산출 (정사각형, 패널 안에 딱 맞게)
+        if (panelRect == null) panelRect = (RectTransform)transform;
+        Vector2 panelSize = panelRect.rect.size;
+        cellSize = Mathf.Floor(Mathf.Min(panelSize.x / w, panelSize.y / h));
+
         Vector2 size = new Vector2(w * cellSize, h * cellSize);
 
         SetupTopLeft(cellRoot, size);   // 두 컨테이너를 같은 크기·좌상단 기준으로
@@ -85,21 +123,40 @@ public class InventoryGridView : MonoBehaviour
         rt.anchoredPosition = Vector2.zero;
     }
 
-    // ── 아이템 다시 그리기 ──
+    // ── 아이템 다시 그리기 (풀링) ──
     public void Rebuild()
     {
         if (inventory == null || itemRoot == null) return;
 
-        foreach (Transform c in itemRoot) Destroy(c.gameObject);   // 전부 지우고 다시
+        // 기존 활성 뷰를 전부 풀에 반납
+        foreach (var v in _activeViews) ReturnView(v);
+        _activeViews.Clear();
 
         foreach (InventoryItem it in inventory.Grid.Items)
         {
-            InventoryItemView view = Instantiate(itemPrefab, itemRoot);
+            InventoryItemView view = GetView();
             LayoutIcon(view.RectTransform, it);   // 위치/크기
             view.Setup(it, this);
+            _activeViews.Add(view);
         }
+    }
 
+    private InventoryItemView GetView()
+    {
+        if (_viewPool.TryDequeue(out var view))
+        {
+            view.gameObject.SetActive(true);
+            view.transform.SetParent(itemRoot, false);  // 드래그 후 dragLayer에 있을 수 있음
+            return view;
+        }
+        return Instantiate(itemPrefab, itemRoot);
+    }
 
+    private void ReturnView(InventoryItemView view)
+    {
+        view.gameObject.SetActive(false);
+        view.transform.SetParent(itemRoot, false);
+        _viewPool.Enqueue(view);
     }
 
     // ── 아이콘 하나를 셀 좌표에 맞춰 배치 (에디터 프리뷰와 동일 공식, y만 뒤집음) ──

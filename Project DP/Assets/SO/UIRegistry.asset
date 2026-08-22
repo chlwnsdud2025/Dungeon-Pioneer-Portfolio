@@ -18,4 +18,9 @@ MonoBehaviour:
     m_SubObjectType: 
     m_SubObjectGUID: 
     m_EditorAssetChanged: 0
-  popupUIs: []
+  popupUIs:
+  - m_AssetGUID: 622a96ec189af7b4f831c24b39eca695
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0

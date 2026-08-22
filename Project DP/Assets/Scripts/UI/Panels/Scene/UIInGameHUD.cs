@@ -1,13 +1,13 @@
+using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.InputSystem;
 
 /// <summary>
 /// 항상 떠 있는 인게임 HUD. 세 가지를 한 화면에 묶습니다:
 ///  1) 미니맵     — 표시 위젯(RawImage+AspectRatioFitter)을 이 HUD가 소유하고, MinimapManager에 연결(Bind).
 ///                  던전에서만 보이고, 오버월드/마을에서는 숨깁니다.
-///  2) 체력 바    — PlayerController.currentHealth / maxHealth 를 매 프레임 폴링
+///  2) 체력 바    — PlayerStat.currentHealth / maxHealth 를 매 프레임 폴링
 ///  3) 지역 표시  — RegionState.Region 기준: 던전이면 "n층", 오버월드/마을이면 각각의 라벨
 ///
 /// 이 HUD는 전역 UIManager가 로드해 상시 표시되며 씬을 넘어도 유지됩니다.
@@ -34,10 +34,6 @@ public class UIInGameHUD : UIScene
     [SerializeField] private string townLabel = "Town";
 
 
-    [Header("Inventory")]
-    [SerializeField] private GameObject inventoryPanel;
-
-
     // ── 내부 캐시 ──
     private PlayerController _player;
     private string _lastRegionLabel;
@@ -54,7 +50,6 @@ public class UIInGameHUD : UIScene
     }
     private void OnEnable()
     {
-        if (inventoryPanel != null) inventoryPanel.SetActive(false);   // 시작은 닫힘
         if (InputManager.Instance != null)
             InputManager.Instance.OnInventoryToggle += ToggleInventory;
     }
@@ -93,12 +88,12 @@ public class UIInGameHUD : UIScene
     private void RefreshHealth()
     {
         if (_player == null) _player = FindPlayer();
-        if (_player == null || _player.maxHealth <= 0f) return;
+        if (_player == null || _player.stat == null || _player.stat.maxHealth <= 0f) return;
 
-        float ratio = Mathf.Clamp01(_player.currentHealth / _player.maxHealth);
+        float ratio = Mathf.Clamp01(_player.stat.currentHealth / _player.stat.maxHealth);
         if (healthFill != null) healthFill.fillAmount = ratio;
         if (healthText != null)
-            healthText.text = $"{Mathf.CeilToInt(Mathf.Max(0f, _player.currentHealth))} / {Mathf.CeilToInt(_player.maxHealth)}";
+            healthText.text = $"{Mathf.CeilToInt(Mathf.Max(0f, _player.stat.currentHealth))} / {Mathf.CeilToInt(_player.stat.maxHealth)}";
     }
 
     private void RefreshRegion()
@@ -138,17 +133,16 @@ public class UIInGameHUD : UIScene
             regionText.text = label;
         }
     }
-    public void ToggleInventory()
+    private void ToggleInventory()
     {
-        if (inventoryPanel == null) return;
-        bool open = !inventoryPanel.activeSelf;
-        inventoryPanel.SetActive(open);
+        var uiMgr = UIManager.Instance;
+        if (uiMgr == null) return;
 
-        Cursor.visible = open;                                     // 드래그하려면 커서 표시
-        Cursor.lockState = open ? CursorLockMode.None : CursorLockMode.Locked;
-
-        if (InputManager.Instance != null)
-            InputManager.Instance.SetGameplayEnabled(!open);      // 열면 이동/공격 차단
+        var popup = uiMgr.GetPanel<UIInventoryPopup>();
+        if (popup != null && popup.gameObject.activeSelf)
+            uiMgr.HidePopup().Forget();
+        else
+            uiMgr.ShowPopup<UIInventoryPopup>().Forget();
     }
 
 

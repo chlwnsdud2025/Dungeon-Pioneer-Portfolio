@@ -23,7 +23,7 @@ public class HitState_Player : PlayerBaseState
         // 현재 애니메이션이 'Hit'이고, 재생 진행도가 95% 이상 도달했다면 상태 전환
         if (stateInfo.shortNameHash == hitAnimHash && stateInfo.normalizedTime >= 0.95f)
         {
-            if (player.currentHealth <= 0)
+            if (player.stat.IsDead)
             {
                 stateMachine.ChangeState<DeadState_Player>();
             }

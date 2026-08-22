@@ -3,7 +3,9 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
-public class InventoryItemView : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class InventoryItemView : MonoBehaviour,
+    IBeginDragHandler, IDragHandler, IEndDragHandler,
+    IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler
 {
     [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text countText;
@@ -14,6 +16,7 @@ public class InventoryItemView : MonoBehaviour, IBeginDragHandler, IDragHandler,
     private InventoryGridView view;
     private Vector2Int grabOffset;   // 잡은 칸이 앵커에서 떨어진 정도
     private Vector3 dragOffset;      // 커서-아이콘 위치 차 (잡은 지점 유지)
+    private bool isDragging;
 
     public void Setup(InventoryItem it, InventoryGridView owner)
     {
@@ -24,6 +27,11 @@ public class InventoryItemView : MonoBehaviour, IBeginDragHandler, IDragHandler,
 
     public void OnBeginDrag(PointerEventData e)
     {
+        isDragging = true;
+
+        // 드래그 시작 시 툴팁 숨김
+        if (ItemTooltipView.Instance != null) ItemTooltipView.Instance.Hide();
+
         view.ScreenToCell(e.position, out Vector2Int cursorCell);
         grabOffset = cursorCell - Item.Anchor;                    // 어느 칸을 잡았나
         dragOffset = RectTransform.position - (Vector3)e.position;
@@ -46,13 +54,37 @@ public class InventoryItemView : MonoBehaviour, IBeginDragHandler, IDragHandler,
     public void OnEndDrag(PointerEventData e)
     {
         view.ClearHighlight();
+        isDragging = false;
 
         view.ScreenToCell(e.position, out Vector2Int cursorCell);
         Vector2Int anchor = cursorCell - grabOffset;
 
-        bool placed = view.Inventory.MoveItem(Item, anchor);      // 유효하면 이동(모델→Rebuild)
+        bool placed = view.Inventory.MoveItem(Item, anchor);
+        // placed=true  → MoveItem 내부에서 OnChanged → Rebuild가 동기 실행되어
+        //                 이 뷰는 이미 풀에 반납/재활용 처리됨. 추가 작업 불필요.
+        // placed=false → 모델이 안 바뀌었으므로 수동으로 원위치 복구
+        if (!placed)
+        {
+            gameObject.SetActive(false);
+            view.Rebuild();
+        }
+    }
 
-        Destroy(gameObject);          // 드래그용으로 떠 있던 '이 뷰' 제거
-        if (!placed) view.Rebuild();  // 모델이 안 바뀌었으면 수동으로 원위치 복구
+    // ── 툴팁: 호버 ──
+    public void OnPointerEnter(PointerEventData e)
+    {
+        if (isDragging || Item == null) return;
+        ItemTooltipView.Instance?.Show(Item.Data, e.position);
+    }
+
+    public void OnPointerMove(PointerEventData e)
+    {
+        if (isDragging) return;
+        ItemTooltipView.Instance?.UpdatePosition(e.position);
+    }
+
+    public void OnPointerExit(PointerEventData e)
+    {
+        ItemTooltipView.Instance?.Hide();
     }
 }

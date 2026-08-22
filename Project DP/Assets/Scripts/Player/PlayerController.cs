@@ -36,8 +36,7 @@ public class PlayerController : MonoBehaviour
     public LayerMask interactableLayer;
 
     [Header("Combat System")]
-    public float attackRange = 1.2f;    // 무기 휘두르는 범위 반경
-    public float attackDamage = 5f;     // 공격력
+    public float attackRange = 1.2f;    // 무기 휘두르는 범위 반경 (추후 무기 Collider로 교체 예정)
     public LayerMask enemyLayer;        // 몬스터를 판별할 레이어
 
     [Header("Light & Torch System")]
@@ -53,10 +52,8 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public bool isRunning = false;
     [HideInInspector] public Vector2 moveInput;
 
-    [Header("Defense System")]
-    public float maxHealth = 100f;
-    public float currentHealth;
-    [Range(0, 180)] public float blockAngle = 120f; // 정면 기준 방어 가능 각도 (보통 90~120도)
+    [Header("Stats")]
+    public PlayerStat stat;
 
     [HideInInspector] public bool isGuarding = false; // 현재 방어 상태인지 판별
 
@@ -80,7 +77,6 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        currentHealth = maxHealth;
         controls = new PlayerInputActions();
 
         stateMachine = new PlayerStateMachine();
@@ -186,42 +182,29 @@ public class PlayerController : MonoBehaviour
         // 1. 방어 상태인지 먼저 확인
         if (isGuarding && attacker != null)
         {
-            // 2. 각도 계산 (내 정면과 적의 위치 사이의 수평 각도)
             Vector3 dirToAttacker = (attacker.position - transform.position).normalized;
             dirToAttacker.y = 0f;
-
             float angle = Vector3.Angle(transform.forward, dirToAttacker);
 
-            // 3. 방어 가능 각도 이내라면 방어 성공!
-            if (angle <= blockAngle / 2f)
+            if (angle <= stat.FinalBlockAngle / 2f)
             {
                 Debug.Log("<color=cyan>방어 성공! 챙-!</color>");
-
-                // 현재 상태가 방어(GuardState)라면, 밀림(Impact) 애니메이션과 로직을 실행하도록 호출
                 if (stateMachine.CurrentState is GuardState_Player guardState)
-                {
                     guardState.OnBlockSuccess(attacker.position);
-                }
-                return; // 방어했으므로 데미지는 입지 않고 종료
+                return;
             }
-
         }
 
-        // 방어 중이 아니거나 뒤통수를 맞았다면 데미지 적용
-        currentHealth -= damage;
-        Debug.Log($"<color=red>피격! 남은 체력: {currentHealth}</color>");
+        // 방어 중이 아니거나 뒤통수를 맞았다면 데미지 적용 (방어력 차감은 PlayerStat 내부에서 처리)
+        stat.ApplyDamage(damage);
+        Debug.Log($"<color=red>피격! 남은 체력: {stat.currentHealth}</color>");
 
-        // 체력이 0 이하면 사망 처리
-        if (currentHealth <= 0)
+        if (stat.IsDead)
         {
             Debug.Log("플레이어 사망");
             stateMachine.ChangeState<DeadState_Player>();
-
-            // ★ 추가: DungeonManager에게 사망을 통보해서 GameOver 흐름(상태 전환, 타임스케일 정지 등)이 돌아가도록 함
             if (DungeonManager.Instance != null)
-            {
                 DungeonManager.Instance.ReportPlayerDeath();
-            }
         }
         else
         {
@@ -238,11 +221,10 @@ public class PlayerController : MonoBehaviour
         if (stateMachine.CurrentState is DeadState_Player) return;
         if (isInvincible) return; // 이미 넉백/무적 중이면 무시 (RollingRock 재충돌 무시 효과)
 
-        currentHealth -= damage;
-        Debug.Log($"<color=orange>넉백! 남은 체력: {currentHealth}</color>");
+        stat.ApplyRawDamage(damage);  // 넉백은 방어력 무시
+        Debug.Log($"<color=orange>넉백! 남은 체력: {stat.currentHealth}</color>");
 
-        // 이 피해로 죽었다면 넉백 대신 사망 처리
-        if (currentHealth <= 0)
+        if (stat.IsDead)
         {
             stateMachine.ChangeState<DeadState_Player>();
             if (DungeonManager.Instance != null) DungeonManager.Instance.ReportPlayerDeath();
@@ -251,7 +233,7 @@ public class PlayerController : MonoBehaviour
 
         Vector3 dir = knockDir;
         dir.y = 0f;
-        if (dir.sqrMagnitude < 0.0001f) dir = -transform.forward; // 방향 정보가 없으면 뒤로 밀림
+        if (dir.sqrMagnitude < 0.0001f) dir = -transform.forward;
         knockbackDirection = dir.normalized;
 
         stateMachine.ChangeState<KnockbackState_Player>();
