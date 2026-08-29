@@ -57,6 +57,20 @@ public class Inventory : MonoBehaviour
         return false;                    // 장비는 여기서 사용 X (장착은 후속 단계)
     }
 
+    /// <summary>
+    /// ItemData로 지정한 소모품을 재고에서 1개 찾아 사용한다. (퀵슬롯용)
+    /// 퀵슬롯은 스택이 아니라 ItemData만 기억하므로, 같은 아이템의 첫 스택을 찾아 기존 경로에 위임한다.
+    /// </summary>
+    public bool UseItem(ItemData data, PlayerController user)
+    {
+        if (data == null) return false;
+
+        foreach (InventoryItem it in Grid.Items)
+            if (it.Data == data) return UseItem(it, user);   // 찾는 즉시 반환 — 순회 중 목록이 바뀌지 않음
+
+        return false;   // 재고 없음
+    }
+
     // ── 이동 (드래그용) ──
     public bool MoveItem(InventoryItem it, Vector2Int anchor) => Grid.Place(it, anchor);
 

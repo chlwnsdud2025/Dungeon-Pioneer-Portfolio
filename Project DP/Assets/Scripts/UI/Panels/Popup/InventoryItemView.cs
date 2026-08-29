@@ -14,6 +14,12 @@ public class InventoryItemView : MonoBehaviour,
     public RectTransform RectTransform => (RectTransform)transform;
     public InventoryItem Item { get; private set; }
 
+    /// <summary>
+    /// 퀵슬롯 같은 다른 드롭 타깃이 이번 드래그를 처리했는지. true면 OnEndDrag가 인벤토리 이동을 건너뜁니다.
+    /// 드롭 타깃(UIQuickSlotView.OnDrop)이 세팅합니다.
+    /// </summary>
+    public bool ConsumedByDropTarget { get; set; }
+
     private InventoryGridView view;
     private Vector2Int grabOffset;   // 잡은 칸이 앵커에서 떨어진 정도
     private Vector3 dragOffset;      // 커서-아이콘 위치 차 (잡은 지점 유지)
@@ -29,6 +35,7 @@ public class InventoryItemView : MonoBehaviour,
     public void OnBeginDrag(PointerEventData e)
     {
         isDragging = true;
+        ConsumedByDropTarget = false;
 
         // 드래그 시작 시 툴팁 숨김
         if (ItemTooltipView.Instance != null) ItemTooltipView.Instance.Hide();
@@ -56,6 +63,16 @@ public class InventoryItemView : MonoBehaviour,
     {
         view.ClearHighlight();
         isDragging = false;
+
+        // 퀵슬롯 등 드롭 타깃이 이미 처리했다면 그리드 안에서의 이동은 하지 않고 원래 자리로 되돌립니다.
+        // (uGUI는 대상의 OnDrop을 먼저 실행하고 그다음 여기로 옵니다)
+        if (ConsumedByDropTarget)
+        {
+            ConsumedByDropTarget = false;
+            gameObject.SetActive(false);
+            view.Rebuild();
+            return;
+        }
 
         view.ScreenToCell(e.position, out Vector2Int cursorCell);
         Vector2Int anchor = cursorCell - grabOffset;

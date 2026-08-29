@@ -33,6 +33,10 @@ public class UIInGameHUD : UIScene
     [SerializeField] private string overworldLabel = "Overworld";
     [SerializeField] private string townLabel = "Town";
 
+    [Header("Quick Slot (단축키 1~4)")]
+    [Tooltip("퀵슬롯 바. Player의 QuickSlotHolder와 인벤토리에 이 HUD가 연결해줍니다.")]
+    [SerializeField] private UIQuickSlotBar quickSlotBar;
+
 
     // ── 내부 캐시 ──
     private PlayerController _player;
@@ -50,13 +54,17 @@ public class UIInGameHUD : UIScene
     }
     private void OnEnable()
     {
-        if (InputManager.Instance != null)
-            InputManager.Instance.OnInventoryToggle += ToggleInventory;
+        if (InputManager.Instance == null) return;
+
+        InputManager.Instance.OnInventoryToggle += ToggleInventory;
+        InputManager.Instance.OnQuickSlotUsed += UseQuickSlot;
     }
     private void OnDisable()
     {
-        if (InputManager.Instance != null)
-            InputManager.Instance.OnInventoryToggle -= ToggleInventory;
+        if (InputManager.Instance == null) return;
+
+        InputManager.Instance.OnInventoryToggle -= ToggleInventory;
+        InputManager.Instance.OnQuickSlotUsed -= UseQuickSlot;
     }
 
 
@@ -70,6 +78,36 @@ public class UIInGameHUD : UIScene
         RefreshMinimap();
         RefreshHealth();
         RefreshRegion();
+        EnsureQuickSlotBound();
+    }
+
+    /// <summary>
+    /// 퀵슬롯 바를 Player의 QuickSlotHolder + 인벤토리에 연결합니다.
+    /// PlayerManager와 UIManager의 초기화 시점이 서로 달라(UI는 비동기 로드) 준비되는 순간이 제각각이므로,
+    /// _player를 지연 조회하는 기존 방식과 똑같이 준비될 때까지 매 프레임 시도합니다.
+    ///
+    /// 인벤토리 팝업이 아니라 HUD가 바인딩을 맡는 이유: EquipmentHolder처럼 팝업이 열릴 때 Init하면
+    /// 인벤토리를 한 번도 열지 않은 상태에서 단축키를 눌렀을 때 아무 일도 일어나지 않습니다.
+    /// </summary>
+    private void EnsureQuickSlotBound()
+    {
+        if (quickSlotBar == null || quickSlotBar.IsBound) return;
+        if (_player == null) return;
+
+        QuickSlotHolder holder = _player.GetComponent<QuickSlotHolder>();
+        if (holder == null) return;
+
+        UIInventoryPopup popup = UIManager.Instance != null ? UIManager.Instance.GetPanel<UIInventoryPopup>() : null;
+        Inventory inventory = popup != null ? popup.Inventory : null;
+        if (inventory == null) return;
+
+        if (!holder.IsInitialized) holder.Init(inventory);
+        quickSlotBar.Bind(holder, inventory, _player);
+    }
+
+    private void UseQuickSlot(int index)
+    {
+        if (quickSlotBar != null) quickSlotBar.Use(index);
     }
 
     // 미니맵: MinimapManager가 그리는 '현재 층' 텍스처를 매 프레임 그대로 가져와 표시합니다.
@@ -100,10 +138,10 @@ public class UIInGameHUD : UIScene
     {
         RegionType? region = RegionState.Region;
 
-        // 미니맵은 던전에서만 표시
-        bool inDungeon = region == RegionType.Dungeon;
-        if (minimapImage != null && minimapImage.gameObject.activeSelf != inDungeon)
-            minimapImage.gameObject.SetActive(inDungeon);
+        // 현재 지역에 미니맵 소스가 있을 때만 표시합니다.
+        bool showMinimap = HasMinimapFor(region);
+        if (minimapImage != null && minimapImage.gameObject.activeSelf != showMinimap)
+            minimapImage.gameObject.SetActive(showMinimap);
 
         if (regionText == null) return;
 
@@ -133,6 +171,15 @@ public class UIInGameHUD : UIScene
             regionText.text = label;
         }
     }
+    /// <summary>
+    /// 이 지역에 표시할 미니맵이 있는지. 지금은 던전(MinimapManager)만 미니맵을 갖고 있습니다.
+    /// 오버월드/마을 미니맵이 생기면 여기에 조건을 추가하세요.
+    /// </summary>
+    private static bool HasMinimapFor(RegionType? region)
+    {
+        return region == RegionType.Dungeon && MinimapManager.Instance != null;
+    }
+
     private void ToggleInventory()
     {
         var uiMgr = UIManager.Instance;
@@ -147,9 +194,13 @@ public class UIInGameHUD : UIScene
 
 
 
-    // 플레이어는 각 씬에 태그 "Player"로 존재합니다. 없으면(아직 스폰 전/씬 전환 직후) null 반환.
+    // 플레이어는 PlayerManager가 전역으로 하나만 들고 있습니다.
+    // (씬 전환 중에는 잠시 비활성이라 태그 검색으로는 못 찾으므로 PlayerManager를 먼저 봅니다)
     private PlayerController FindPlayer()
     {
+        if (PlayerManager.Instance != null && PlayerManager.Instance.Controller != null)
+            return PlayerManager.Instance.Controller;
+
         GameObject go = GameObject.FindGameObjectWithTag("Player");
         return go != null ? go.GetComponent<PlayerController>() : null;
     }

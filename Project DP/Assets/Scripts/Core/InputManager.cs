@@ -20,6 +20,14 @@ public class InputManager : MonoSingleton<InputManager>
     // 인벤토리 토글 이벤트 (HUD가 구독)
     public event Action OnInventoryToggle;
 
+    // 퀵슬롯 사용 이벤트. 인자는 슬롯 번호(0부터) — 단축키 1~4가 0~3에 대응합니다. (HUD가 구독)
+    public event Action<int> OnQuickSlotUsed;
+
+    // 퀵슬롯은 인덱스로 다루는 게 자연스러워, 생성 래퍼의 타입 프로퍼티 대신 이름으로 찾아 씁니다.
+    // (에셋에 액션을 추가한 뒤 유니티가 래퍼를 재생성하기 전에도 컴파일·동작합니다)
+    private InputAction[] _quickSlotActions;
+    private Action<InputAction.CallbackContext>[] _quickSlotHandlers;
+
     protected override void Awake()
     {
         base.Awake();                 // MonoSingleton: Instance 설정 + DontDestroyOnLoad
@@ -27,6 +35,7 @@ public class InputManager : MonoSingleton<InputManager>
 
         Actions = new PlayerInputActions();
         Actions.UIControll.Inventory.performed += OnInventoryPerformed;   // 액션 → 이벤트 중계
+        SubscribeQuickSlots();
     }
 
     private void OnEnable() => Actions?.Enable();     // Awake가 먼저 도므로 Actions 존재
@@ -36,10 +45,49 @@ public class InputManager : MonoSingleton<InputManager>
     {
         if (Instance != this || Actions == null) return;
         Actions.UIControll.Inventory.performed -= OnInventoryPerformed;
+        UnsubscribeQuickSlots();
         Actions.Dispose();
     }
 
     private void OnInventoryPerformed(InputAction.CallbackContext _) => OnInventoryToggle?.Invoke();
+
+    // ── 퀵슬롯 ───────────────────────────────────────────────
+
+    private void SubscribeQuickSlots()
+    {
+        _quickSlotActions = new InputAction[QuickSlotHolder.SlotCount];
+        _quickSlotHandlers = new Action<InputAction.CallbackContext>[QuickSlotHolder.SlotCount];
+
+        for (int i = 0; i < QuickSlotHolder.SlotCount; i++)
+        {
+            string actionName = $"QuickSlot{i + 1}";
+            InputAction action = Actions.FindAction(actionName);
+
+            if (action == null)
+            {
+                Debug.LogWarning($"[InputManager] 입력 액션 '{actionName}'을 찾을 수 없어 {i + 1}번 퀵슬롯이 동작하지 않습니다. " +
+                                 "PlayerInputActions 에셋의 PlayerControll 맵을 확인해주세요.");
+                continue;
+            }
+
+            int index = i;   // 클로저가 루프 변수를 그대로 캡처하지 않도록 복사
+            _quickSlotHandlers[i] = _ => OnQuickSlotUsed?.Invoke(index);
+            action.performed += _quickSlotHandlers[i];
+            _quickSlotActions[i] = action;
+        }
+    }
+
+    private void UnsubscribeQuickSlots()
+    {
+        if (_quickSlotActions == null) return;
+
+        for (int i = 0; i < _quickSlotActions.Length; i++)
+            if (_quickSlotActions[i] != null && _quickSlotHandlers[i] != null)
+                _quickSlotActions[i].performed -= _quickSlotHandlers[i];
+
+        _quickSlotActions = null;
+        _quickSlotHandlers = null;
+    }
 
     /// <summary>게임플레이 조작 on/off. 인벤토리 열면 false로 이동/공격을 막는다 (UI 맵은 그대로 유지).</summary>
     public void SetGameplayEnabled(bool on)

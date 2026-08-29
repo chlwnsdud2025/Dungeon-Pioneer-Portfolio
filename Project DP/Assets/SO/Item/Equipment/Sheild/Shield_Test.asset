@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "\uD070 \uBC29\uD328"
   description: "\uD070 \uBC29\uD328\uC785\uB2C8\uB2E4"
   icon: {fileID: 21300000, guid: e31a0c55d1ced5649b4ea5e624bc5dc4, type: 3}
+  slotIcon: {fileID: 21300000, guid: e31a0c55d1ced5649b4ea5e624bc5dc4, type: 3}
   gridSize: {x: 3, y: 3}
   shapeMask: 010101010101010101
   iconScale: 0.9

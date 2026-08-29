@@ -55,8 +55,10 @@ public class UIInventoryPopup : UIPopup
 
     private void BindEquipment()
     {
-        // Player 찾기
-        var playerGo = GameObject.FindGameObjectWithTag("Player");
+        // Player는 PlayerManager가 전역으로 하나만 들고 있습니다.
+        // (씬 전환 중에는 잠시 비활성이라 태그 검색으로는 못 찾으므로 PlayerManager를 먼저 봅니다)
+        var playerGo = PlayerManager.Instance != null ? PlayerManager.Instance.Player : null;
+        if (playerGo == null) playerGo = GameObject.FindGameObjectWithTag("Player");
         if (playerGo == null) return;
 
         _player = playerGo.GetComponent<PlayerController>();
@@ -70,7 +72,8 @@ public class UIInventoryPopup : UIPopup
             equipPanel.Bind(_holder);
 
         // 컨텍스트 메뉴에 공통 참조 바인딩
+        // QuickSlotHolder의 Init은 HUD가 담당하므로 여기서는 참조만 넘긴다.
         if (contextMenu != null)
-            contextMenu.Bind(inventory, _holder, _player);
+            contextMenu.Bind(inventory, _holder, _player, playerGo.GetComponent<QuickSlotHolder>());
     }
 }

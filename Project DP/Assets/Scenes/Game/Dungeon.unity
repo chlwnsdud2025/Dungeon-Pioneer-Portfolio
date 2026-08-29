@@ -356,7 +356,6 @@ MonoBehaviour:
   currentFloor: 1
   maxFloor: 5
   dungeonGenerator: {fileID: 1405164311}
-  playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
   navMeshSurface: {fileID: 626846869}
   overworldSceneName: Overworld
   victoryReturnDelay: 3
@@ -806,6 +805,52 @@ MonoBehaviour:
   ditherShader: {fileID: -6465566751694194690, guid: a25f7c14fb107904d80c0418ab056f25, type: 3}
   occludedFade: 0.45
   fadeSpeed: 8
+--- !u!1 &2046083670
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2046083672}
+  - component: {fileID: 2046083671}
+  m_Layer: 0
+  m_Name: PlayerManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2046083671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046083670}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8df592f2a7eb55148887252c8ba08883, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerManager
+  playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+  defaultAnchorId: Start
+--- !u!4 &2046083672
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046083670}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2053090090
 GameObject:
   m_ObjectHideFlags: 0
@@ -894,3 +939,4 @@ SceneRoots:
   - {fileID: 2053090093}
   - {fileID: 418315268}
   - {fileID: 1566138933}
+  - {fileID: 2046083672}

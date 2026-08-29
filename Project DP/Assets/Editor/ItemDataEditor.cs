@@ -7,6 +7,7 @@ public class ItemDataEditor : Editor
     private enum EditMode { Cells, Image }
     private EditMode mode = EditMode.Cells;
     private const float Cell = 40f;
+    private const float SlotPreview = 100f;   // 슬롯(1칸) 미리보기 한 변 크기
 
     public override void OnInspectorGUI()
     {
@@ -40,6 +41,7 @@ public class ItemDataEditor : Editor
         EditorGUILayout.Space(4);
         mode = (EditMode)GUILayout.Toolbar((int)mode, new[] { "칸 편집", "이미지 맞추기" });
 
+        EditorGUILayout.BeginHorizontal();
         Rect area = GUILayoutUtility.GetRect(pw, ph, GUILayout.Width(pw), GUILayout.Height(ph));
         Event e = Event.current;
 
@@ -95,6 +97,10 @@ public class ItemDataEditor : Editor
         }
         GUI.EndClip();
 
+        GUILayout.Space(10);
+        DrawSlotPreview(item);      // 같은 아이템이 1칸 슬롯에선 어떻게 보이는지 나란히 비교
+        EditorGUILayout.EndHorizontal();
+
         // ── 정밀 조절 필드 ──
         EditorGUI.BeginChangeCheck();
         float scale = EditorGUILayout.Slider("이미지 배율", item.iconScale, 0.1f, 5f);
@@ -113,6 +119,36 @@ public class ItemDataEditor : Editor
         EditorGUILayout.HelpBox(mode == EditMode.Cells
             ? "칸을 클릭해 점유를 켜고/끕니다 (L자 등 모양)."
             : "드래그로 이미지 이동, 스크롤로 크기 조절 → 칸에 맞추세요.", MessageType.Info);
+    }
+
+    // 장비창/퀵슬롯 같은 '정사각형 1칸'에서 어떻게 보일지 미리 보여준다.
+    // ItemData.SlotIcon과 같은 폴백 규칙을 따르므로, 슬롯 전용 이미지를 아직 안 넣은 아이템도
+    // 실제 게임에서 보이는 그대로 표시된다.
+    private void DrawSlotPreview(ItemData item)
+    {
+        EditorGUILayout.BeginVertical(GUILayout.Width(SlotPreview));
+
+        EditorGUILayout.LabelField("슬롯 표시 (1칸)", EditorStyles.miniBoldLabel);
+
+        Rect r = GUILayoutUtility.GetRect(SlotPreview, SlotPreview,
+                                          GUILayout.Width(SlotPreview), GUILayout.Height(SlotPreview));
+        EditorGUI.DrawRect(r, new Color(0.12f, 0.12f, 0.12f, 1f));
+
+        Sprite slot = item.SlotIcon;
+        if (slot != null) DrawSprite(r, slot);   // 그리드 프리뷰와 동일한 비율 유지 렌더링
+
+        Color line = new Color(1, 1, 1, 0.45f);
+        EditorGUI.DrawRect(new Rect(r.x, r.y, r.width, 1), line);
+        EditorGUI.DrawRect(new Rect(r.x, r.yMax - 1, r.width, 1), line);
+        EditorGUI.DrawRect(new Rect(r.x, r.y, 1, r.height), line);
+        EditorGUI.DrawRect(new Rect(r.xMax - 1, r.y, 1, r.height), line);
+
+        string note = item.slotIcon != null
+            ? "전용 이미지"
+            : (item.icon != null ? "그리드 아이콘 사용 중" : "이미지 없음");
+        EditorGUILayout.LabelField(note, EditorStyles.wordWrappedMiniLabel);
+
+        EditorGUILayout.EndVertical();
     }
 
     // 스프라이트를 '해당 영역만' 정확히 그림 (아틀라스에 있어도 OK), 비율 유지

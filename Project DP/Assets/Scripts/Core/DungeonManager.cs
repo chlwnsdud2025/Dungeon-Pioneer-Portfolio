@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Unity.AI.Navigation;
 
 /// <summary>
@@ -17,6 +16,10 @@ using Unity.AI.Navigation;
 /// 설치한 횃불 값이 그대로 남아, 층을 오갈 때 탐색 상태가 별도 저장 로직 없이 보존됩니다. 던전을 완전히
 /// 나가면 던전 씬이 통째로 언로드되어 이 캐시도 사라집니다(= 던전 리셋). 그래서 DontDestroyOnLoad를
 /// 일부러 켜지 않습니다: 다시 들어오면 새 인스턴스로 생겨 새 런이 시작됩니다.
+///
+/// ★ 플레이어는 이 매니저의 소유가 아닙니다. Player는 PlayerManager가 전역으로 하나만 들고 있고
+///   (DontDestroyOnLoad), 던전이 리셋돼도 체력·장비·인벤토리는 그대로 유지됩니다.
+///   여기서는 "어느 좌표에 놓을지"만 계산해 PlayerManager.PlaceAt()에 넘깁니다.
 ///
 /// 외부(트리거/플레이어)는 아래 3개의 의도 함수만 호출하면 됩니다:
 ///   GoToNextFloor()      — 출구를 밟았을 때 (ExitPoint)
@@ -40,8 +43,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     [Header("생성 / 배치")]
     [Tooltip("층 프리팹 생성과 층 배정 셔플을 담당하는 생성기.")]
     public DungeonGenerator dungeonGenerator;
-    [Tooltip("런 전체에서 하나만 유지되는 플레이어 프리팹.")]
-    public GameObject playerPrefab;
     [Tooltip("층을 옮길 때마다 활성 층 기준으로 다시 굽습니다. 비활성 층은 자동 제외.")]
     public NavMeshSurface navMeshSurface;
 
@@ -55,7 +56,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
     // ── 이 씬 안에서 지금까지 만든 층들을 보관하는 캐시 ──
     private readonly Dictionary<LocationId, GameObject> loadedLocations = new Dictionary<LocationId, GameObject>();
-    private GameObject persistentPlayer;   // 이 씬이 사는 동안 유지되는 단 하나의 플레이어
     private LocationId currentLocationId;   // 지금 활성화된 층
     private bool hasCurrentLocation;
     private bool isLeaving;                 // 오버월드로 나가는 중(클리어/사망/탈출) → 중복 처리 방지
@@ -107,8 +107,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         {
             // 최종 클리어 → 잠깐 연출 뒤 오버월드로 귀환
             isLeaving = true;
-            if (victoryReturnDelay > 0f) StartCoroutine(LoadOverworldAfterDelay(victoryReturnDelay));
-            else LoadOverworldScene();
+            if (victoryReturnDelay > 0f) StartCoroutine(LoadOverworldAfterDelay(victoryReturnDelay, revive: false));
+            else LoadOverworldScene(revive: false);
             return;
         }
 
@@ -129,18 +129,19 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     {
         if (isLeaving) return;
         isLeaving = true;
-        LoadOverworldScene();
+        LoadOverworldScene(revive: false);
     }
 
     /// <summary>
     /// 플레이어 사망 시 PlayerController에서 호출. timeScale을 얼리지 않으므로 DeadState 애니메이션이
     /// 정상 재생되며, 잠깐 보여준 뒤 오버월드로 복귀합니다.
+    /// Player가 전역 상주라 씬 전환만으로는 되살아나지 않으므로, 부활을 명시적으로 요청합니다.
     /// </summary>
     public void ReportPlayerDeath()
     {
         if (isLeaving) return;
         isLeaving = true;
-        StartCoroutine(LoadOverworldAfterDelay(deathReturnDelay));
+        StartCoroutine(LoadOverworldAfterDelay(deathReturnDelay, revive: true));
     }
 
     // ── 내부 구현 ────────────────────────────────────────────────
@@ -183,13 +184,17 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
         PlacePlayer(instance, arrivalSpawnPointId);
 
-        if (MinimapManager.Instance != null)
+        GameObject player = PlayerManager.Instance != null ? PlayerManager.Instance.Player : null;
+        if (MinimapManager.Instance != null && player != null)
         {
-            MinimapManager.Instance.SwitchLocation(destination, instance, isNew, persistentPlayer.transform);
+            MinimapManager.Instance.SwitchLocation(destination, instance, isNew, player.transform);
         }
     }
 
-    /// <summary>런을 새로 시작할 때 호출. 만들어 둔 모든 층과 플레이어를 파괴해 백지 상태로 되돌립니다.</summary>
+    /// <summary>
+    /// 런을 새로 시작할 때 호출. 만들어 둔 모든 층을 파괴해 백지 상태로 되돌립니다.
+    /// 플레이어는 여기서 건드리지 않습니다 — 던전이 리셋돼도 체력·장비·인벤토리는 그대로 이어집니다.
+    /// </summary>
     private void ResetWorld()
     {
         foreach (GameObject loc in loadedLocations.Values)
@@ -199,30 +204,29 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         loadedLocations.Clear();
         hasCurrentLocation = false;
 
-        if (persistentPlayer != null)
-        {
-            Destroy(persistentPlayer);
-            persistentPlayer = null;
-        }
-
         if (MinimapManager.Instance != null)
         {
             MinimapManager.Instance.ResetAllLocations();
         }
     }
 
-    private void LoadOverworldScene()
+    /// <param name="revive">사망 후 복귀라 도착 시 체력을 최대치로 되돌려야 하면 true.</param>
+    private void LoadOverworldScene(bool revive)
     {
-        SceneManager.LoadScene(overworldSceneName);
+        // 들어올 때 DungeonEntrance가 기록해둔 앵커로 되돌아갑니다. (입구가 여러 개여도 정확히 그 문 앞)
+        SceneTransition.Go(overworldSceneName, SceneTransition.ReturnAnchorId, revive);
     }
 
-    private IEnumerator LoadOverworldAfterDelay(float delay)
+    private IEnumerator LoadOverworldAfterDelay(float delay, bool revive)
     {
         yield return new WaitForSecondsRealtime(delay); // timeScale과 무관하게 대기
-        LoadOverworldScene();
+        LoadOverworldScene(revive);
     }
 
-    /// <summary>플레이어를 목적지 층의 스폰 지점으로 배치. 없으면 새로 만들고, 있으면 위치만 옮깁니다.</summary>
+    /// <summary>
+    /// 플레이어를 목적지 층의 스폰 지점으로 옮깁니다. 생성/파괴는 PlayerManager가 전담하므로
+    /// 여기서는 좌표만 계산해 넘깁니다. (층 간 이동은 '씬 안' 이동이라 바라보던 방향은 유지)
+    /// </summary>
     private void PlacePlayer(GameObject locationInstance, string spawnPointId)
     {
         LocationRoot root = locationInstance != null ? locationInstance.GetComponent<LocationRoot>() : null;
@@ -242,27 +246,15 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             spawnPosition = (locationInstance != null ? locationInstance.transform.position : Vector3.zero) + Vector3.up * 1.5f;
         }
 
-        if (persistentPlayer == null)
+        if (PlayerManager.Instance == null)
         {
-            persistentPlayer = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
-        }
-        else
-        {
-            // ★ CharacterController가 켜진 채로 position을 직접 바꾸면 충돌 보정이 끼어들 수 있어 잠깐 꺼줍니다.
-            CharacterController cc = persistentPlayer.GetComponent<CharacterController>();
-            if (cc != null) cc.enabled = false;
-
-            persistentPlayer.transform.position = spawnPosition;
-
-            if (cc != null) cc.enabled = true;
+            Debug.LogError("[DungeonManager] PlayerManager가 없어 플레이어를 배치할 수 없습니다. " +
+                           "씬에 PlayerManager를 배치해주세요.");
+            return;
         }
 
-        CameraFollow camFollow = Camera.main.GetComponent<CameraFollow>();
-        if (camFollow != null)
-        {
-            camFollow.target = persistentPlayer.transform;
-            Camera.main.transform.position = persistentPlayer.transform.position + camFollow.offset;
-        }
+        // CharacterController 처리, 상태 정리, 카메라 재연결은 전부 PlaceAt 안에서 처리됩니다.
+        PlayerManager.Instance.PlaceAt(spawnPosition);
     }
 
     /// <summary>

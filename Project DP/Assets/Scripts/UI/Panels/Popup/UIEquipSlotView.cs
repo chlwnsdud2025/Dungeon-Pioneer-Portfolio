@@ -24,13 +24,18 @@ public class UIEquipSlotView : MonoBehaviour, IPointerClickHandler
     /// <summary>슬롯 아이콘을 현재 장착 상태에 맞게 갱신.</summary>
     public void Refresh()
     {
-        if (_holder == null) return;
+        if (_holder == null || iconImage == null) return;
 
         var item = _holder.GetEquipped(slotType);
 
+        // 슬롯 프리팹의 Image들이 preserveAspect가 꺼진 채로 저장돼 있어, 세로로 긴 아이콘이
+        // 정사각형으로 짓눌립니다. 프리팹마다 켜는 대신 여기서 항상 보장합니다.
+        iconImage.preserveAspect = true;
+
         if (item != null)
         {
-            iconImage.sprite = item.Data.icon;
+            // 그리드용 icon이 아니라 1칸 슬롯용 SlotIcon (slotIcon 미지정이면 icon으로 폴백)
+            iconImage.sprite = item.Data.SlotIcon;
             iconImage.color = Color.white;
         }
         else

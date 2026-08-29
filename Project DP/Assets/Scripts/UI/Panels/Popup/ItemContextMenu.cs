@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,6 +13,10 @@ public class ItemContextMenu : MonoBehaviour
     [SerializeField] private Button useButton;       // 사용 (소모품)
     [SerializeField] private Button equipButton;     // 장착 (장비)
     [SerializeField] private Button dropButton;      // 버리기
+    [Tooltip("퀵슬롯 등록/해제 토글 (소모품일 때만 표시)")]
+    [SerializeField] private Button quickSlotButton;
+    [Tooltip("(선택) 퀵슬롯 버튼의 라벨. 등록 여부에 따라 문구가 바뀝니다.")]
+    [SerializeField] private TMP_Text quickSlotLabel;
 
     [Header("외부 클릭 차단")]
     [SerializeField] private Button blocker;         // 투명 풀스크린 — 바깥 클릭 시 닫기
@@ -22,6 +27,7 @@ public class ItemContextMenu : MonoBehaviour
     private InventoryItem _item;
     private Inventory _inventory;
     private EquipmentHolder _equipHolder;
+    private QuickSlotHolder _quickSlots;
     private PlayerController _player;
 
     /// <summary>InventoryItemView가 접근하는 전역 인스턴스.</summary>
@@ -30,11 +36,12 @@ public class ItemContextMenu : MonoBehaviour
     public bool IsOpen => gameObject.activeSelf;
 
     /// <summary>팝업이 열릴 때 공통 참조를 한 번 바인딩한다.</summary>
-    public void Bind(Inventory inventory, EquipmentHolder holder, PlayerController player)
+    public void Bind(Inventory inventory, EquipmentHolder holder, PlayerController player, QuickSlotHolder quickSlots)
     {
         _inventory = inventory;
         _equipHolder = holder;
         _player = player;
+        _quickSlots = quickSlots;
     }
 
     private void Awake()
@@ -43,6 +50,7 @@ public class ItemContextMenu : MonoBehaviour
         useButton?.onClick.AddListener(OnUseClicked);
         equipButton?.onClick.AddListener(OnEquipClicked);
         dropButton?.onClick.AddListener(OnDropClicked);
+        quickSlotButton?.onClick.AddListener(OnQuickSlotClicked);
         blocker?.onClick.AddListener(Hide);
 
         gameObject.SetActive(false);
@@ -68,6 +76,12 @@ public class ItemContextMenu : MonoBehaviour
         SetButtonVisible(useButton, isConsumable);
         SetButtonVisible(equipButton, isEquipment);
         SetButtonVisible(dropButton, true);
+
+        // 퀵슬롯은 소모품만. 이미 등록된 아이템이면 같은 버튼이 '해제'로 동작한다.
+        bool canQuickSlot = isConsumable && _quickSlots != null;
+        SetButtonVisible(quickSlotButton, canQuickSlot);
+        if (canQuickSlot && quickSlotLabel != null)
+            quickSlotLabel.text = _quickSlots.IndexOf(item.Data) >= 0 ? "퀵슬롯 해제" : "퀵슬롯 등록";
 
         // 레이아웃 강제 갱신
         Canvas.ForceUpdateCanvases();
@@ -105,6 +119,22 @@ public class ItemContextMenu : MonoBehaviour
     {
         if (_item == null || _inventory == null) return;
         _inventory.RemoveItem(_item);
+        Hide();
+    }
+
+    /// <summary>
+    /// 퀵슬롯 등록/해제 토글. 등록해도 아이템은 인벤토리에 그대로 남는다(재고 공유 방식).
+    /// </summary>
+    private void OnQuickSlotClicked()
+    {
+        if (_item == null || _quickSlots == null) return;
+
+        int registered = _quickSlots.IndexOf(_item.Data);
+        if (registered >= 0)
+            _quickSlots.Clear(registered);
+        else if (!_quickSlots.AssignToFirstEmpty(_item.Data, out _))
+            Debug.Log("<color=yellow>퀵슬롯이 가득 찼습니다. 기존 슬롯을 우클릭해 비워주세요.</color>");
+
         Hide();
     }
 

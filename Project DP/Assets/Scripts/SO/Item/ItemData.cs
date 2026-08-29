@@ -12,6 +12,11 @@ public abstract class ItemData : ScriptableObject
     [TextArea(2, 4)] public string description;
     public Sprite icon;
 
+    [Header("슬롯 아이콘 (장비창 / 퀵슬롯)")]
+    [Tooltip("장비창·퀵슬롯처럼 정사각형 한 칸에 표시할 때 쓸 이미지. " +
+             "비워두면 위의 그리드 아이콘을 그대로 사용합니다.")]
+    public Sprite slotIcon;
+
     [Header("인벤토리 그리드")]
     public Vector2Int gridSize = Vector2Int.one;
     [HideInInspector] public bool[] shapeMask;             
@@ -28,6 +33,13 @@ public abstract class ItemData : ScriptableObject
 
     public int GridWidth => Mathf.Max(1, gridSize.x);
     public int GridHeight => Mathf.Max(1, gridSize.y);
+
+    /// <summary>
+    /// 1칸짜리 슬롯(장비창·퀵슬롯)에 표시할 이미지.
+    /// icon은 gridSize에 맞춰 그린 그림이라(예: 1×3 검) 정사각형 슬롯에 넣으면 비율이 맞지 않습니다.
+    /// slotIcon이 비어 있으면 icon으로 폴백하므로, 슬롯 쪽 소비처는 항상 이 프로퍼티를 쓰세요.
+    /// </summary>
+    public Sprite SlotIcon => slotIcon != null ? slotIcon : icon;
 
     /// <summary>(x,y) 칸이 점유되는지. 좌상단 (0,0), y는 아래로 증가.
     /// 마스크가 없으면 전체 사각형으로 간주(사각형 아이템 하위호환).</summary>

@@ -38,7 +38,18 @@ public class PlayerStat : MonoBehaviour
 
     private void Awake()
     {
+        ResetHealth();
+    }
+
+    /// <summary>
+    /// 체력을 최대치로 되돌립니다. 사망 상태에서도 동작하므로 '부활'에 사용합니다.
+    /// (Player가 씬마다 새로 생성되던 시절엔 Awake가 이 역할을 대신했지만,
+    ///  이제는 전역 상주라 부활 시점에 명시적으로 불러줘야 합니다)
+    /// </summary>
+    public void ResetHealth()
+    {
         currentHealth = maxHealth;
+        OnHealthChanged?.Invoke();
     }
 
     /// <summary>체력 회복. 사망 상태면 무시.</summary>

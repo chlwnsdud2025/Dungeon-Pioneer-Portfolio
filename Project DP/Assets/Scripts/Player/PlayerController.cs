@@ -73,12 +73,13 @@ public class PlayerController : MonoBehaviour
     [Header("Camera")]
     public Transform cameraTransform;
 
-    private PlayerInputActions controls;
+    // ★ 입력은 InputManager가 소유합니다. 여기서 new PlayerInputActions()를 하면 전역 액션과 별개의
+    //   인스턴스가 생겨서, 인벤토리를 열 때 부르는 InputManager.SetGameplayEnabled(false)가 먹지 않고
+    //   캐릭터가 계속 움직입니다. 반드시 전역 인스턴스의 액션을 빌려 씁니다.
+    private bool inputSubscribed;
 
     private void Awake()
     {
-        controls = new PlayerInputActions();
-
         stateMachine = new PlayerStateMachine();
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
@@ -95,18 +96,6 @@ public class PlayerController : MonoBehaviour
         stateMachine.AddState(new HitState_Player(this, stateMachine));
         stateMachine.AddState(new KnockbackState_Player(this, stateMachine));
         stateMachine.AddState(new DeadState_Player(this, stateMachine));
-
-
-        // 입력 이벤트 구독
-        controls.PlayerControll.Jump.performed += ctx => stateMachine.CurrentState.OnJumpInput();
-        controls.PlayerControll.Interact.performed += ctx => stateMachine.CurrentState.OnInteractInput();
-
-        // 공격 입력 구독 
-        controls.PlayerControll.Attack.performed += ctx => stateMachine.CurrentState.OnAttackInput();
-
-        // 방어 입력 구독
-        controls.PlayerControll.Guard.started += ctx => stateMachine.CurrentState.OnGuardInput();
-        controls.PlayerControll.Guard.canceled += ctx => stateMachine.CurrentState.OnGuardReleased();
     }
 
     private void Start()
@@ -130,7 +119,9 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovementInput()
     {
-        Vector2 currentMoveInput = controls.PlayerControll.Movement.ReadValue<Vector2>();
+        // 인벤토리를 열면 InputManager가 PlayerControll 맵을 통째로 꺼서 여기서 자동으로 (0,0)이 읽힙니다.
+        InputManager input = InputManager.Instance;
+        Vector2 currentMoveInput = input != null ? input.Player.Movement.ReadValue<Vector2>() : Vector2.zero;
 
         if (currentMoveInput != Vector2.zero && !isMoveKeyPressed)
         {
@@ -292,6 +283,77 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawWireSphere(hitCenter, attackRange);
     }
 
-    private void OnEnable() { controls.Enable(); }
-    private void OnDisable() { controls.Disable(); }
+    /// <summary>
+    /// 씬을 넘어온 직후 PlayerManager가 호출. 이전 씬에서 남은 상태를 정리하고 Idle로 되돌립니다.
+    /// Player가 씬마다 새로 생성되던 시절엔 이 초기화가 공짜였지만, 이제는 전역 상주라 명시적으로 해야 합니다.
+    /// (체력 복구는 PlayerStat.ResetHealth로, 이 함수보다 '먼저' 끝나 있어야 합니다)
+    /// </summary>
+    public void PrepareForSceneArrival()
+    {
+        verticalVelocity = 0f;
+        currentJumps = 0;
+        isInvincible = false;
+        isGuarding = false;
+        isRunning = false;
+        isMoveKeyPressed = false;
+        moveInput = Vector2.zero;
+        focusedObject = null;
+
+        // ★ DeadState_Player.Enter()가 꺼둔 CharacterController를 반드시 되살립니다.
+        //   안 그러면 부활해도 조작이 전혀 먹지 않습니다.
+        if (characterController != null) characterController.enabled = true;
+
+        stateMachine.ChangeState<IdleState_Player>();
+    }
+
+    // ── 입력 구독 ───────────────────────────────────────────────
+    // 씬 전환 때 PlayerManager가 SetActive를 토글하므로, 구독은 반드시 OnEnable/OnDisable 쌍으로 둡니다.
+    // (Awake에서 구독하면 씬을 넘을 때마다 핸들러가 중복으로 쌓입니다)
+
+    private void OnEnable() { SubscribeInput(); }
+    private void OnDisable() { UnsubscribeInput(); }
+
+    private void SubscribeInput()
+    {
+        if (inputSubscribed) return;
+
+        InputManager input = InputManager.Instance;
+        if (input == null)
+        {
+            Debug.LogError("[PlayerController] InputManager가 없어 입력을 구독하지 못했습니다. " +
+                           "씬에 InputManager를 배치해주세요.", this);
+            return;
+        }
+
+        input.Player.Jump.performed += OnJumpPerformed;
+        input.Player.Interact.performed += OnInteractPerformed;
+        input.Player.Attack.performed += OnAttackPerformed;
+        input.Player.Guard.started += OnGuardStarted;
+        input.Player.Guard.canceled += OnGuardCanceled;
+
+        inputSubscribed = true;
+    }
+
+    private void UnsubscribeInput()
+    {
+        if (!inputSubscribed) return;
+
+        InputManager input = InputManager.Instance;
+        if (input != null)
+        {
+            input.Player.Jump.performed -= OnJumpPerformed;
+            input.Player.Interact.performed -= OnInteractPerformed;
+            input.Player.Attack.performed -= OnAttackPerformed;
+            input.Player.Guard.started -= OnGuardStarted;
+            input.Player.Guard.canceled -= OnGuardCanceled;
+        }
+
+        inputSubscribed = false;
+    }
+
+    private void OnJumpPerformed(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnJumpInput();
+    private void OnInteractPerformed(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnInteractInput();
+    private void OnAttackPerformed(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnAttackInput();
+    private void OnGuardStarted(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnGuardInput();
+    private void OnGuardCanceled(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnGuardReleased();
 }
