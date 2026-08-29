@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2937850225853152933
+--- !u!1 &2675625778959467471
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,10 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2562134340258980895}
-  - component: {fileID: 1450541773812689850}
-  - component: {fileID: 3730576188816007024}
+  - component: {fileID: 471959241861921539}
+  - component: {fileID: 2843737241798155118}
+  - component: {fileID: 27361010443697117}
+  - component: {fileID: 4325950383478343408}
   m_Layer: 0
   m_Name: wall_archedwindow_open
   m_TagString: Untagged
@@ -18,36 +19,36 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2562134340258980895
+--- !u!4 &471959241861921539
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2937850225853152933}
+  m_GameObject: {fileID: 2675625778959467471}
   serializedVersion: 2
   m_LocalRotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-  m_LocalPosition: {x: 0.0131, y: 0.0652, z: 0.0592}
+  m_LocalPosition: {x: 0, y: -1.43, z: 0}
   m_LocalScale: {x: 71.51646, y: 272.22815, z: 72.8218}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1126955138013049233}
+  m_Father: {fileID: 3055684207806313440}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &1450541773812689850
+--- !u!33 &2843737241798155118
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2937850225853152933}
+  m_GameObject: {fileID: 2675625778959467471}
   m_Mesh: {fileID: 7305389320063831837, guid: 1f9d8e11d054cd94c833ffbb1b578348, type: 3}
---- !u!23 &3730576188816007024
+--- !u!23 &27361010443697117
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2937850225853152933}
+  m_GameObject: {fileID: 2675625778959467471}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -90,7 +91,28 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &8354380151482720163
+--- !u!65 &4325950383478343408
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2675625778959467471}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.04, y: 0.009999996, z: 0.039999995}
+  m_Center: {x: 0, y: -1.2656542e-16, z: 0.019999998}
+--- !u!1 &4214375961106731994
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -98,7 +120,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 8420424520647381870}
+  - component: {fileID: 7287901324931125110}
   m_Layer: 0
   m_Name: RockSpawnPoint
   m_TagString: Untagged
@@ -106,22 +128,22 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &8420424520647381870
+--- !u!4 &7287901324931125110
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8354380151482720163}
+  m_GameObject: {fileID: 4214375961106731994}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.5, z: 1.59}
+  m_LocalPosition: {x: 0, y: 0, z: 1.59}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1126955138013049233}
+  m_Father: {fileID: 3055684207806313440}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &8483644312370796850
+--- !u!1 &5766587486296203116
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -129,39 +151,39 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1126955138013049233}
-  - component: {fileID: 985232115954299309}
+  - component: {fileID: 3055684207806313440}
+  - component: {fileID: 52221365705975498}
   m_Layer: 0
   m_Name: RollinfRockTrap
-  m_TagString: Untagged
+  m_TagString: Trap
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1126955138013049233
+--- !u!4 &3055684207806313440
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8483644312370796850}
+  m_GameObject: {fileID: 5766587486296203116}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.7, y: 0.67, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2562134340258980895}
-  - {fileID: 8420424520647381870}
+  - {fileID: 471959241861921539}
+  - {fileID: 7287901324931125110}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &985232115954299309
+--- !u!114 &52221365705975498
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8483644312370796850}
+  m_GameObject: {fileID: 5766587486296203116}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 39c795512974f3b499d2d43aab97a8fa, type: 3}
@@ -171,5 +193,5 @@ MonoBehaviour:
   rockSpeed: 6
   spawnInterval: 5
   startDelay: 0
-  spawnPoint: {fileID: 8420424520647381870}
+  spawnPoint: {fileID: 7287901324931125110}
   poolSize: 5
