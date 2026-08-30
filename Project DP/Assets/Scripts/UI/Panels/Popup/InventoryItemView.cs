@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
+[RequireComponent(typeof(CanvasGroup))]
 public class InventoryItemView : MonoBehaviour,
     IBeginDragHandler, IDragHandler, IEndDragHandler,
     IPointerEnterHandler, IPointerExitHandler, IPointerMoveHandler,
@@ -10,6 +11,11 @@ public class InventoryItemView : MonoBehaviour,
 {
     [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text countText;
+
+    // ★ 드래그 중에는 이 아이콘 전체가 레이캐스트를 통과시켜야 밑의 드롭 타깃(퀵슬롯·장비칸)이 판정을 받습니다.
+    //   아이콘 Image만 꺼서는 부족합니다 — 개수 텍스트처럼 같이 딸려 움직이는 Graphic이 커서 아래에 오면
+    //   그게 판정을 가로챕니다(중첩 아이템에서 드롭이 자주 실패하던 원인). CanvasGroup으로 한 번에 처리합니다.
+    private CanvasGroup canvasGroup;
 
     public RectTransform RectTransform => (RectTransform)transform;
     public InventoryItem Item { get; private set; }
@@ -25,12 +31,19 @@ public class InventoryItemView : MonoBehaviour,
     private Vector3 dragOffset;      // 커서-아이콘 위치 차 (잡은 지점 유지)
     private bool isDragging;
 
+    private void Awake()
+    {
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
+    }
+
     public void Setup(InventoryItem it, InventoryGridView owner)
     {
         Item = it; view = owner;
 
         // 풀에서 재사용되는 뷰라, 이전 드래그의 잔여 상태가 따라오지 않도록 초기화한다.
         isDragging = false; ConsumedByDropTarget = false;
+        SetDragPassThrough(false);
         if (iconImage != null) { iconImage.sprite = it.Data.icon; iconImage.preserveAspect = true; iconImage.raycastTarget = true; }
         if (countText != null) { bool s = it.Count > 1; countText.gameObject.SetActive(s); if (s) countText.text = it.Count.ToString(); }
     }
@@ -45,6 +58,7 @@ public class InventoryItemView : MonoBehaviour,
     {
         ConsumedByDropTarget = true;
         isDragging = false;
+        SetDragPassThrough(false);
         view.ClearHighlight();
     }
 
@@ -62,7 +76,13 @@ public class InventoryItemView : MonoBehaviour,
 
         transform.SetParent(view.DragLayer, true);                // 최상위로 올림
         transform.SetAsLastSibling();
-        if (iconImage != null) iconImage.raycastTarget = false;   // 드롭 판정이 밑으로 통과하게
+        SetDragPassThrough(true);                                 // 드롭 판정이 밑으로 통과하게
+    }
+
+    /// <summary>드래그 중인 아이콘이 레이캐스트를 통과시킬지. 자식(개수 텍스트 등)까지 한 번에 적용됩니다.</summary>
+    private void SetDragPassThrough(bool passThrough)
+    {
+        if (canvasGroup != null) canvasGroup.blocksRaycasts = !passThrough;
     }
 
     public void OnDrag(PointerEventData e)
@@ -79,6 +99,7 @@ public class InventoryItemView : MonoBehaviour,
     {
         view.ClearHighlight();
         isDragging = false;
+        SetDragPassThrough(false);
 
         // 퀵슬롯 등 드롭 타깃이 이미 처리했다면 그리드 안에서의 이동은 하지 않고 원래 자리로 되돌립니다.
         // (uGUI는 대상의 OnDrop을 먼저 실행하고 그다음 여기로 옵니다)
