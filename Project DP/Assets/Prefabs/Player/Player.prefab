@@ -1280,7 +1280,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 128
   torchPrefab: {fileID: 2396172155099448275, guid: ffccb02d3cd937e4c92bde56576154da, type: 3}
-  torchCount: 100
+  torchItem: {fileID: 11400000, guid: 6633872aad893a54ea1c281d0cf8d13c, type: 2}
   enableMultiTorch: 1
   focusedHitPoint: {x: 0, y: 0, z: 0}
   focusedHitNormal: {x: 0, y: 0, z: 0}
