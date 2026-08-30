@@ -405,11 +405,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonGenerator
   mapPrefabs:
-  - {fileID: 2497027886324967703, guid: c6617058f6188a040820fa65ae376b39, type: 3}
-  - {fileID: 7714473172722567939, guid: 07efe9d59c25f2840b5b56d7fe813ec4, type: 3}
-  - {fileID: 2395053248955542235, guid: 5b843e84a3268c94ba999afcac8b1ebd, type: 3}
-  - {fileID: 7062325555338704864, guid: 5788893dbebb0d5439d786ef5644048d, type: 3}
-  - {fileID: 6965686946543385256, guid: d6e361583c957624db20b6c4b9a7b00c, type: 3}
+  - {fileID: 2449207738045336394, guid: 23070fb34d043244e8c5fe47765aa9e8, type: 3}
+  - {fileID: 6385947766975278873, guid: 401a5084b6dd1ff4ba18ce6845dc6556, type: 3}
+  - {fileID: 7287898888474771720, guid: 61bb4a4bf9bb1204e95df5cfb5b2a66a, type: 3}
+  - {fileID: 4714207993601819326, guid: c0025da379257a1408ce1362dbb88411, type: 3}
+  - {fileID: 6102056079709967823, guid: e200840118a0a894ca7e050d341d8432, type: 3}
 --- !u!4 &1405164312
 Transform:
   m_ObjectHideFlags: 0
@@ -477,6 +477,7 @@ MonoBehaviour:
   minimapAspectFitter: {fileID: 1699566967}
   gridSize: {x: 17, y: 17}
   pixelsPerTile: 20
+  explorationCompleteThreshold: 0.9
   playerVisionRadius: 1.5
   torchVisionRadius: 1.2
   unexploredColor: {r: 0, g: 0, b: 0, a: 1}
