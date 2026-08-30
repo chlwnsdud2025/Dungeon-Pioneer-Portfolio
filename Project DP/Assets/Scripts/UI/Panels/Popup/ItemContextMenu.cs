@@ -81,7 +81,7 @@ public class ItemContextMenu : MonoBehaviour
         bool canQuickSlot = isConsumable && _quickSlots != null;
         SetButtonVisible(quickSlotButton, canQuickSlot);
         if (canQuickSlot && quickSlotLabel != null)
-            quickSlotLabel.text = _quickSlots.IndexOf(item.Data) >= 0 ? "퀵슬롯 해제" : "퀵슬롯 등록";
+            quickSlotLabel.text = _quickSlots.IndexOf(item.Data) >= 0 ? "Unassign" : "Assign";
 
         // 레이아웃 강제 갱신
         Canvas.ForceUpdateCanvases();
@@ -133,7 +133,7 @@ public class ItemContextMenu : MonoBehaviour
         if (registered >= 0)
             _quickSlots.Clear(registered);
         else if (!_quickSlots.AssignToFirstEmpty(_item.Data, out _))
-            Debug.Log("<color=yellow>퀵슬롯이 가득 찼습니다. 기존 슬롯을 우클릭해 비워주세요.</color>");
+            Debug.Log("<color=yellow>퀵슬롯이 가득 찼습니다. 기존 슬롯을 우클릭하거나 Unassign으로 비워주세요.</color>");
 
         Hide();
     }

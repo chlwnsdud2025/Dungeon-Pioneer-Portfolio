@@ -40,8 +40,9 @@ public class PlayerController : MonoBehaviour
     public LayerMask enemyLayer;        // 몬스터를 판별할 레이어
 
     [Header("Light & Torch System")]
-    public GameObject torchPrefab;   // 벽에 붙일 횃불 프리팹
-    public int torchCount = 5;       // 가지고 있는 횃불 개수
+    public GameObject torchPrefab;   // 벽에 붙일 횃불 프리팹(3D 오브젝트)
+    [Tooltip("설치할 때 인벤토리에서 소모할 횃불 아이템. 개수는 인벤토리 재고를 그대로 씁니다.")]
+    public ConsumableItemData torchItem;
     public bool enableMultiTorch = false;
 
     [HideInInspector] public Vector3 focusedHitPoint;  // 레이저가 닿은 정확한 점
@@ -281,6 +282,59 @@ public class PlayerController : MonoBehaviour
         Gizmos.color = Color.red;
         Vector3 hitCenter = transform.position + transform.forward * 1f + Vector3.up * 0.5f;
         Gizmos.DrawWireSphere(hitCenter, attackRange);
+    }
+
+    // ── 인벤토리 연동 ───────────────────────────────────────
+    // Inventory는 UI 프리팹에 있어서 씬에 배치된 참조로 연결할 수 없습니다.
+    // EquipmentHolder/QuickSlotHolder와 마찬가지로 항상 살아 있는 UIInGameHUD가 런타임에 넣어줍니다.
+
+    /// <summary>플레이어가 쓰는 인벤토리. 아직 연결 전이면 null.</summary>
+    public Inventory Inventory { get; private set; }
+
+    public void BindInventory(Inventory inventory) => Inventory = inventory;
+
+    /// <summary>인벤토리에 남은 횃불 개수.</summary>
+    public int TorchStock => (Inventory != null && torchItem != null) ? Inventory.CountOf(torchItem) : 0;
+
+    /// <summary>
+    /// 지금 바라보는 벽면에 횃불을 설치할 수 있는지. (TorchItemData.CanUse가 이 값을 본다)
+    /// 다중 설치 모드에서는 이미 붙은 면이어도 주변 벽에 붙일 수 있으므로 통과시킨다.
+    /// </summary>
+    public bool CanPlaceTorchNow()
+    {
+        if (focusedObject == null) return false;
+
+        WallObject wall = focusedObject.GetComponent<WallObject>();
+        if (wall == null) return false;
+
+        return enableMultiTorch || !wall.HasTorchOnFace(focusedHitNormal);
+    }
+
+    /// <summary>
+    /// 바라보는 벽에 횃불을 설치한다. 설치와 모션은 PlaceTorchState_Player가, 개수 차감은
+    /// Inventory.UseItem이 처리하므로 소모 경로가 한 곳으로 모인다(퀵슬롯으로 써도 같은 길).
+    /// </summary>
+    public bool TryPlaceTorch()
+    {
+        if (torchItem == null)
+        {
+            Debug.LogWarning("[PlayerController] torchItem이 연결되지 않아 횃불을 설치할 수 없습니다.", this);
+            return false;
+        }
+        if (Inventory == null) return false;   // UI 초기화 전 — 곧 HUD가 연결해준다
+
+        if (TorchStock <= 0)
+        {
+            Debug.Log("<color=red>횃불이 부족합니다!</color>");
+            return false;
+        }
+        if (!CanPlaceTorchNow())
+        {
+            Debug.Log("<color=yellow>이 벽면에는 이미 횃불이 설치되어 있습니다.</color>");
+            return false;
+        }
+
+        return Inventory.UseItem(torchItem, this);
     }
 
     /// <summary>

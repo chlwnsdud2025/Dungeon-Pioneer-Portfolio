@@ -49,6 +49,8 @@ public class Inventory : MonoBehaviour
 
         if (it.Data is ConsumableItemData consumable)
         {
+            if (!consumable.CanUse(user)) return false;   // 조건 미충족 → 개수를 차감하지 않는다
+
             consumable.Use(user);        // 폴리모피즘: 물약이면 회복, 폭탄이면 폭발...
             Grid.Consume(it, 1);         // 개수 감소/제거 + 알림
             OnItemUsed?.Invoke(it.Data);

@@ -14,11 +14,21 @@ public class UIInventoryPopup : UIPopup
     [SerializeField] private UIEquipPanel equipPanel;      // 장비 패널
     [SerializeField] private ItemTooltipView tooltip;      // 아이템 툴팁
     [SerializeField] private ItemContextMenu contextMenu;  // 우클릭 컨텍스트 메뉴
+    [SerializeField] private StartingItems startingItems;  // 시작 시 기본 아이템 지급
 
     private EquipmentHolder _holder;
     private PlayerController _player;
 
     public Inventory Inventory => inventory;
+
+    public override void Initialize()
+    {
+        base.Initialize();
+
+        // UIManager는 팝업을 만들자마자 비활성화하므로 StartingItems.Start()가 '인벤토리를 처음 열 때'까지
+        // 미뤄질 수 있습니다. 횃불처럼 인벤토리를 열지 않고도 쓰는 아이템이 있어 로드 직후 확정 지급합니다.
+        if (startingItems != null) startingItems.Grant();
+    }
 
     public override void OnBeforeShow()
     {

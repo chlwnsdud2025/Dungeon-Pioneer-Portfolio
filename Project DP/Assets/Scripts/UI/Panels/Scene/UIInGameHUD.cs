@@ -33,6 +33,12 @@ public class UIInGameHUD : UIScene
     [SerializeField] private string overworldLabel = "Overworld";
     [SerializeField] private string townLabel = "Town";
 
+    [Header("Torch")]
+    [Tooltip("남은 횃불 개수 텍스트. 인벤토리의 횃불 아이템 재고를 그대로 보여줍니다.")]
+    [SerializeField] private TMP_Text torchCountText;
+    [Tooltip("개수 표시 형식. {0}에 개수가 들어갑니다.")]
+    [SerializeField] private string torchCountFormat = "{0}";
+
     [Header("Quick Slot (단축키 1~4)")]
     [Tooltip("퀵슬롯 바. Player의 QuickSlotHolder와 인벤토리에 이 HUD가 연결해줍니다.")]
     [SerializeField] private UIQuickSlotBar quickSlotBar;
@@ -41,6 +47,7 @@ public class UIInGameHUD : UIScene
     // ── 내부 캐시 ──
     private PlayerController _player;
     private string _lastRegionLabel;
+    private int _lastTorchStock = -1;
 
 
 
@@ -50,6 +57,7 @@ public class UIInGameHUD : UIScene
         // 보이기 직전에 한 번 즉시 갱신해서 첫 프레임 깜빡임을 줄임
         _player = FindPlayer();
         _lastRegionLabel = null;
+        _lastTorchStock = -1;
         Refresh();
     }
     private void OnEnable()
@@ -78,28 +86,51 @@ public class UIInGameHUD : UIScene
         RefreshMinimap();
         RefreshHealth();
         RefreshRegion();
-        EnsureQuickSlotBound();
+        RefreshTorch();
+        EnsurePlayerBindings();
+    }
+
+    // 횃불은 인벤토리 소모품이라 개수가 곧 인벤토리 재고입니다.
+    // 설치(F키)로도, 퀵슬롯으로도 줄어들기 때문에 어느 쪽으로 써도 여기에 반영됩니다.
+    private void RefreshTorch()
+    {
+        if (torchCountText == null) return;
+
+        // 인벤토리 연결 전이면 0. EnsurePlayerBindings가 곧 연결하고, 그때 값이 채워집니다.
+        int stock = _player != null ? _player.TorchStock : 0;
+
+        // 값이 바뀔 때만 갱신 (매 프레임 TMP 텍스트를 건드리지 않도록)
+        if (stock == _lastTorchStock) return;
+
+        _lastTorchStock = stock;
+        torchCountText.text = string.Format(torchCountFormat, stock);
     }
 
     /// <summary>
-    /// 퀵슬롯 바를 Player의 QuickSlotHolder + 인벤토리에 연결합니다.
+    /// 플레이어 쪽 컴포넌트들을 인벤토리에 연결합니다. (퀵슬롯 바, QuickSlotHolder, 그리고 횃불 소모에
+    /// 인벤토리가 필요한 PlayerController)
+    ///
     /// PlayerManager와 UIManager의 초기화 시점이 서로 달라(UI는 비동기 로드) 준비되는 순간이 제각각이므로,
     /// _player를 지연 조회하는 기존 방식과 똑같이 준비될 때까지 매 프레임 시도합니다.
     ///
     /// 인벤토리 팝업이 아니라 HUD가 바인딩을 맡는 이유: EquipmentHolder처럼 팝업이 열릴 때 Init하면
-    /// 인벤토리를 한 번도 열지 않은 상태에서 단축키를 눌렀을 때 아무 일도 일어나지 않습니다.
+    /// 인벤토리를 한 번도 열지 않은 상태에서는 단축키도, 횃불 설치도 동작하지 않습니다.
     /// </summary>
-    private void EnsureQuickSlotBound()
+    private void EnsurePlayerBindings()
     {
-        if (quickSlotBar == null || quickSlotBar.IsBound) return;
         if (_player == null) return;
-
-        QuickSlotHolder holder = _player.GetComponent<QuickSlotHolder>();
-        if (holder == null) return;
+        if (_player.Inventory != null && (quickSlotBar == null || quickSlotBar.IsBound)) return;
 
         UIInventoryPopup popup = UIManager.Instance != null ? UIManager.Instance.GetPanel<UIInventoryPopup>() : null;
         Inventory inventory = popup != null ? popup.Inventory : null;
         if (inventory == null) return;
+
+        if (_player.Inventory == null) _player.BindInventory(inventory);
+
+        if (quickSlotBar == null || quickSlotBar.IsBound) return;
+
+        QuickSlotHolder holder = _player.GetComponent<QuickSlotHolder>();
+        if (holder == null) return;
 
         if (!holder.IsInitialized) holder.Init(inventory);
         quickSlotBar.Bind(holder, inventory, _player);

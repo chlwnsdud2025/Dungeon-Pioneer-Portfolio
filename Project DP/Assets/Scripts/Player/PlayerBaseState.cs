@@ -53,17 +53,10 @@ public abstract class PlayerBaseState
                 return;
             }
 
-            // ★ 3. 벽인지 확인 (횃불이 남아있고, 지금 보고 있는 '면'에 아직 횃불이 없을 때만)
-            WallObject wall = player.focusedObject.GetComponent<WallObject>();
-            if (wall != null)
-            {
-                if (player.torchCount <= 0)
-                    Debug.Log("<color=red>횃불이 부족합니다!</color>");
-                else if (!player.enableMultiTorch && wall.HasTorchOnFace(player.focusedHitNormal))
-                    Debug.Log("<color=yellow>이 벽면에는 이미 횃불이 설치되어 있습니다.</color>");
-                else
-                    stateMachine.ChangeState<PlaceTorchState_Player>();
-            }
+            // ★ 3. 벽인지 확인 — 재고/중복 검사와 개수 차감은 전부 TryPlaceTorch가 처리한다.
+            //      (횃불은 인벤토리 소모품이라 퀵슬롯으로 쓸 때와 같은 경로를 탄다)
+            if (player.focusedObject.GetComponent<WallObject>() != null)
+                player.TryPlaceTorch();
         }
     }
 

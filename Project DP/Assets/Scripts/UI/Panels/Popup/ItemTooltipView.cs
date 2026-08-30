@@ -9,6 +9,10 @@ using TMPro;
 /// </summary>
 public class ItemTooltipView : MonoBehaviour
 {
+    [Header("아이콘")]
+    [Tooltip("1칸용 이미지(ItemData.SlotIcon)를 표시할 Image. 비워두면 아이콘 없이 동작합니다.")]
+    [SerializeField] private Image iconImage;
+
     [Header("텍스트")]
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text descText;
@@ -64,6 +68,21 @@ public class ItemTooltipView : MonoBehaviour
             bool hasStats = !string.IsNullOrEmpty(stats);
             statText.gameObject.SetActive(hasStats);
             if (hasStats) statText.text = stats;
+        }
+
+        // 아이콘은 아래 레이아웃 재계산 '전에' 채워야 첫 프레임 크기가 아이콘을 반영합니다.
+        if (iconImage != null)
+        {
+            // 그리드용 icon이 아니라 1칸용 SlotIcon (slotIcon 미지정이면 icon으로 폴백).
+            // 툴팁의 아이콘 자리도 장비창·퀵슬롯과 같은 정사각형 한 칸이라 같은 규칙을 씁니다.
+            Sprite icon = data.SlotIcon;
+
+            iconImage.preserveAspect = true;   // 세로로 긴 아이콘이 짓눌리지 않도록
+            iconImage.sprite = icon;
+
+            // GameObject를 끄지 않고 Image만 끕니다. LayoutElement가 잡아둔 폭이 유지되어
+            // 아이콘이 있는 아이템과 없는 아이템 사이에서 툴팁 너비가 출렁이지 않습니다.
+            iconImage.enabled = icon != null;
         }
 
         gameObject.SetActive(true);

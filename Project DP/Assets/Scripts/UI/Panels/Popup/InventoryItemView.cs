@@ -28,8 +28,24 @@ public class InventoryItemView : MonoBehaviour,
     public void Setup(InventoryItem it, InventoryGridView owner)
     {
         Item = it; view = owner;
+
+        // 풀에서 재사용되는 뷰라, 이전 드래그의 잔여 상태가 따라오지 않도록 초기화한다.
+        isDragging = false; ConsumedByDropTarget = false;
         if (iconImage != null) { iconImage.sprite = it.Data.icon; iconImage.preserveAspect = true; iconImage.raycastTarget = true; }
         if (countText != null) { bool s = it.Count > 1; countText.gameObject.SetActive(s); if (s) countText.text = it.Count.ToString(); }
+    }
+
+    /// <summary>
+    /// 드롭 타깃이 이번 드래그를 처리했음을 알린다. 드래그 시각 상태를 여기서 즉시 정리하는 이유:
+    /// 장비 장착처럼 드롭 처리가 아이템을 인벤토리에서 빼면 Rebuild가 동기로 돌면서 이 뷰가
+    /// SetActive(false)로 풀에 반납되고, 비활성 오브젝트에는 uGUI가 OnEndDrag를 보내지 않는다.
+    /// 그러면 하이라이트가 화면에 남고 isDragging도 켜진 채로 재사용된다.
+    /// </summary>
+    public void NotifyConsumedByDropTarget()
+    {
+        ConsumedByDropTarget = true;
+        isDragging = false;
+        view.ClearHighlight();
     }
 
     public void OnBeginDrag(PointerEventData e)

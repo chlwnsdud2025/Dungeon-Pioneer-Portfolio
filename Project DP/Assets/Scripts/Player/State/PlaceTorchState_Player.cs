@@ -13,16 +13,15 @@ public class PlaceTorchState_Player : PlayerBaseState
     {
         timer = 0f;
 
-        // 1. 횃불 개수는 1개만 차감
-        player.torchCount--;
+        // 개수 차감은 Inventory.UseItem이 담당한다(다중 설치여도 소모는 1개). 여기서는 설치와 모션만.
 
-        // 2. 캐릭터를 상호작용한 메인 벽 쪽으로 회전
+        // 1. 캐릭터를 상호작용한 메인 벽 쪽으로 회전
         Vector3 lookDir = -player.focusedHitNormal;
         lookDir.y = 0f;
         if (lookDir != Vector3.zero)
             player.transform.rotation = Quaternion.LookRotation(lookDir);
 
-        // ★ 3. 다중 설치(Multi-Torch) 모드
+        // ★ 2. 다중 설치(Multi-Torch) 모드
         if (player.enableMultiTorch)
         {
             // (1) 상호작용한 벽의 중심 좌표 가져오기
@@ -63,11 +62,12 @@ public class PlaceTorchState_Player : PlayerBaseState
             SpawnTorchOnWall(wallCollider, player.focusedHitNormal);
         }
 
-        // 4. 모션 재생 및 제자리 고정
+        // 3. 모션 재생 및 제자리 고정
         player.animator.CrossFadeInFixedTime(interactAnimHash, 0.1f);
         player.MoveCharacter(Vector3.zero);
 
-        Debug.Log($"<color=orange>다중 횃불 설치 완료! 남은 개수: {player.torchCount}</color>");
+        // 재고는 Inventory.UseItem이 이 직후에 1개 줄이므로, 여기서 찍는 값은 '차감 전' 개수다.
+        Debug.Log($"<color=orange>횃불 설치! 남은 개수: {player.TorchStock - 1}</color>");
     }
 
     // 횃불의 위치를 계산하고 생성하는 공통 함수
@@ -78,7 +78,7 @@ public class PlaceTorchState_Player : PlayerBaseState
         if (wall != null && wall.HasTorchOnFace(hitNormal)) return;
 
         // ★ 함정 벽이면 횃불을 붙이지 않고 함정만 발동시킨다.
-        //   (횃불 개수는 Enter()에서 이미 1개 차감되었으므로 '소모 + 미설치'가 성립)
+        //   (Inventory.UseItem이 어차피 1개를 차감하므로 '소모 + 미설치'가 성립)
         WallTrap wallTrap = wallCollider.GetComponentInParent<WallTrap>();
         if (wallTrap != null)
         {

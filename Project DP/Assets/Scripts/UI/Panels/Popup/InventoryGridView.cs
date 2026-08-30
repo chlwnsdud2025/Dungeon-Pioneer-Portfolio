@@ -195,6 +195,13 @@ public class InventoryGridView : MonoBehaviour
         foreach (Vector2Int off in item.OccupiedCells())
         {
             Vector2Int c = anchor + off;
+
+            // ★ 그리드를 벗어난 칸은 그리지 않는다. highlightRoot에는 마스크가 없어서
+            //   범위 밖 좌표에 배치하면 인벤토리 패널 바깥 화면에 그대로 떠버린다.
+            //   커서 위치가 아니라 '칸 단위'로 걸러야 하는 이유: grabOffset 때문에 커서가 그리드
+            //   밖이어도 anchor는 유효할 수 있어서, 그때는 드롭이 성공하므로 표시도 남아야 한다.
+            if (!inventory.Grid.InBounds(c)) continue;
+
             Image hi = GetHighlight(i++);
             RectTransform rt = hi.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0, 1);
