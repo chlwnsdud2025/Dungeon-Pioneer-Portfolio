@@ -36,8 +36,12 @@ public class PlayerController : MonoBehaviour
     public LayerMask interactableLayer;
 
     [Header("Combat System")]
-    public float attackRange = 1.2f;    // 무기 휘두르는 범위 반경 (추후 무기 Collider로 교체 예정)
-    public LayerMask enemyLayer;        // 몬스터를 판별할 레이어
+    public LayerMask enemyLayer;        // 몬스터를 판별할 레이어 (무기 히트박스에 넘겨줌)
+    [Tooltip("공격 모션에서 타격 판정을 여는 시점. 실시간 초가 아니라 애니메이션 진행률(0~1)이라 " +
+             "클립 길이나 재생 속도를 바꿔도 그대로 따라갑니다.")]
+    [Range(0f, 1f)] public float hitboxOpenAt = 0.25f;
+    [Tooltip("타격 판정을 닫는 시점 (진행률 0~1).")]
+    [Range(0f, 1f)] public float hitboxCloseAt = 0.55f;
 
     [Header("Light & Torch System")]
     public GameObject torchPrefab;   // 벽에 붙일 횃불 프리팹(3D 오브젝트)
@@ -78,12 +82,18 @@ public class PlayerController : MonoBehaviour
     //   인스턴스가 생겨서, 인벤토리를 열 때 부르는 InputManager.SetGameplayEnabled(false)가 먹지 않고
     //   캐릭터가 계속 움직입니다. 반드시 전역 인스턴스의 액션을 빌려 씁니다.
     private bool inputSubscribed;
+    private EquipmentVisualizer equipmentVisualizer;
+
+    /// <summary>현재 장착 무기의 타격 판정 콜라이더. 무기가 없거나 히트박스가 없으면 null.</summary>
+    public WeaponHitbox WeaponHitbox =>
+        equipmentVisualizer != null ? equipmentVisualizer.CurrentWeaponHitbox : null;
 
     private void Awake()
     {
         stateMachine = new PlayerStateMachine();
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        equipmentVisualizer = GetComponent<EquipmentVisualizer>();
 
         stateMachine.AddState(new IdleState_Player(this, stateMachine));
         stateMachine.AddState(new WalkState_Player(this, stateMachine));
@@ -275,14 +285,7 @@ public class PlayerController : MonoBehaviour
         Gizmos.DrawRay(rayStart, transform.forward * interactRange);
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (Application.isPlaying) return;
 
-        Gizmos.color = Color.red;
-        Vector3 hitCenter = transform.position + transform.forward * 1f + Vector3.up * 0.5f;
-        Gizmos.DrawWireSphere(hitCenter, attackRange);
-    }
 
     // ── 인벤토리 연동 ───────────────────────────────────────
     // Inventory는 UI 프리팹에 있어서 씬에 배치된 참조로 연결할 수 없습니다.

@@ -33,6 +33,14 @@ public class UIInGameHUD : UIScene
     [SerializeField] private string overworldLabel = "Overworld";
     [SerializeField] private string townLabel = "Town";
 
+    [Header("Exploration (현재 층 개척도)")]
+    [Tooltip("현재 층을 얼마나 개척했는지 보여주는 텍스트. 던전에서만 표시됩니다.")]
+    [SerializeField] private TMP_Text explorationText;
+    [Tooltip("진행 중 표시 형식. {0}에 정수 퍼센트가 들어갑니다.")]
+    [SerializeField] private string explorationFormat = "개척도 {0}%";
+    [Tooltip("임계값을 넘겼을 때 표시할 문구.")]
+    [SerializeField] private string explorationCompleteLabel = "개척 완료";
+
     [Header("Torch")]
     [Tooltip("남은 횃불 개수 텍스트. 인벤토리의 횃불 아이템 재고를 그대로 보여줍니다.")]
     [SerializeField] private TMP_Text torchCountText;
@@ -47,6 +55,7 @@ public class UIInGameHUD : UIScene
     // ── 내부 캐시 ──
     private PlayerController _player;
     private string _lastRegionLabel;
+    private string _lastExplorationLabel;
     private int _lastTorchStock = -1;
 
 
@@ -57,6 +66,7 @@ public class UIInGameHUD : UIScene
         // 보이기 직전에 한 번 즉시 갱신해서 첫 프레임 깜빡임을 줄임
         _player = FindPlayer();
         _lastRegionLabel = null;
+        _lastExplorationLabel = null;
         _lastTorchStock = -1;
         Refresh();
     }
@@ -86,8 +96,37 @@ public class UIInGameHUD : UIScene
         RefreshMinimap();
         RefreshHealth();
         RefreshRegion();
+        RefreshExploration();
         RefreshTorch();
         EnsurePlayerBindings();
+    }
+
+    // 현재 층의 개척도. 층마다 따로 집계되므로 층을 옮기면 그 층의 값이 자동으로 나옵니다.
+    private void RefreshExploration()
+    {
+        if (explorationText == null) return;
+
+        // 미니맵과 같은 기준으로 표시/숨김을 판단합니다. 던전을 나가면 MinimapManager.Instance가
+        // 파괴된 객체라 fake-null로 걸러져 자동으로 숨겨집니다.
+        MinimapManager mm = MinimapManager.Instance;
+        bool show = RegionState.Region == RegionType.Dungeon && mm != null && mm.HasCurrentLocation;
+
+        if (explorationText.gameObject.activeSelf != show) explorationText.gameObject.SetActive(show);
+        if (!show)
+        {
+            _lastExplorationLabel = null;
+            return;
+        }
+
+        // 버림을 쓰는 이유: 반올림하면 아직 개척이 안 끝났는데 100%로 보입니다.
+        string label = mm.IsCurrentExplored
+            ? explorationCompleteLabel
+            : string.Format(explorationFormat, Mathf.FloorToInt(mm.CurrentExploration * 100f));
+
+        if (label == _lastExplorationLabel) return;
+
+        _lastExplorationLabel = label;
+        explorationText.text = label;
     }
 
     // 횃불은 인벤토리 소모품이라 개수가 곧 인벤토리 재고입니다.

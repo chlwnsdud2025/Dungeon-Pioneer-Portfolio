@@ -62,7 +62,15 @@ public class DungeonGenerator : MonoBehaviour
 
         LocationRoot root = spawnedMap.AddComponent<LocationRoot>();
         root.Initialize(id);
+        root.SetMapId(mapPrefabs[prefabIndex].name);   // 상호작용 기록을 묶을 키
         RegisterEntranceExitSpawnPoints(spawnedMap, root);
+
+        // ★ 좌표 정규화가 끝난 '뒤에' 각 오브젝트가 자기 셀을 확정합니다.
+        //   Awake에서 읽으면 NormalizeMapOrigin 이전 좌표가 잡혀 식별자가 어긋납니다.
+        foreach (IFloorPersistent persistent in spawnedMap.GetComponentsInChildren<IFloorPersistent>(true))
+        {
+            persistent.Latch();
+        }
 
         // ★ 파여있는 TrapTile은 주변 바닥과 높이 차이 때문에 NavMesh가 별개의 섬으로 구워집니다.
         //   Trap 타일을 "Trap" NavMesh 영역으로 표시해둡니다 (베이크 전에 붙어있어야 반영됨).

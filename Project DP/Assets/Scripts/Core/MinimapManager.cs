@@ -32,6 +32,12 @@ public class MinimapManager : MonoBehaviour
     [Tooltip("타일 1칸을 텍스처 몇 픽셀로 그릴지. 값이 클수록 원형 시야 경계가 부드러워집니다.")]
     public int pixelsPerTile = 8;
 
+    [Header("개척도")]
+    [Tooltip("밟을 수 있는 타일 중 이 비율 이상을 밟으면 '개척 완료'로 봅니다. " +
+             "상자나 밀 수 있는 오브젝트가 올라간 칸에는 설 수 없어 100%가 안 나올 수 있으니 " +
+             "실제로 한 층을 다 돌아본 뒤 도달 가능한 값으로 맞춰주세요.")]
+    [Range(0f, 1f)] public float explorationCompleteThreshold = 0.9f;
+
     [Header("Fog / Vision Settings")]
     [Tooltip("플레이어 기준 실시간으로 밝혀지는 반경 (타일 단위)")]
     public float playerVisionRadius = 1.5f;
@@ -71,6 +77,10 @@ public class MinimapManager : MonoBehaviour
         public Texture2D texture;
         public Color[] pixelBuffer;
         public int texWidth, texHeight;
+
+        // 개척도. 매 프레임 배열을 세지 않고 증분으로 유지한다.
+        public int walkableTileCount;   // 분모: 밟을 수 있는 타일 수 (장소 생성 시 1회 계산)
+        public int visitedTileCount;    // 분자: 그중 실제로 밟은 타일 수
         public readonly List<Transform> activePushables = new List<Transform>();
         public readonly List<Transform> activeChests = new List<Transform>();
         public readonly List<Transform> activeTorches = new List<Transform>();
@@ -103,6 +113,57 @@ public class MinimapManager : MonoBehaviour
 
     /// <summary>현재 층 미니맵 텍스처의 가로/세로 비율. (HUD의 AspectRatioFitter에 적용)</summary>
     public float CurrentAspect => (current != null && current.texHeight > 0) ? (float)current.texWidth / current.texHeight : 1f;
+
+    /// <summary>개척도를 표시할 수 있는 층이 잡혀 있는지. (HUD가 표시/숨김 판단에 사용)</summary>
+    public bool HasCurrentLocation => current != null && current.walkableTileCount > 0;
+
+    /// <summary>
+    /// 현재 층의 개척도 (0~1). 밟을 수 있는 타일(바닥·함정) 중 실제로 밟고 지나간 비율입니다.
+    /// 층마다 상태를 따로 보관하므로 층을 오가면 그 층의 값으로 자동으로 바뀝니다.
+    /// </summary>
+    public float CurrentExploration =>
+        HasCurrentLocation ? (float)current.visitedTileCount / current.walkableTileCount : 0f;
+
+    /// <summary>현재 층을 다 개척했는지. (explorationCompleteThreshold 도달)</summary>
+    public bool IsCurrentExplored => HasCurrentLocation && CurrentExploration >= explorationCompleteThreshold;
+
+    // ── 탐색 기록 저장·복원 (던전을 나갔다 들어와도 유지) ──────────
+    // 미니맵 내부는 층(LocationId)으로 관리하고, 스냅샷에 넣고 뺄 때만 맵 단위로 번역합니다.
+    // visited는 2차원 배열이라 1차원으로 펴서 주고받습니다.
+
+    /// <summary>지정 층의 탐색 기록을 꺼냅니다. 기록이 없으면 false.</summary>
+    public bool TryCaptureExploration(LocationId id, out bool[] visited, out int visitedCount)
+    {
+        visited = null;
+        visitedCount = 0;
+
+        if (!locationStates.TryGetValue(id, out LocationMinimapState state) || state.visited == null) return false;
+
+        visited = new bool[gridSize.x * gridSize.y];
+        for (int y = 0; y < gridSize.y; y++)
+            for (int x = 0; x < gridSize.x; x++)
+                visited[y * gridSize.x + x] = state.visited[x, y];
+
+        visitedCount = state.visitedTileCount;
+        return true;
+    }
+
+    /// <summary>
+    /// 저장해둔 탐색 기록을 지정 층에 되돌립니다. SwitchLocation이 새 상태를 만든 '뒤에' 호출하세요.
+    /// (분모인 walkableTileCount는 맵을 다시 스캔하며 계산되므로 저장·복원 대상이 아닙니다)
+    /// </summary>
+    public void RestoreExploration(LocationId id, bool[] visited, int visitedCount)
+    {
+        if (visited == null) return;
+        if (!locationStates.TryGetValue(id, out LocationMinimapState state)) return;
+        if (visited.Length != gridSize.x * gridSize.y) return;   // 그리드 크기가 바뀌었으면 무시
+
+        for (int y = 0; y < gridSize.y; y++)
+            for (int x = 0; x < gridSize.x; x++)
+                state.visited[x, y] = visited[y * gridSize.x + x];
+
+        state.visitedTileCount = visitedCount;
+    }
 
     /// <summary>
     /// 장소를 새로 생성했거나 이미 방문한 장소로 되돌아올 때 WorldManager에서 호출합니다.
@@ -172,7 +233,18 @@ public class MinimapManager : MonoBehaviour
             state.activeEnemies.AddRange(enemies);
         }
 
-        // 2. 텍스처 준비
+        // 2. 개척도 분모 계산: 실제로 밟을 수 있는 타일(바닥·함정)만 센다.
+        //    벽과 빈 칸은 애초에 설 수 없으므로 빼야 비율이 의미를 갖는다.
+        for (int y = 0; y < gridSize.y; y++)
+        {
+            for (int x = 0; x < gridSize.x; x++)
+            {
+                TileKind kind = state.staticMapData[x, y];
+                if (kind == TileKind.Floor || kind == TileKind.Trap) state.walkableTileCount++;
+            }
+        }
+
+        // 3. 텍스처 준비
         state.texWidth = gridSize.x * pixelsPerTile;
         state.texHeight = gridSize.y * pixelsPerTile;
         state.texture = new Texture2D(state.texWidth, state.texHeight, TextureFormat.RGBA32, false);
@@ -213,10 +285,12 @@ public class MinimapManager : MonoBehaviour
         if (current == null || current.texture == null || playerTransform == null) return;
 
         // ★ 플레이어가 현재 밟고 있는 타일을 "방문함"으로 영구 기록
+        //   false → true로 바뀌는 순간에만 개척도 카운터를 올린다 (같은 칸을 다시 밟아도 중복 집계 없음)
         Vector3Int playerCell = GridSystem.Instance.WorldToCell(playerTransform.position);
-        if (IsValidGrid(playerCell.x, playerCell.z))
+        if (IsValidGrid(playerCell.x, playerCell.z) && !current.visited[playerCell.x, playerCell.z])
         {
             current.visited[playerCell.x, playerCell.z] = true;
+            current.visitedTileCount++;
         }
 
         RenderMinimap();

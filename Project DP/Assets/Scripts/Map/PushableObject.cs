@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class PushableObject : MonoBehaviour
+public class PushableObject : MonoBehaviour, IFloorPersistent
 {
     [Header("Crush")]
     public float crushDamage = 9999f;
@@ -28,6 +28,43 @@ public class PushableObject : MonoBehaviour
     private bool isLocked;
     public bool IsLocked => isLocked;
     public void Lock() => isLocked = true;
+
+    // ★ 밀려서 움직이는 오브젝트라 '현재 셀'은 식별자가 될 수 없습니다.
+    //   생성 직후(아직 안 움직였을 때) 확정한 원래 셀을 id로 쓰고, 현재 셀은 상태로 저장합니다.
+    private Vector2Int originCell;
+
+    // ── 저장·복원 (IFloorPersistent) ─────────────────────────
+
+    public string PersistentKind => "Pushable";
+    public Vector2Int PersistentCell => originCell;
+
+    public void Latch()
+    {
+        Vector3Int c = GridSystem.Instance.WorldToCell(transform.position);
+        originCell = new Vector2Int(c.x, c.z);
+    }
+
+    public bool TryCapture(out FloorObjectState state)
+    {
+        Vector3Int c = GridSystem.Instance.WorldToCell(transform.position);
+        Vector2Int currentCell = new Vector2Int(c.x, c.z);
+
+        state = new FloorObjectState { flag = isLocked, cell = currentCell };
+
+        // 제자리에 그대로 있고 잠기지도 않았으면 기록할 게 없다.
+        return isLocked || currentCell != originCell;
+    }
+
+    public void Restore(FloorObjectState state)
+    {
+        // XZ만 옮기고 Y는 그대로 둔다 — Update()의 중력 처리가 바닥
+        // (또는 메워진 함정의 파인 바닥)에 알아서 붙여준다.
+        Vector3 target = GridSystem.Instance.GetCellCenterWorld(new Vector3Int(state.cell.x, 0, state.cell.y));
+        transform.position = new Vector3(target.x, transform.position.y, target.z);
+
+        isPushing = false;
+        if (state.flag) isLocked = true;
+    }
 
     private void Awake()
     {

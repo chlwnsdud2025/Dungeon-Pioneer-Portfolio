@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class TrapTile : MonoBehaviour
+public class TrapTile : MonoBehaviour, IFloorPersistent
 {
     [Header("Trap Settings")]
     public float trapDamage = 15f;
@@ -20,6 +20,40 @@ public class TrapTile : MonoBehaviour
 
     // ★ 추가: 가시가 올라가는 중(true) / 내려가는 중(false)
     private bool spikeGoingUp = false;
+
+    private Vector2Int cell;
+
+    // ── 저장·복원 (IFloorPersistent) ─────────────────────────
+
+    public string PersistentKind => "Trap";
+    public Vector2Int PersistentCell => cell;
+
+    public void Latch()
+    {
+        Vector3Int c = GridSystem.Instance.WorldToCell(transform.position);
+        cell = new Vector2Int(c.x, c.z);
+    }
+
+    public bool TryCapture(out FloorObjectState state)
+    {
+        state = new FloorObjectState { flag = true };
+        return isFilled;   // 메워진 함정만 기록한다
+    }
+
+    public void Restore(FloorObjectState state)
+    {
+        if (!state.flag) return;
+
+        isFilled = true;
+        spikeGoingUp = false;
+
+        // 메워진 함정은 가시가 완전히 내려간 상태로 고정한다.
+        if (spikeObject != null)
+        {
+            Vector3 lp = spikeObject.localPosition;
+            spikeObject.localPosition = new Vector3(lp.x, spikeLoweredY, lp.z);
+        }
+    }
 
     // ★ 추가: 시작 시 가시를 내려간 상태로 초기화
     private void Awake()

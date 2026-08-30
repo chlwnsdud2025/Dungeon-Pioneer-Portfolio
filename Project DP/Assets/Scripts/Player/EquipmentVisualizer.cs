@@ -36,6 +36,12 @@ public class EquipmentVisualizer : MonoBehaviour
 
     private EquipmentHolder _holder;
 
+    /// <summary>
+    /// 현재 장착 무기의 타격 판정 콜라이더. 무기를 만들고 파괴하는 주체가 여기라 교체 때 자동으로 갱신됩니다.
+    /// 무기가 없거나 프리팹에 WeaponHitbox가 없으면 null.
+    /// </summary>
+    public WeaponHitbox CurrentWeaponHitbox { get; private set; }
+
     // 무기/방패 인스턴스 추적
     private GameObject _currentWeapon;
     private GameObject _currentShield;
@@ -134,6 +140,14 @@ public class EquipmentVisualizer : MonoBehaviour
             : defaultWeaponPrefab;
 
         SpawnInSlot(weaponSlot, prefab, ref _currentWeapon, ref _activeWeaponPrefab);
+
+        CurrentWeaponHitbox = _currentWeapon != null
+            ? _currentWeapon.GetComponentInChildren<WeaponHitbox>(true)
+            : null;
+
+        if (_currentWeapon != null && CurrentWeaponHitbox == null)
+            Debug.LogWarning($"[EquipmentVisualizer] '{_currentWeapon.name}' 무기 프리팹에 WeaponHitbox가 없어 " +
+                             "공격이 적중하지 않습니다. 칼날에 트리거 콜라이더 + WeaponHitbox를 추가해주세요.", this);
     }
 
     // ── 방패 (Instantiate) ──

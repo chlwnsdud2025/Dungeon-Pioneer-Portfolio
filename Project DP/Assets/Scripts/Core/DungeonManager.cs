@@ -168,6 +168,10 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         {
             instance = dungeonGenerator.CreateLocation(destination);
             loadedLocations[destination] = instance;
+
+            // ★ 저장된 상호작용 기록을 되돌리는 자리. NavMesh를 굽기 '전'이어야 합니다 —
+            //   Pushable을 옮기고 함정을 메운 결과가 반영된 상태로 구워야 적이 바뀐 지형을 인식합니다.
+            RestoreMapState(instance);
         }
         else
         {
@@ -188,6 +192,14 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         if (MinimapManager.Instance != null && player != null)
         {
             MinimapManager.Instance.SwitchLocation(destination, instance, isNew, player.transform);
+
+            // 새로 만든 층이면 저장해둔 탐색 기록을 덮어씌운다. (SwitchLocation이 백지 상태를 만든 뒤여야 함)
+            if (isNew)
+            {
+                MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));
+                if (snapshot != null)
+                    MinimapManager.Instance.RestoreExploration(destination, snapshot.minimapVisited, snapshot.minimapVisitedCount);
+            }
         }
     }
 
@@ -213,8 +225,122 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     /// <param name="revive">사망 후 복귀라 도착 시 체력을 최대치로 되돌려야 하면 true.</param>
     private void LoadOverworldScene(bool revive)
     {
+        // 씬이 언로드되면 층 인스턴스가 전부 파괴되므로, 나가기 직전에 상호작용 기록을 챙긴다.
+        CaptureAllMapStates();
+
         // 들어올 때 DungeonEntrance가 기록해둔 앵커로 되돌아갑니다. (입구가 여러 개여도 정확히 그 문 앞)
         SceneTransition.Go(overworldSceneName, SceneTransition.ReturnAnchorId, revive);
+    }
+
+    // ── 상호작용 기록 저장·복원 ──────────────────────────────
+    // 기록은 '몇 층'이 아니라 '어느 맵'에 묶습니다. 층 배정은 입장할 때마다 다시 셔플되므로,
+    // 층에 묶으면 다음 입장에 전혀 다른 맵으로 기록이 옮겨붙습니다.
+
+    private static string GetMapId(GameObject locationInstance)
+    {
+        LocationRoot root = locationInstance != null ? locationInstance.GetComponent<LocationRoot>() : null;
+        return root != null ? root.MapId : null;
+    }
+
+    /// <summary>
+    /// 지금 만들어져 있는 모든 층의 상태를 저장합니다.
+    /// 비활성 층도 GameObject는 살아 있어서 한 번에 훑을 수 있습니다.
+    /// </summary>
+    private void CaptureAllMapStates()
+    {
+        foreach (KeyValuePair<LocationId, GameObject> kvp in loadedLocations)
+        {
+            GameObject instance = kvp.Value;
+            string mapId = GetMapId(instance);
+            if (instance == null || string.IsNullOrEmpty(mapId)) continue;
+
+            MapSnapshot snapshot = new MapSnapshot();
+
+            // 1. 맵에 원래 있던 오브젝트 중 기본값과 달라진 것만
+            foreach (IFloorPersistent persistent in instance.GetComponentsInChildren<IFloorPersistent>(true))
+            {
+                if (persistent.TryCapture(out FloorObjectState state))
+                    snapshot.objects[(persistent.PersistentKind, persistent.PersistentCell)] = state;
+            }
+
+            // 2. 플레이어가 설치한 횃불 (원래 맵에 없던 오브젝트라 따로 기록)
+            foreach (TorchInstance torch in instance.GetComponentsInChildren<TorchInstance>(true))
+            {
+                snapshot.torches.Add(torch.ToRecord());
+            }
+
+            // 3. 미니맵 탐색 기록 (개척도 포함)
+            if (MinimapManager.Instance != null &&
+                MinimapManager.Instance.TryCaptureExploration(kvp.Key, out bool[] visited, out int visitedCount))
+            {
+                snapshot.minimapVisited = visited;
+                snapshot.minimapVisitedCount = visitedCount;
+            }
+
+            DungeonRunState.Save(mapId, snapshot);
+        }
+    }
+
+    /// <summary>새로 만든 층에 저장된 기록을 되돌립니다. NavMesh를 굽기 전에 호출해야 합니다.</summary>
+    private void RestoreMapState(GameObject instance)
+    {
+        MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));
+        if (instance == null || snapshot == null) return;
+
+        // 1. 원래 있던 오브젝트 되돌리기 (Pushable 위치 이동 포함)
+        foreach (IFloorPersistent persistent in instance.GetComponentsInChildren<IFloorPersistent>(true))
+        {
+            if (snapshot.objects.TryGetValue((persistent.PersistentKind, persistent.PersistentCell), out FloorObjectState state))
+                persistent.Restore(state);
+        }
+
+        // 2. 설치했던 횃불 다시 세우기
+        RestoreTorches(instance, snapshot);
+    }
+
+    private void RestoreTorches(GameObject instance, MapSnapshot snapshot)
+    {
+        if (snapshot.torches.Count == 0) return;
+
+        // 횃불 프리팹은 플레이어가 들고 있는 것을 그대로 쓴다 (설정을 이중으로 두지 않기 위해).
+        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
+        GameObject torchPrefab = player != null ? player.torchPrefab : null;
+        if (torchPrefab == null)
+        {
+            Debug.LogWarning("[DungeonManager] 횃불 프리팹을 찾지 못해 설치했던 횃불을 복원하지 못했습니다.");
+            return;
+        }
+
+        // 벽을 셀로 찾아두어야 '그 면에 이미 설치됨' 표시까지 되돌릴 수 있다.
+        Dictionary<Vector2Int, WallObject> wallsByCell = new Dictionary<Vector2Int, WallObject>();
+        foreach (WallObject wall in instance.GetComponentsInChildren<WallObject>(true))
+        {
+            Vector3Int c = GridSystem.Instance.WorldToCell(wall.transform.position);
+            wallsByCell[new Vector2Int(c.x, c.z)] = wall;
+        }
+
+        foreach (TorchRecord record in snapshot.torches)
+        {
+            GameObject torch = Instantiate(torchPrefab, record.position, record.rotation, instance.transform);
+
+            TorchInstance marker = torch.GetComponent<TorchInstance>();
+            if (marker == null) marker = torch.AddComponent<TorchInstance>();
+            marker.Initialize(record.wallCell, record.faceKey);
+
+            // 이 면에 다시 설치되지 않도록 벽에 표시를 되돌린다.
+            if (wallsByCell.TryGetValue(record.wallCell, out WallObject wall))
+                wall.MarkTorchPlaced(record.faceKey);
+
+            if (MinimapManager.Instance != null) MinimapManager.Instance.RegisterTorch(torch.transform);
+        }
+    }
+
+    /// <summary>테스트용. 저장된 던전 진행 기록을 전부 지웁니다. (플레이 중 인스펙터에서 우클릭)</summary>
+    [ContextMenu("던전 진행 상태 초기화")]
+    public void ClearDungeonProgress()
+    {
+        DungeonRunState.Clear();
+        Debug.Log("<color=yellow>[DungeonManager] 던전 진행 기록을 초기화했습니다. 다음 입장부터 새 던전입니다.</color>");
     }
 
     private IEnumerator LoadOverworldAfterDelay(float delay, bool revive)

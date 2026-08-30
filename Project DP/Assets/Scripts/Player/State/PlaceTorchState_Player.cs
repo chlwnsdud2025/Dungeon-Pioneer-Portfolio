@@ -110,6 +110,12 @@ public class PlaceTorchState_Player : PlayerBaseState
             : null;
         GameObject spawnedTorch = Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation, parentLocation);
 
+        // ★ 던전을 나갔다 들어와도 복원할 수 있도록 어느 벽의 어느 면인지 기록해둔다.
+        Transform wallTransform = wall != null ? wall.transform : wallCollider.transform;
+        Vector3Int wallCell = GridSystem.Instance.WorldToCell(wallTransform.position);
+        spawnedTorch.AddComponent<TorchInstance>()
+                    .Initialize(new Vector2Int(wallCell.x, wallCell.z), WallObject.ToFaceKey(hitNormal));
+
         // ★ 이 면에 횃불이 설치됨 → 다음부터 '이 면'에는 중복 설치 방지 (다른 면엔 여전히 설치 가능)
         if (wall != null) wall.MarkTorchPlaced(hitNormal);
 
