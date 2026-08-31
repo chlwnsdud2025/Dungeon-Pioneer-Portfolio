@@ -64,12 +64,30 @@ public class PushableObject : MonoBehaviour, IFloorPersistent
 
         isPushing = false;
         if (state.flag) isLocked = true;
+        SnapToGround();
     }
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
+
+        // Road 등 Floor 태그 타일이 Default 레이어인 경우가 많아 Floor 레이어만으로는 바닥을 못 잡습니다.
+        int floorLayer = LayerMask.NameToLayer("Floor");
+        if (floorLayer >= 0)
+            groundLayer |= 1 << floorLayer;
+        groundLayer |= 1; // Default
+    }
+
+    /// <summary>맵 스폰 직후 호출. 바닥을 못 찾으면 아래로 빠지지 않도록 붙입니다.</summary>
+    public void SnapToGround()
+    {
+        Vector3 probe = transform.position + Vector3.up * 2f;
+        if (TryFindGround(probe, 6f, out RaycastHit hit))
+        {
+            transform.position = new Vector3(transform.position.x, hit.point.y, transform.position.z);
+            verticalVelocity = 0f;
+        }
     }
 
     /// <summary>PushState_Player.Enter()에서 호출. "이 위치까지, 이 시간 동안 밀어줘"만 요청합니다.</summary>
@@ -100,8 +118,7 @@ public class PushableObject : MonoBehaviour, IFloorPersistent
         }
 
         // 2. 수직 중력 (Kinematic이라 자동으로 안 떨어지므로 직접 계산)
-        bool grounded = Physics.Raycast(current + Vector3.up * 0.1f, Vector3.down,
-            out RaycastHit hit, groundCheckDistance + 0.1f, groundLayer);
+        bool grounded = TryFindGround(current + Vector3.up * 0.1f, groundCheckDistance + 0.1f, out RaycastHit hit);
 
         float nextY;
         if (grounded && verticalVelocity <= 0f)
@@ -117,6 +134,36 @@ public class PushableObject : MonoBehaviour, IFloorPersistent
 
         // 3. 수평+수직을 한 번에 합쳐서 단 한 번만 MovePosition 호출
         rb.MovePosition(new Vector3(nextX, nextY, nextZ));
+    }
+
+    private bool TryFindGround(Vector3 origin, float maxDistance, out RaycastHit hit)
+    {
+        hit = default;
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, maxDistance, ~0, QueryTriggerInteraction.Ignore);
+        if (hits == null || hits.Length == 0) return false;
+
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit candidate in hits)
+        {
+            if (candidate.collider == null) continue;
+            if (candidate.collider.transform.IsChildOf(transform) || candidate.collider.transform == transform)
+                continue;
+
+            bool layerOk = ((1 << candidate.collider.gameObject.layer) & groundLayer) != 0;
+            bool tagOk = candidate.collider.CompareTag("Floor")
+                || candidate.collider.CompareTag("Trap")
+                || candidate.collider.CompareTag("Entrance")
+                || candidate.collider.CompareTag("Exit")
+                || candidate.collider.GetComponentInParent<TrapTile>() != null;
+
+            if (!layerOk && !tagOk) continue;
+
+            hit = candidate;
+            return true;
+        }
+
+        return false;
     }
 
     private void OnTriggerEnter(Collider other)

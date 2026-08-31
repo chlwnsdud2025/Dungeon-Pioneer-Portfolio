@@ -26,22 +26,21 @@ public class Arrow : MonoBehaviour
     private Vector3 moveDirection;   // 월드 기준 진행 방향(발사 시 고정)
     private float speed;
     private ArrowTrap owner;
+    private PressurePlate sourcePlate;
     private bool active;
     private float traveled;
     private readonly HashSet<int> damagedIds = new HashSet<int>(); // 이번 발사에서 이미 때린 대상
 
     // ArrowTrap.Fire()에서 호출됩니다.
-    public void Launch(Vector3 worldDir, float moveSpeed, ArrowTrap pool)
+    public void Launch(Vector3 worldDir, float moveSpeed, ArrowTrap pool, PressurePlate plate = null)
     {
         moveDirection = worldDir.normalized;
         speed = moveSpeed;
         owner = pool;
+        sourcePlate = plate;
         traveled = 0f;
         active = true;
         damagedIds.Clear();
-
-        // [DEBUG] 이 로그가 뜨면 화살은 실제로 발사·활성화된 것. 이후 화면에 안 보이면 소멸/비주얼 문제.
-        Debug.Log($"[Arrow] Launch: dir={moveDirection}, speed={speed}, pos={transform.position}", this);
     }
 
     private void Update()
@@ -54,8 +53,6 @@ public class Arrow : MonoBehaviour
         if (Physics.SphereCast(transform.position, hitRadius, moveDirection,
                 out RaycastHit wallHit, step + hitRadius, wallLayer, QueryTriggerInteraction.Ignore))
         {
-            // [DEBUG] 발사 직후(traveled≈0)에 사라지면 Wall Layer에 바닥/발사기 자신 레이어가 포함된 것.
-            Debug.Log($"[Arrow] 벽 감지로 소멸 (맞은 것={wallHit.collider.name}, 이동거리={traveled:F2})", this);
             Despawn();
             return;
         }
@@ -64,36 +61,73 @@ public class Arrow : MonoBehaviour
         transform.position += moveDirection * step;
         traveled += step;
 
-        // 3. 데미지 판정
-        if (damage > 0f)
-        {
-            Collider[] hits = Physics.OverlapSphere(transform.position, hitRadius, victimLayer);
-            foreach (Collider col in hits)
-            {
-                PlayerController player = col.GetComponent<PlayerController>();
-                if (player != null && damagedIds.Add(player.GetInstanceID()))
-                {
-                    player.TakeDamage(damage, transform);
-                    if (despawnOnHit) { Despawn(); return; }
-                    continue;
-                }
-
-                EnemyController enemy = col.GetComponent<EnemyController>();
-                if (enemy != null && damagedIds.Add(enemy.GetInstanceID()))
-                {
-                    enemy.TakeDamage(damage);
-                    if (despawnOnHit) { Despawn(); return; }
-                }
-            }
-        }
+        // 3. 데미지 판정 (CharacterController는 Collider가 없어 OverlapSphere만으로는 맞지 않음)
+        if (damage > 0f && TryDamageVictims())
+            return;
 
         // 4. 최대 이동 거리 초과 시 회수
         if (traveled >= maxTravelDistance) Despawn();
     }
 
+    private bool TryDamageVictims()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, hitRadius, victimLayer);
+        foreach (Collider col in hits)
+        {
+            if (TryDamage(col.GetComponentInParent<PlayerController>(), col.GetComponentInParent<EnemyController>()))
+                return despawnOnHit;
+        }
+
+        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
+        if (player != null && IsWithinCharacterController(transform.position, player, hitRadius))
+        {
+            if (damagedIds.Add(player.GetInstanceID()))
+            {
+                player.TakeDamage(damage, transform);
+                if (despawnOnHit) { Despawn(); return true; }
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryDamage(PlayerController player, EnemyController enemy)
+    {
+        if (player != null && damagedIds.Add(player.GetInstanceID()))
+        {
+            player.TakeDamage(damage, transform);
+            if (despawnOnHit) { Despawn(); return true; }
+            return false;
+        }
+
+        if (enemy != null && damagedIds.Add(enemy.GetInstanceID()))
+        {
+            enemy.TakeDamage(damage);
+            if (despawnOnHit) { Despawn(); return true; }
+        }
+
+        return false;
+    }
+
+    private static bool IsWithinCharacterController(Vector3 point, PlayerController player, float radius)
+    {
+        CharacterController cc = player.GetComponent<CharacterController>();
+        if (cc == null) return false;
+
+        Vector3 center = player.transform.position + cc.center;
+        float verticalReach = cc.height * 0.5f;
+        float dx = point.x - center.x;
+        float dz = point.z - center.z;
+        float horizontal = Mathf.Sqrt(dx * dx + dz * dz);
+        float dy = Mathf.Abs(point.y - center.y);
+        return horizontal <= cc.radius + radius && dy <= verticalReach + radius;
+    }
+
     private void Despawn()
     {
         active = false;
+        sourcePlate?.NotifyArrowResolved();
+        sourcePlate = null;
         if (owner != null) owner.ReturnToPool(this);
         else gameObject.SetActive(false);
     }

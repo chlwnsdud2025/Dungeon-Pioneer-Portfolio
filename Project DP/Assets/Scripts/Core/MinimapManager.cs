@@ -27,7 +27,7 @@ public class MinimapManager : MonoBehaviour
     public AspectRatioFitter minimapAspectFitter;
 
     [Header("Grid Settings")]
-    [Tooltip("맵의 가로/세로 타일 개수. 던전 맵(MapBuilder) 크기와 반드시 동일해야 합니다.")]
+    [Tooltip("맵 스캔 실패 시 쓰는 최소 그리드 크기. 실제 크기는 맵 타일 범위에서 자동 계산됩니다.")]
     public Vector2Int gridSize = new Vector2Int(17, 17);
     [Tooltip("타일 1칸을 텍스처 몇 픽셀로 그릴지. 값이 클수록 원형 시야 경계가 부드러워집니다.")]
     public int pixelsPerTile = 8;
@@ -46,10 +46,10 @@ public class MinimapManager : MonoBehaviour
 
     [Header("Tile Colors")]
     public Color unexploredColor = new Color(0f, 0f, 0f, 1f);
-    public Color visitedTrailColor = new Color(0.35f, 0.35f, 0.35f, 1f); // ★ 지나간 타일 = 회색 흔적
+    public Color visitedTrailColor = new Color(0.35f, 0.35f, 0.35f, 1f);
     public Color floorColor = new Color(0.8f, 0.8f, 0.8f, 1f);
     public Color wallColor = new Color(0.3f, 0.3f, 0.3f, 1f);
-    public Color pushWallColor = new Color(0.5f, 0f, 0.5f, 1f);
+    public Color pushWallColor = new Color(1f, 0.55f, 0.1f, 1f); // 발견한 Pushable (주황)
     public Color trapColor = new Color(0f, 0f, 1f, 1f);
 
     [Header("Entity Colors")]
@@ -57,6 +57,7 @@ public class MinimapManager : MonoBehaviour
     public Color enemyColor = new Color(0.9f, 0.2f, 0.2f, 1f);
     public Color chestColor = new Color(0.9f, 0.9f, 0.2f, 1f);
     public Color torchColor = new Color(1f, 0.6f, 0.1f, 1f);
+    public Color graveColor = new Color(0.65f, 0.2f, 0.9f, 1f);
 
     [Header("Entity Marker Sizes (px, 텍스처 해상도 기준)")]
     public int playerDotRadiusPx = 3;
@@ -67,10 +68,11 @@ public class MinimapManager : MonoBehaviour
     // ── 내부 데이터 ─────────────────────────────────────────────
     private enum TileKind { Unexplored = 0, Floor = 1, Wall = 2, Trap = 3 }
 
-    // ★ 장소 하나 분량의 미니맵 상태를 통째로 보관하는 컨테이너.
-    //   장소를 나갔다 돌아와도 이 객체가 그대로 살아있으므로 탐색 흔적이 유지됩니다.
     private class LocationMinimapState
     {
+        public Vector2Int gridSize;
+        public float cellSize;
+        public Vector3 origin;
         public TileKind[,] staticMapData;
         public bool[,] visited;
         public bool[,] currentlyLitTiles;
@@ -78,67 +80,71 @@ public class MinimapManager : MonoBehaviour
         public Color[] pixelBuffer;
         public int texWidth, texHeight;
 
-        // 개척도. 매 프레임 배열을 세지 않고 증분으로 유지한다.
-        public int walkableTileCount;   // 분모: 밟을 수 있는 타일 수 (장소 생성 시 1회 계산)
-        public int visitedTileCount;    // 분자: 그중 실제로 밟은 타일 수
+        public int walkableTileCount;
+        public int visitedTileCount;
+        public readonly List<Vector3> walkableWorldPositions = new List<Vector3>();
         public readonly List<Transform> activePushables = new List<Transform>();
+        public readonly HashSet<int> discoveredPushableIds = new HashSet<int>();
         public readonly List<Transform> activeChests = new List<Transform>();
+        public readonly List<Transform> activeBonuses = new List<Transform>();
         public readonly List<Transform> activeTorches = new List<Transform>();
         public readonly List<EnemyController> activeEnemies = new List<EnemyController>();
     }
 
     private readonly Dictionary<LocationId, LocationMinimapState> locationStates = new Dictionary<LocationId, LocationMinimapState>();
     private LocationMinimapState current;
+    private GameObject currentLocationInstance;
 
     private Transform playerTransform;
+    private Vector3 lastMarkedPlayerPos;
+    private bool hasLastMarkedPlayerPos;
     private readonly HashSet<Vector2Int> pushableTilesThisFrame = new HashSet<Vector2Int>();
+    private readonly List<Transform> pushablesToDrawThisFrame = new List<Transform>();
 
     private void Awake()
     {
+        // HUD(전역)와 던전 씬 양쪽에 MinimapManager가 있을 수 있습니다.
+        // 먼저 살아 있는 인스턴스를 유지하고, 나중에 로드된 중복은 제거합니다.
+        if (Instance != null && Instance != this)
+        {
+            Destroy(this);
+            return;
+        }
+
         Instance = this;
     }
 
-    /// <summary>런을 새로 시작(재시작 포함)할 때 DungeonManager에서 호출. 저장된 모든 장소 상태를 지웁니다.</summary>
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
     public void ResetAllLocations()
     {
         locationStates.Clear();
         current = null;
     }
 
-    /// <summary>
-    /// 현재 층 미니맵 텍스처. 전역 HUD가 매 프레임 이 값을 읽어서 RawImage에 그대로 표시합니다.
-    /// 층을 오가면 current가 바뀌므로 이 텍스처도 자동으로 최신 층 것으로 바뀝니다. (없으면 null)
-    /// </summary>
     public Texture CurrentTexture => current != null ? current.texture : null;
 
-    /// <summary>현재 층 미니맵 텍스처의 가로/세로 비율. (HUD의 AspectRatioFitter에 적용)</summary>
     public float CurrentAspect => (current != null && current.texHeight > 0) ? (float)current.texWidth / current.texHeight : 1f;
 
-    /// <summary>개척도를 표시할 수 있는 층이 잡혀 있는지. (HUD가 표시/숨김 판단에 사용)</summary>
     public bool HasCurrentLocation => current != null && current.walkableTileCount > 0;
 
-    /// <summary>
-    /// 현재 층의 개척도 (0~1). 밟을 수 있는 타일(바닥·함정) 중 실제로 밟고 지나간 비율입니다.
-    /// 층마다 상태를 따로 보관하므로 층을 오가면 그 층의 값으로 자동으로 바뀝니다.
-    /// </summary>
     public float CurrentExploration =>
         HasCurrentLocation ? (float)current.visitedTileCount / current.walkableTileCount : 0f;
 
-    /// <summary>현재 층을 다 개척했는지. (explorationCompleteThreshold 도달)</summary>
     public bool IsCurrentExplored => HasCurrentLocation && CurrentExploration >= explorationCompleteThreshold;
 
-    // ── 탐색 기록 저장·복원 (던전을 나갔다 들어와도 유지) ──────────
-    // 미니맵 내부는 층(LocationId)으로 관리하고, 스냅샷에 넣고 뺄 때만 맵 단위로 번역합니다.
-    // visited는 2차원 배열이라 1차원으로 펴서 주고받습니다.
-
-    /// <summary>지정 층의 탐색 기록을 꺼냅니다. 기록이 없으면 false.</summary>
-    public bool TryCaptureExploration(LocationId id, out bool[] visited, out int visitedCount)
+    public bool TryCaptureExploration(LocationId id, out bool[] visited, out int visitedCount, out Vector2Int gridSize)
     {
         visited = null;
         visitedCount = 0;
+        gridSize = default;
 
         if (!locationStates.TryGetValue(id, out LocationMinimapState state) || state.visited == null) return false;
 
+        gridSize = state.gridSize;
         visited = new bool[gridSize.x * gridSize.y];
         for (int y = 0; y < gridSize.y; y++)
             for (int x = 0; x < gridSize.x; x++)
@@ -148,116 +154,275 @@ public class MinimapManager : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// 저장해둔 탐색 기록을 지정 층에 되돌립니다. SwitchLocation이 새 상태를 만든 '뒤에' 호출하세요.
-    /// (분모인 walkableTileCount는 맵을 다시 스캔하며 계산되므로 저장·복원 대상이 아닙니다)
-    /// </summary>
-    public void RestoreExploration(LocationId id, bool[] visited, int visitedCount)
+    public void RestoreExploration(LocationId id, bool[] visited, int visitedCount, Vector2Int savedGridSize)
     {
         if (visited == null) return;
         if (!locationStates.TryGetValue(id, out LocationMinimapState state)) return;
-        if (visited.Length != gridSize.x * gridSize.y) return;   // 그리드 크기가 바뀌었으면 무시
+        if (visited.Length != state.gridSize.x * state.gridSize.y) return;
 
-        for (int y = 0; y < gridSize.y; y++)
-            for (int x = 0; x < gridSize.x; x++)
-                state.visited[x, y] = visited[y * gridSize.x + x];
+        // 구 스냅샷(minimapGridSize 미저장)은 배열 길이만 맞으면 복원합니다.
+        if (savedGridSize != default && savedGridSize != state.gridSize) return;
+
+        for (int y = 0; y < state.gridSize.y; y++)
+            for (int x = 0; x < state.gridSize.x; x++)
+                state.visited[x, y] = visited[y * state.gridSize.x + x];
 
         state.visitedTileCount = visitedCount;
     }
 
-    /// <summary>
-    /// 장소를 새로 생성했거나 이미 방문한 장소로 되돌아올 때 WorldManager에서 호출합니다.
-    /// isNewLocation이 true면 locationInstance를 스캔해 새로 그리고, false면 저장된 상태를 그대로 복원합니다.
-    /// </summary>
     public void SwitchLocation(LocationId id, GameObject locationInstance, bool isNewLocation, Transform playerRef)
     {
         playerTransform = playerRef;
+        currentLocationInstance = locationInstance;
+        hasLastMarkedPlayerPos = false;
 
         if (isNewLocation || !locationStates.TryGetValue(id, out current))
         {
             current = BuildLocationState(locationInstance);
             locationStates[id] = current;
         }
-
-        if (minimapDisplay != null) minimapDisplay.texture = current.texture;
         ApplyAspectRatio();
+        if (playerTransform != null)
+        {
+            MarkPlayerVisitedCells();
+            RenderMinimap();
+        }
     }
 
     private LocationMinimapState BuildLocationState(GameObject locationInstance)
     {
+        List<Transform> tileRoots = CollectTileRoots(locationInstance);
+        InferMapGrid(tileRoots, out float cellSize, out Vector3 origin, out Vector2Int mapGridSize);
+
         var state = new LocationMinimapState
         {
-            staticMapData = new TileKind[gridSize.x, gridSize.y],
-            visited = new bool[gridSize.x, gridSize.y],
-            currentlyLitTiles = new bool[gridSize.x, gridSize.y]
+            gridSize = mapGridSize,
+            cellSize = cellSize,
+            origin = origin,
+            staticMapData = new TileKind[mapGridSize.x, mapGridSize.y],
+            visited = new bool[mapGridSize.x, mapGridSize.y],
+            currentlyLitTiles = new bool[mapGridSize.x, mapGridSize.y]
         };
+
+        foreach (Transform obj in tileRoots)
+        {
+            Vector3Int cell = WorldToMapCell(state, obj.position);
+            if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
+
+            if (obj.CompareTag("Trap"))
+            {
+                state.staticMapData[cell.x, cell.z] = TileKind.Trap;
+                state.walkableWorldPositions.Add(obj.position);
+            }
+            else if (obj.CompareTag("Floor") || obj.CompareTag("Entrance") || obj.CompareTag("Exit"))
+            {
+                if (state.staticMapData[cell.x, cell.z] != TileKind.Trap)
+                    state.staticMapData[cell.x, cell.z] = TileKind.Floor;
+                state.walkableWorldPositions.Add(obj.position);
+            }
+            else if (obj.CompareTag("Pushable"))
+            {
+                state.activePushables.Add(obj);
+            }
+            else if (obj.CompareTag("Chest"))
+            {
+                state.activeChests.Add(obj);
+            }
+        }
+
+        // 타일 루트 스캔에 빠졌을 수 있어 PushableObject로 한 번 더 수집
+        if (locationInstance != null)
+        {
+            foreach (PushableObject pushable in locationInstance.GetComponentsInChildren<PushableObject>(true))
+            {
+                if (pushable == null) continue;
+                if (!state.activePushables.Contains(pushable.transform))
+                    state.activePushables.Add(pushable.transform);
+            }
+        }
+
+        foreach (Transform obj in tileRoots)
+        {
+            if (!obj.CompareTag("Wall")) continue;
+
+            Vector3Int cell = WorldToMapCell(state, obj.position);
+            if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
+            if (state.staticMapData[cell.x, cell.z] == TileKind.Unexplored)
+                state.staticMapData[cell.x, cell.z] = TileKind.Wall;
+        }
 
         if (locationInstance != null)
         {
-            // 1. 장소 오브젝트를 한 번 훑으며 태그 기반으로 정적 데이터 + 동적 추적 목록 구성
-            //    좌표 계산은 GridSystem.Instance.WorldToCell()로 통일
-            foreach (Transform obj in locationInstance.GetComponentsInChildren<Transform>(true))
-            {
-                if (obj == locationInstance.transform) continue;
-
-                Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
-                if (!IsValidGrid(cell.x, cell.z)) continue;
-
-                if (obj.CompareTag("Wall"))
-                {
-                    state.staticMapData[cell.x, cell.z] = TileKind.Wall;
-                }
-                else if (obj.CompareTag("Floor") || obj.CompareTag("Entrance") || obj.CompareTag("Exit"))
-                {
-                    if (state.staticMapData[cell.x, cell.z] == TileKind.Unexplored)
-                        state.staticMapData[cell.x, cell.z] = TileKind.Floor;
-                }
-                else if (obj.CompareTag("Trap"))
-                {
-                    state.staticMapData[cell.x, cell.z] = TileKind.Trap;
-                }
-                else if (obj.CompareTag("Pushable"))
-                {
-                    state.activePushables.Add(obj);
-                }
-                else if (obj.CompareTag("Chest"))
-                {
-                    state.activeChests.Add(obj);
-                }
-            }
-
-            // ★ 중요: FindObjectsByType 대신 이 장소의 자식만 스캔합니다.
-            //   여러 장소가 동시에(하나는 활성, 나머지는 비활성) 씬에 존재하므로,
-            //   전역 검색을 쓰면 다른 층의 적까지 이 미니맵에 섞여버립니다.
             EnemyController[] enemies = locationInstance.GetComponentsInChildren<EnemyController>(true);
             state.activeEnemies.AddRange(enemies);
+
+            foreach (TorchInstance torch in locationInstance.GetComponentsInChildren<TorchInstance>(true))
+                state.activeTorches.Add(torch.transform);
+
+            foreach (Transform obj in locationInstance.GetComponentsInChildren<Transform>(true))
+            {
+                // 프리팹 루트 이름 Bonus (복제본 "Bonus (1)" 포함). 자식 메시는 제외.
+                if (!obj.name.StartsWith("Bonus")) continue;
+                if (obj.parent != null && obj.parent.name.StartsWith("Bonus")) continue;
+                state.activeBonuses.Add(obj);
+            }
         }
 
-        // 2. 개척도 분모 계산: 실제로 밟을 수 있는 타일(바닥·함정)만 센다.
-        //    벽과 빈 칸은 애초에 설 수 없으므로 빼야 비율이 의미를 갖는다.
-        for (int y = 0; y < gridSize.y; y++)
+        for (int y = 0; y < state.gridSize.y; y++)
         {
-            for (int x = 0; x < gridSize.x; x++)
+            for (int x = 0; x < state.gridSize.x; x++)
             {
                 TileKind kind = state.staticMapData[x, y];
                 if (kind == TileKind.Floor || kind == TileKind.Trap) state.walkableTileCount++;
             }
         }
 
-        // 3. 텍스처 준비
-        state.texWidth = gridSize.x * pixelsPerTile;
-        state.texHeight = gridSize.y * pixelsPerTile;
+        state.texWidth = state.gridSize.x * pixelsPerTile;
+        state.texHeight = state.gridSize.y * pixelsPerTile;
         state.texture = new Texture2D(state.texWidth, state.texHeight, TextureFormat.RGBA32, false);
         state.texture.filterMode = FilterMode.Point;
         state.texture.wrapMode = TextureWrapMode.Clamp;
         state.pixelBuffer = new Color[state.texWidth * state.texHeight];
+        FillBuffer(state, unexploredColor);
 
         return state;
     }
 
-    /// <summary>
-    /// 텍스처 비율을 AspectRatioFitter에 반영하고, 레이아웃을 즉시 강제 갱신합니다.
-    /// </summary>
+    private static void FillBuffer(LocationMinimapState state, Color color)
+    {
+        for (int i = 0; i < state.pixelBuffer.Length; i++)
+            state.pixelBuffer[i] = color;
+    }
+
+    private List<Transform> CollectTileRoots(GameObject locationInstance)
+    {
+        var tiles = new List<Transform>();
+        if (locationInstance == null) return tiles;
+
+        Transform locationRoot = locationInstance.transform;
+        foreach (Transform obj in locationInstance.GetComponentsInChildren<Transform>(true))
+        {
+            if (IsTileRootTransform(obj, locationRoot))
+                tiles.Add(obj);
+        }
+
+        return tiles;
+    }
+
+    private void InferMapGrid(List<Transform> tiles, out float cellSize, out Vector3 origin, out Vector2Int mapGridSize)
+    {
+        cellSize = GridSystem.Instance.TileSize;
+        origin = GridSystem.Instance.Origin;
+        mapGridSize = gridSize;
+
+        if (tiles.Count == 0) return;
+
+        float minX = float.MaxValue;
+        float minZ = float.MaxValue;
+        var xs = new List<float>(tiles.Count);
+        var zs = new List<float>(tiles.Count);
+
+        foreach (Transform tile in tiles)
+        {
+            Vector3 pos = tile.position;
+            if (pos.x < minX) minX = pos.x;
+            if (pos.z < minZ) minZ = pos.z;
+            xs.Add(pos.x);
+            zs.Add(pos.z);
+        }
+
+        origin = new Vector3(minX, 0f, minZ);
+
+        float inferred = InferDominantSpacing(xs, cellSize);
+        float inferredZ = InferDominantSpacing(zs, cellSize);
+        if (inferredZ >= 1.5f && inferredZ <= 6f)
+        {
+            if (inferred < 1.5f || inferredZ < inferred)
+                inferred = inferredZ;
+        }
+        if (inferred >= 1.5f && inferred <= 6f)
+        {
+            if (Mathf.Abs(inferred - 2f) <= 0.35f) cellSize = 2f;
+            else if (Mathf.Abs(inferred - 3f) <= 0.35f) cellSize = 3f;
+            else cellSize = GridSystem.Instance.TileSize >= 2.5f ? 3f : 2f;
+        }
+
+        origin = new Vector3(Mathf.Round(origin.x * 2f) / 2f, 0f, Mathf.Round(origin.z * 2f) / 2f);
+
+        int maxX = 0;
+        int maxZ = 0;
+        foreach (Transform tile in tiles)
+        {
+            int cx = Mathf.RoundToInt((tile.position.x - origin.x) / cellSize);
+            int cz = Mathf.RoundToInt((tile.position.z - origin.z) / cellSize);
+            if (cx > maxX) maxX = cx;
+            if (cz > maxZ) maxZ = cz;
+        }
+
+        mapGridSize = new Vector2Int(Mathf.Max(1, maxX + 1), Mathf.Max(1, maxZ + 1));
+    }
+
+    private static float InferDominantSpacing(List<float> values, float fallback)
+    {
+        if (values == null || values.Count < 2) return fallback;
+
+        values.Sort();
+        var buckets = new Dictionary<int, int>();
+        for (int i = 1; i < values.Count; i++)
+        {
+            float delta = values[i] - values[i - 1];
+            if (delta < 1.5f || delta > 8f) continue;
+
+            int key = Mathf.RoundToInt(delta * 10f);
+            buckets.TryGetValue(key, out int count);
+            buckets[key] = count + 1;
+        }
+
+        if (buckets.Count == 0) return fallback;
+
+        int bestKey = 0;
+        int bestCount = -1;
+        foreach (KeyValuePair<int, int> pair in buckets)
+        {
+            if (pair.Value <= bestCount) continue;
+            bestCount = pair.Value;
+            bestKey = pair.Key;
+        }
+
+        return bestKey / 10f;
+    }
+
+    private static Vector3Int WorldToMapCell(LocationMinimapState state, Vector3 worldPos)
+    {
+        Vector3 local = worldPos - state.origin;
+        return new Vector3Int(
+            Mathf.RoundToInt(local.x / state.cellSize),
+            0,
+            Mathf.RoundToInt(local.z / state.cellSize));
+    }
+
+    private static bool IsMapTileTransform(Transform obj)
+    {
+        return obj.CompareTag("Wall") || obj.CompareTag("Floor") || obj.CompareTag("Entrance") ||
+               obj.CompareTag("Exit") || obj.CompareTag("Trap") || obj.CompareTag("Chest") ||
+               obj.CompareTag("Pushable");
+    }
+
+    /// <summary>타일 프리팹 루트만 스캔합니다. 자식 메시/콜라이더가 다른 셀을 오염시키는 것을 막습니다.</summary>
+    private static bool IsTileRootTransform(Transform obj, Transform locationRoot)
+    {
+        if (obj == locationRoot || !IsMapTileTransform(obj)) return false;
+
+        Transform parent = obj.parent;
+        while (parent != null && parent != locationRoot)
+        {
+            if (IsMapTileTransform(parent)) return false;
+            parent = parent.parent;
+        }
+
+        return true;
+    }
+
     private void ApplyAspectRatio()
     {
         if (minimapAspectFitter == null || current == null) return;
@@ -272,150 +437,319 @@ public class MinimapManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 횃불을 설치했을 때 호출하여 현재 장소의 미니맵에 등록합니다. (PlaceTorchState_Player에서 호출)
-    /// </summary>
     public void RegisterTorch(Transform torchTransform)
     {
-        if (torchTransform != null && current != null) current.activeTorches.Add(torchTransform);
+        if (torchTransform == null || current == null) return;
+        if (!current.activeTorches.Contains(torchTransform))
+            current.activeTorches.Add(torchTransform);
+    }
+
+    public void RegisterGrave(Transform graveTransform)
+    {
+        if (graveTransform == null || current == null) return;
+        RefreshGraves();
+    }
+
+    public void UnregisterGrave(Transform graveTransform)
+    {
+        if (graveTransform == null || current == null) return;
+        RefreshGraves();
+    }
+
+    /// <summary>묘비 제거 직후 미니맵에서 보라색 표식이 남지 않도록 즉시 다시 그립니다.</summary>
+    public void RefreshGraves()
+    {
+        if (current == null || current.texture == null) return;
+        RenderMinimap();
     }
 
     private void Update()
     {
         if (current == null || current.texture == null || playerTransform == null) return;
 
-        // ★ 플레이어가 현재 밟고 있는 타일을 "방문함"으로 영구 기록
-        //   false → true로 바뀌는 순간에만 개척도 카운터를 올린다 (같은 칸을 다시 밟아도 중복 집계 없음)
-        Vector3Int playerCell = GridSystem.Instance.WorldToCell(playerTransform.position);
-        if (IsValidGrid(playerCell.x, playerCell.z) && !current.visited[playerCell.x, playerCell.z])
+        MarkPlayerVisitedCells();
+        RenderMinimap();
+    }
+
+    private void MarkPlayerVisitedCells()
+    {
+        Vector3 pos = playerTransform.position;
+
+        if (hasLastMarkedPlayerPos)
         {
-            current.visited[playerCell.x, playerCell.z] = true;
-            current.visitedTileCount++;
+            float step = current.cellSize * 0.35f;
+            Vector3 last = lastMarkedPlayerPos;
+            float dist = Vector3.Distance(
+                new Vector3(last.x, 0f, last.z),
+                new Vector3(pos.x, 0f, pos.z));
+            int steps = Mathf.Max(1, Mathf.CeilToInt(dist / Mathf.Max(0.01f, step)));
+
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = i / (float)steps;
+                Vector3 sample = Vector3.Lerp(last, pos, t);
+                // 밟은 Road/Floor만 회색. 시야 반경으로 주변 칸을 미리 밝히지 않습니다.
+                MarkVisitedAtWorldPosition(sample);
+            }
+        }
+        else
+        {
+            MarkVisitedAtWorldPosition(pos);
         }
 
-        RenderMinimap();
+        DiscoverNearbyLootMarkers(pos);
+        DiscoverNearbyPushables(pos);
+
+        lastMarkedPlayerPos = pos;
+        hasLastMarkedPlayerPos = true;
+    }
+
+    /// <summary>
+    /// Pushable은 칸을 점유해 플레이어가 그 셀을 밟지 못하므로,
+    /// 근처에 오면 '발견'으로 등록하고 이후 라이브 위치를 미니맵에 그립니다.
+    /// </summary>
+    private void DiscoverNearbyPushables(Vector3 playerPos)
+    {
+        float discoverDist = current.cellSize * 1.35f;
+        float discoverDistSq = discoverDist * discoverDist;
+
+        for (int i = 0; i < current.activePushables.Count; i++)
+        {
+            Transform pushable = current.activePushables[i];
+            if (pushable == null) continue;
+
+            float dx = playerPos.x - pushable.position.x;
+            float dz = playerPos.z - pushable.position.z;
+            if (dx * dx + dz * dz > discoverDistSq) continue;
+
+            current.discoveredPushableIds.Add(pushable.GetInstanceID());
+        }
+    }
+
+    /// <summary>Chest/Bonus는 플레이어가 그 칸 근처를 밟거나 시야에 넣으면 발견됩니다.</summary>
+    private void DiscoverNearbyLootMarkers(Vector3 playerPos)
+    {
+        float discoverDist = current.cellSize * 1.15f;
+        float discoverDistSq = discoverDist * discoverDist;
+
+        for (int i = 0; i < current.activeChests.Count; i++)
+        {
+            Transform chest = current.activeChests[i];
+            if (chest == null) continue;
+
+            float dx = playerPos.x - chest.position.x;
+            float dz = playerPos.z - chest.position.z;
+            if (dx * dx + dz * dz > discoverDistSq) continue;
+
+            Vector3Int cell = WorldToMapCell(current, chest.position);
+            MarkVisitedCell(cell.x, cell.z);
+        }
+
+        for (int i = 0; i < current.activeBonuses.Count; i++)
+        {
+            Transform bonus = current.activeBonuses[i];
+            if (bonus == null) continue;
+
+            float dx = playerPos.x - bonus.position.x;
+            float dz = playerPos.z - bonus.position.z;
+            if (dx * dx + dz * dz > discoverDistSq) continue;
+
+            Vector3Int cell = WorldToMapCell(current, bonus.position);
+            MarkVisitedCell(cell.x, cell.z);
+        }
+    }
+
+    private void MarkVisitedAtWorldPosition(Vector3 worldPos)
+    {
+        // 실제로 밟을 수 있는 타일(Road/Floor/Trap 등) 중심과의 거리로만 방문 처리합니다.
+        // 폴백으로 임의 셀을 찍지 않아 Wall이 회색으로 물들지 않습니다.
+        float maxDist = current.cellSize * 0.55f;
+        float maxDistSq = maxDist * maxDist;
+
+        for (int i = 0; i < current.walkableWorldPositions.Count; i++)
+        {
+            Vector3 tilePos = current.walkableWorldPositions[i];
+            float dx = worldPos.x - tilePos.x;
+            float dz = worldPos.z - tilePos.z;
+            if (dx * dx + dz * dz > maxDistSq) continue;
+
+            Vector3Int cell = WorldToMapCell(current, tilePos);
+            MarkVisitedCell(cell.x, cell.z);
+        }
+    }
+
+    private void MarkVisitedCell(int x, int z)
+    {
+        if (!IsValidGrid(x, z, current.gridSize)) return;
+        // Wall은 항상 검은색(미탐험) — 방문 표시 금지
+        if (current.staticMapData[x, z] == TileKind.Wall) return;
+        if (current.staticMapData[x, z] == TileKind.Unexplored) return;
+        if (current.visited[x, z]) return;
+
+        current.visited[x, z] = true;
+
+        TileKind kind = current.staticMapData[x, z];
+        if (kind == TileKind.Floor || kind == TileKind.Trap)
+            current.visitedTileCount++;
     }
 
     private void RenderMinimap()
     {
+        Vector2Int grid = current.gridSize;
         pushableTilesThisFrame.Clear();
+        pushablesToDrawThisFrame.Clear();
+
         for (int i = current.activePushables.Count - 1; i >= 0; i--)
         {
             Transform p = current.activePushables[i];
-            if (p == null) { current.activePushables.RemoveAt(i); continue; }
-            Vector3Int cell = GridSystem.Instance.WorldToCell(p.position);
-            if (IsValidGrid(cell.x, cell.z)) pushableTilesThisFrame.Add(new Vector2Int(cell.x, cell.z));
-        }
-
-        // 1. 배경(방문 흔적 / 미탐사) 채우기
-        for (int ty = 0; ty < gridSize.y; ty++)
-        {
-            for (int tx = 0; tx < gridSize.x; tx++)
+            if (p == null)
             {
-                current.currentlyLitTiles[tx, ty] = false;
-                Color baseColor = current.visited[tx, ty] ? visitedTrailColor : unexploredColor;
-                PaintTileBlock(tx, ty, baseColor);
+                current.activePushables.RemoveAt(i);
+                continue;
             }
+
+            if (!p.gameObject.activeInHierarchy || p.position.y < -5f)
+                continue;
+
+            int id = p.GetInstanceID();
+            if (!current.discoveredPushableIds.Contains(id))
+                continue;
+
+            pushablesToDrawThisFrame.Add(p);
+
+            Vector3Int cell = WorldToMapCell(current, p.position);
+            if (IsValidGrid(cell.x, cell.z, grid))
+                pushableTilesThisFrame.Add(new Vector2Int(cell.x, cell.z));
         }
 
-        // 2. 플레이어의 실시간 원형 시야 반영
-        ApplyVisionCircle(playerTransform.position, playerVisionRadius);
-
-        // 3. 설치된 횃불들의 영구 원형 시야 반영
         for (int i = current.activeTorches.Count - 1; i >= 0; i--)
         {
             Transform torch = current.activeTorches[i];
             if (torch == null) { current.activeTorches.RemoveAt(i); continue; }
-            ApplyVisionCircle(torch.position, torchVisionRadius);
+            MarkVisitedInRadius(torch.position, torchVisionRadius);
         }
 
-        // 4. 엔티티(플레이어/몬스터/상자/횃불) 점 찍기
+        for (int ty = 0; ty < grid.y; ty++)
+        {
+            for (int tx = 0; tx < grid.x; tx++)
+                PaintTileBlock(tx, ty, GetMinimapTileColor(tx, ty));
+        }
+
         DrawEntities();
 
         current.texture.SetPixels(current.pixelBuffer);
         current.texture.Apply();
     }
 
-    private void ApplyVisionCircle(Vector3 worldPos, float radiusInTiles)
+    private Color GetMinimapTileColor(int tx, int ty)
+    {
+        // Wall은 방문 여부와 관계없이 항상 검은색
+        if (current.staticMapData[tx, ty] == TileKind.Wall)
+            return unexploredColor;
+
+        if (!current.visited[tx, ty])
+            return unexploredColor;
+
+        // Pushable은 DrawEntities에서 주황 점으로 라이브 표시 (타일 전체를 칠하지 않음)
+        if (current.staticMapData[tx, ty] == TileKind.Trap)
+            return trapColor;
+
+        return visitedTrailColor;
+    }
+
+    private void MarkVisitedInRadius(Vector3 worldPos, float radiusInTiles)
     {
         Vector2 center = WorldToPixel(worldPos);
         float radiusPx = radiusInTiles * pixelsPerTile;
 
-        int minX = Mathf.Max(0, Mathf.FloorToInt(center.x - radiusPx));
-        int maxX = Mathf.Min(current.texWidth - 1, Mathf.CeilToInt(center.x + radiusPx));
-        int minY = Mathf.Max(0, Mathf.FloorToInt(center.y - radiusPx));
-        int maxY = Mathf.Min(current.texHeight - 1, Mathf.CeilToInt(center.y + radiusPx));
+        int minTx = Mathf.Max(0, Mathf.FloorToInt((center.x - radiusPx) / pixelsPerTile));
+        int maxTx = Mathf.Min(current.gridSize.x - 1, Mathf.CeilToInt((center.x + radiusPx) / pixelsPerTile));
+        int minTy = Mathf.Max(0, Mathf.FloorToInt((center.y - radiusPx) / pixelsPerTile));
+        int maxTy = Mathf.Min(current.gridSize.y - 1, Mathf.CeilToInt((center.y + radiusPx) / pixelsPerTile));
 
         float radiusSq = radiusPx * radiusPx;
 
-        for (int y = minY; y <= maxY; y++)
+        for (int ty = minTy; ty <= maxTy; ty++)
         {
-            for (int x = minX; x <= maxX; x++)
+            for (int tx = minTx; tx <= maxTx; tx++)
             {
-                float dx = x + 0.5f - center.x;
-                float dy = y + 0.5f - center.y;
+                float cx = tx * pixelsPerTile + pixelsPerTile * 0.5f;
+                float cy = ty * pixelsPerTile + pixelsPerTile * 0.5f;
+                float dx = cx - center.x;
+                float dy = cy - center.y;
                 if (dx * dx + dy * dy > radiusSq) continue;
 
-                int tx = x / pixelsPerTile;
-                int ty = y / pixelsPerTile;
-                if (!IsValidGrid(tx, ty)) continue;
-
-                current.currentlyLitTiles[tx, ty] = true;
-                current.pixelBuffer[y * current.texWidth + x] = GetTrueTileColor(tx, ty);
+                if (current.staticMapData[tx, ty] == TileKind.Wall) continue;
+                MarkVisitedCell(tx, ty);
             }
-        }
-    }
-
-    private Color GetTrueTileColor(int tx, int ty)
-    {
-        if (pushableTilesThisFrame.Contains(new Vector2Int(tx, ty))) return pushWallColor;
-
-        switch (current.staticMapData[tx, ty])
-        {
-            case TileKind.Wall: return wallColor;
-            case TileKind.Trap: return trapColor;
-            case TileKind.Floor: return floorColor;
-            default: return floorColor; // 안전 기본값
         }
     }
 
     private void DrawEntities()
     {
-        // 플레이어는 항상 표시 (자기 자신의 시야 안에는 항상 있음)
         DrawDot(playerTransform.position, playerColor, playerDotRadiusPx);
 
-        // 몬스터 - 현재 밝혀진 타일 위에 있을 때만 표시
         for (int i = current.activeEnemies.Count - 1; i >= 0; i--)
         {
             EnemyController enemy = current.activeEnemies[i];
             if (enemy == null) { current.activeEnemies.RemoveAt(i); continue; }
 
-            Vector3Int cell = GridSystem.Instance.WorldToCell(enemy.transform.position);
-            if (IsValidGrid(cell.x, cell.z) && current.currentlyLitTiles[cell.x, cell.z])
-            {
+            Vector3Int cell = WorldToMapCell(current, enemy.transform.position);
+            if (IsValidGrid(cell.x, cell.z, current.gridSize) && current.visited[cell.x, cell.z])
                 DrawDot(enemy.transform.position, enemyColor, enemyDotRadiusPx);
-            }
         }
 
-        // 보물상자 - 현재 밝혀진 타일 위에 있을 때만 표시
         for (int i = current.activeChests.Count - 1; i >= 0; i--)
         {
             Transform chest = current.activeChests[i];
             if (chest == null) { current.activeChests.RemoveAt(i); continue; }
 
-            Vector3Int cell = GridSystem.Instance.WorldToCell(chest.position);
-            if (IsValidGrid(cell.x, cell.z) && current.currentlyLitTiles[cell.x, cell.z])
-            {
+            Vector3Int cell = WorldToMapCell(current, chest.position);
+            if (IsValidGrid(cell.x, cell.z, current.gridSize) && current.visited[cell.x, cell.z])
                 DrawDot(chest.position, chestColor, chestDotRadiusPx);
-            }
         }
 
-        // 횃불: 스스로 자기 주변을 밝히므로 항상 아주 작은 점으로 표시
+        for (int i = current.activeBonuses.Count - 1; i >= 0; i--)
+        {
+            Transform bonus = current.activeBonuses[i];
+            if (bonus == null) { current.activeBonuses.RemoveAt(i); continue; }
+
+            Vector3Int cell = WorldToMapCell(current, bonus.position);
+            if (IsValidGrid(cell.x, cell.z, current.gridSize) && current.visited[cell.x, cell.z])
+                DrawDot(bonus.position, chestColor, chestDotRadiusPx);
+        }
+
+        for (int i = 0; i < pushablesToDrawThisFrame.Count; i++)
+        {
+            Transform pushable = pushablesToDrawThisFrame[i];
+            if (pushable == null) continue;
+
+            // 현재 월드 위치에 주황 점 — 밀면 매 프레임 따라갑니다.
+            DrawDot(pushable.position, pushWallColor, Mathf.Max(3, chestDotRadiusPx + 1));
+        }
+
         for (int i = current.activeTorches.Count - 1; i >= 0; i--)
         {
             Transform torch = current.activeTorches[i];
             if (torch == null) { current.activeTorches.RemoveAt(i); continue; }
             DrawDot(torch.position, torchColor, torchDotRadiusPx);
+        }
+
+        DrawGravesFromScene();
+    }
+
+    private void DrawGravesFromScene()
+    {
+        if (currentLocationInstance == null) return;
+
+        foreach (PlayerGrave grave in currentLocationInstance.GetComponentsInChildren<PlayerGrave>(false))
+        {
+            if (grave == null || !grave.isActiveAndEnabled || !grave.gameObject.activeInHierarchy)
+                continue;
+
+            Vector3Int cell = WorldToMapCell(current, grave.transform.position);
+            if (IsValidGrid(cell.x, cell.z, current.gridSize))
+                PaintTileBlock(cell.x, cell.z, graveColor);
         }
     }
 
@@ -437,20 +771,16 @@ public class MinimapManager : MonoBehaviour
                 float dx = x + 0.5f - center.x;
                 float dy = y + 0.5f - center.y;
                 if (dx * dx + dy * dy <= radiusSq)
-                {
                     current.pixelBuffer[y * current.texWidth + x] = color;
-                }
             }
         }
     }
 
-    /// <summary>월드 좌표(X, Z) → 미니맵 텍스처 픽셀 좌표로 변환 (연속값, 부드러운 이동/원형 표현용)</summary>
     private Vector2 WorldToPixel(Vector3 worldPos)
     {
-        float tileSize = GridSystem.Instance.TileSize;
-        Vector3 originWorld = GridSystem.Instance.Origin;
+        float tileSize = current.cellSize;
+        Vector3 originWorld = current.origin;
 
-        // 타일 (0,0)의 '왼쪽 아래 바깥 모서리'를 텍스처 원점(0,0)에 대응시킴
         float startX = originWorld.x - tileSize / 2f;
         float startZ = originWorld.z - tileSize / 2f;
 
@@ -468,13 +798,11 @@ public class MinimapManager : MonoBehaviour
         {
             int row = (startY + y) * current.texWidth;
             for (int x = 0; x < pixelsPerTile; x++)
-            {
                 current.pixelBuffer[row + startX + x] = color;
-            }
         }
     }
 
-    private bool IsValidGrid(int x, int y)
+    private static bool IsValidGrid(int x, int y, Vector2Int gridSize)
     {
         return x >= 0 && x < gridSize.x && y >= 0 && y < gridSize.y;
     }

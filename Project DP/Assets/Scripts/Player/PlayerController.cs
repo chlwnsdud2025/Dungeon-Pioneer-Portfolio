@@ -253,23 +253,48 @@ public class PlayerController : MonoBehaviour
     {
         Vector3 rayStart = transform.position + Vector3.up * 0.5f;
 
-        if (Physics.SphereCast(rayStart, sphereCastRadius, transform.forward, out RaycastHit hit, interactRange, interactableLayer))
+        // 묘비 콜라이더는 trigger라 기본 SphereCast에 안 잡힐 수 있어 Collide를 명시합니다.
+        if (Physics.SphereCast(rayStart, sphereCastRadius, transform.forward, out RaycastHit hit,
+                interactRange, interactableLayer, QueryTriggerInteraction.Collide))
         {
-            // ★ 수정됨: WallObject 감지 추가
-            if (hit.collider.GetComponent<PushableObject>() != null ||
-                hit.collider.GetComponent<TreasureChest>() != null ||
-                hit.collider.GetComponent<WallObject>() != null)
+            // 컴포넌트가 자식/부모에 있어도 루트 상호작용 오브젝트를 포커스로 잡습니다.
+            PlayerGrave grave = hit.collider.GetComponentInParent<PlayerGrave>();
+            if (grave != null)
             {
-                focusedObject = hit.transform;
-
-                // 감지된 곳의 정확한 충돌 지점과 벽의 표면 방향을 저장합니다.
+                focusedObject = grave.transform;
                 focusedHitPoint = hit.point;
                 focusedHitNormal = hit.normal;
+                return;
             }
-            else
+
+            TreasureChest chest = hit.collider.GetComponentInParent<TreasureChest>();
+            if (chest != null)
             {
-                focusedObject = null;
+                focusedObject = chest.transform;
+                focusedHitPoint = hit.point;
+                focusedHitNormal = hit.normal;
+                return;
             }
+
+            PushableObject pushable = hit.collider.GetComponentInParent<PushableObject>();
+            if (pushable != null)
+            {
+                focusedObject = pushable.transform;
+                focusedHitPoint = hit.point;
+                focusedHitNormal = hit.normal;
+                return;
+            }
+
+            WallObject wall = hit.collider.GetComponentInParent<WallObject>();
+            if (wall != null)
+            {
+                focusedObject = wall.transform;
+                focusedHitPoint = hit.point;
+                focusedHitNormal = hit.normal;
+                return;
+            }
+
+            focusedObject = null;
         }
         else
         {
@@ -307,7 +332,7 @@ public class PlayerController : MonoBehaviour
     {
         if (focusedObject == null) return false;
 
-        WallObject wall = focusedObject.GetComponent<WallObject>();
+        WallObject wall = focusedObject.GetComponentInParent<WallObject>();
         if (wall == null) return false;
 
         return enableMultiTorch || !wall.HasTorchOnFace(focusedHitNormal);

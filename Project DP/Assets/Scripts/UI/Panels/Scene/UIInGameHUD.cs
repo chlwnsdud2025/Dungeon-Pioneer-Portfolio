@@ -180,15 +180,16 @@ public class UIInGameHUD : UIScene
         if (quickSlotBar != null) quickSlotBar.Use(index);
     }
 
-    // 미니맵: MinimapManager가 그리는 '현재 층' 텍스처를 매 프레임 그대로 가져와 표시합니다.
-    // 층을 오가면 MinimapManager.CurrentTexture가 바뀌므로 자동으로 최신 층 미니맵이 보입니다.
+    // 미니맵: MinimapManager가 그린 텍스처를 HUD RawImage에 표시합니다.
+    // MinimapManager는 전역 HUD에 하나만 존재하며, 던전 씬의 중복 Canvas는 사용하지 않습니다.
     private void RefreshMinimap()
     {
         if (minimapImage == null) return;
 
         MinimapManager mm = MinimapManager.Instance;
-        Texture tex = mm != null ? mm.CurrentTexture : null;
+        if (mm == null) return;
 
+        Texture tex = mm.CurrentTexture;
         if (minimapImage.texture != tex) minimapImage.texture = tex;
         if (minimapFitter != null && tex != null) minimapFitter.aspectRatio = mm.CurrentAspect;
     }

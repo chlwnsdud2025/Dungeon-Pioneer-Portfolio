@@ -69,8 +69,9 @@ public class WeaponHitbox : MonoBehaviour
         EnemyController enemy = other.GetComponentInParent<EnemyController>();
         if (enemy == null) return;
 
-        if (!hitThisSwing.Add(enemy)) return;   // 이번 스윙에 이미 맞은 대상
+        if (!hitThisSwing.Add(enemy)) return;
 
-        enemy.TakeDamage(damage);
+        Transform attacker = GetComponentInParent<PlayerController>()?.transform;
+        enemy.TakeDamage(damage, attacker);
     }
 }

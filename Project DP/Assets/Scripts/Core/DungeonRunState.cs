@@ -33,6 +33,13 @@ public static class DungeonRunState
     /// <summary>모든 진행 기록을 지웁니다. 다음 입장은 완전히 새 던전이 됩니다.</summary>
     public static void Clear() => maps.Clear();
 
+    /// <summary>저장된 모든 맵에서 묘비 기록만 지웁니다. (새 던전 입장 시 호출)</summary>
+    public static void ClearGraves()
+    {
+        foreach (MapSnapshot snapshot in maps.Values)
+            snapshot.graves.Clear();
+    }
+
     /// <summary>기록이 남아 있는 맵 수. (디버그용)</summary>
     public static int SavedMapCount => maps.Count;
 }

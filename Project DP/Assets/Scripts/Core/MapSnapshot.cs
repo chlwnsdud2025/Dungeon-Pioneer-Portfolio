@@ -44,6 +44,15 @@ public interface IFloorPersistent
     void Restore(FloorObjectState state);
 }
 
+/// <summary>플레이어 사망 위치에 설치된 묘비 하나의 기록.</summary>
+public struct GraveRecord
+{
+    public Vector2Int cell;
+    public int variant;
+    public Vector3 position;
+    public Quaternion rotation;
+}
+
 /// <summary>설치된 횃불 하나의 기록.</summary>
 public struct TorchRecord
 {
@@ -64,7 +73,11 @@ public class MapSnapshot
 
     public readonly List<TorchRecord> torches = new();
 
+    /// <summary>사망 위치에 설치된 묘비. 같은 셀에는 하나만 기록됩니다.</summary>
+    public readonly List<GraveRecord> graves = new();
+
     // 미니맵 탐색 기록. visited는 2차원 배열을 1차원으로 편 것.
     public bool[] minimapVisited;
     public int minimapVisitedCount;
+    public Vector2Int minimapGridSize;
 }

@@ -206,7 +206,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &540842390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -360,6 +360,8 @@ MonoBehaviour:
   overworldSceneName: Overworld
   victoryReturnDelay: 3
   deathReturnDelay: 3
+  gravePrefabA: {fileID: 1628816669445500543, guid: 9d6492e6147dd6b47836eacf775fe478, type: 3}
+  gravePrefabB: {fileID: 5139426911317645463, guid: 4618a6d617bc49b45b450d9e16317efc, type: 3}
 --- !u!4 &626846872
 Transform:
   m_ObjectHideFlags: 0
@@ -441,7 +443,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1467589317
 RectTransform:
   m_ObjectHideFlags: 0

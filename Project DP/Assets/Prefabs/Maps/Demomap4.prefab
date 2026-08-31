@@ -2656,6 +2656,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8812345678901234568, guid: a10a9532ae199364dba4b2e2ce2fbe9b, type: 3}
+      propertyPath: arrowTraps.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8812345678901234568, guid: a10a9532ae199364dba4b2e2ce2fbe9b, type: 3}
+      propertyPath: 'arrowTraps.Array.data[0]'
+      value: 
+      objectReference: {fileID: 4593469109519071817}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -5327,6 +5335,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d719842def386fc4ba9db55b68d465a0, type: 3}
+--- !u!114 &1031146850392221611 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2137651237746789448, guid: d719842def386fc4ba9db55b68d465a0, type: 3}
+  m_PrefabInstance: {fileID: 1433597005224373219}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec3d45b189e6e834e8dbd45bb2022428, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ArrowTrap
 --- !u!4 &4765157865485807935 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5891857532460653276, guid: d719842def386fc4ba9db55b68d465a0, type: 3}
@@ -8985,6 +9004,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d719842def386fc4ba9db55b68d465a0, type: 3}
+--- !u!114 &4593469109519071817 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2137651237746789448, guid: d719842def386fc4ba9db55b68d465a0, type: 3}
+  m_PrefabInstance: {fileID: 2455923772781196801}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec3d45b189e6e834e8dbd45bb2022428, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ArrowTrap
 --- !u!4 &8345491842590682333 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5891857532460653276, guid: d719842def386fc4ba9db55b68d465a0, type: 3}
@@ -23212,6 +23242,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8812345678901234568, guid: a10a9532ae199364dba4b2e2ce2fbe9b, type: 3}
+      propertyPath: arrowTraps.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8812345678901234568, guid: a10a9532ae199364dba4b2e2ce2fbe9b, type: 3}
+      propertyPath: 'arrowTraps.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1031146850392221611}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

@@ -9,6 +9,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7081807309112391582}
+  - component: {fileID: 8812345678901234567}
+  - component: {fileID: 8812345678901234568}
   m_Layer: 9
   m_Name: ArrowTriggerTile
   m_TagString: Trap
@@ -33,6 +35,47 @@ Transform:
   - {fileID: 4784608185721135885}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &8812345678901234567
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640385009140115679}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2, y: 2, z: 2}
+  m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &8812345678901234568
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640385009140115679}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9348f528df79f249bb53c90e56b4aab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PressurePlate
+  arrowTraps: []
+  triggeredByEnemy: 1
+  waitForArrowResolve: 1
+  cooldown: 1
+  singleUse: 0
+  fitTriggerToFloorTile: 1
+  triggerHeight: 2
+  triggerCenterY: 1
 --- !u!1001 &5038664552832091366
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -100,61 +143,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a00934b8a8e46f64e814a87e74e43133, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2793339871446145650}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a00934b8a8e46f64e814a87e74e43133, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7918285292883875555}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a00934b8a8e46f64e814a87e74e43133, type: 3}
 --- !u!4 &4784608185721135885 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a00934b8a8e46f64e814a87e74e43133, type: 3}
   m_PrefabInstance: {fileID: 5038664552832091366}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &5273019615606602167 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: a00934b8a8e46f64e814a87e74e43133, type: 3}
-  m_PrefabInstance: {fileID: 5038664552832091366}
-  m_PrefabAsset: {fileID: 0}
---- !u!65 &2793339871446145650
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5273019615606602167}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.02, y: 0.020000005, z: 0.0039997157}
-  m_Center: {x: 0, y: -6.6629117e-18, z: 0.000999858}
---- !u!114 &7918285292883875555
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5273019615606602167}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9348f528df79f249bb53c90e56b4aab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PressurePlate
-  arrowTraps: []
-  triggeredByEnemy: 1
-  cooldown: 1
-  singleUse: 0
 --- !u!1001 &6417568230072475924
 PrefabInstance:
   m_ObjectHideFlags: 0

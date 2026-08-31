@@ -54,6 +54,11 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     [Tooltip("플레이어 사망 후 사망 모션을 보여주고 오버월드로 돌아가기까지의 대기 시간(초).")]
     public float deathReturnDelay = 3f;
 
+    [Header("Player Graves")]
+    [Tooltip("사망 위치에 랜덤으로 설치할 묘비 프리팹.")]
+    public GameObject gravePrefabA;
+    public GameObject gravePrefabB;
+
     // ── 이 씬 안에서 지금까지 만든 층들을 보관하는 캐시 ──
     private readonly Dictionary<LocationId, GameObject> loadedLocations = new Dictionary<LocationId, GameObject>();
     private LocationId currentLocationId;   // 지금 활성화된 층
@@ -89,6 +94,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     {
         isLeaving = false;
         currentFloor = 1;
+
+        GridSystem.Instance.ClearActiveMapGrid();
 
         dungeonGenerator.PrepareNewRun(maxFloor > 0 ? maxFloor : 1); // 이번 런의 층별 맵 프리팹을 새로 셔플
         ResetWorld();                                                // 이전에 캐시된 층/플레이어 정리
@@ -141,6 +148,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     {
         if (isLeaving) return;
         isLeaving = true;
+        SpawnGraveAtCurrentPlayerPosition();
         StartCoroutine(LoadOverworldAfterDelay(deathReturnDelay, revive: true));
     }
 
@@ -176,15 +184,18 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         else
         {
             instance.SetActive(true);
+            dungeonGenerator.SyncGridSystemToLocation(instance);
         }
 
         currentLocationId = destination;
         hasCurrentLocation = true;
 
-        if (navMeshSurface != null) navMeshSurface.BuildNavMesh();
-
-        // 처음 생성한 층만: 베이크 직후 후처리(예: Trap NavMeshLink). 재방문이면 이미 만들어져 있음.
-        if (isNew) dungeonGenerator.OnNavMeshBaked(instance);
+        if (navMeshSurface != null)
+        {
+            BakeNavMeshForLocation(instance);
+            dungeonGenerator.OnNavMeshBaked(instance);
+            NotifyEnemiesNavMeshReady(instance);
+        }
 
         PlacePlayer(instance, arrivalSpawnPointId);
 
@@ -197,10 +208,40 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             if (isNew)
             {
                 MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));
-                if (snapshot != null)
-                    MinimapManager.Instance.RestoreExploration(destination, snapshot.minimapVisited, snapshot.minimapVisitedCount);
+                if (snapshot != null && snapshot.minimapVisited != null)
+                {
+                    MinimapManager.Instance.RestoreExploration(
+                        destination,
+                        snapshot.minimapVisited,
+                        snapshot.minimapVisitedCount,
+                        snapshot.minimapGridSize);
+                }
             }
         }
+    }
+
+    /// <summary>활성 층만 NavMesh에 포함해 굽습니다. (플레이어 횃불 등 씬 전역 메시 제외)</summary>
+    private void BakeNavMeshForLocation(GameObject instance)
+    {
+        Transform previousParent = instance.transform.parent;
+        CollectObjects previousCollect = navMeshSurface.collectObjects;
+
+        instance.transform.SetParent(navMeshSurface.transform, true);
+        navMeshSurface.collectObjects = CollectObjects.Children;
+
+        dungeonGenerator.PrepareNavMeshForBake(instance);
+        navMeshSurface.BuildNavMesh();
+
+        navMeshSurface.collectObjects = previousCollect;
+        instance.transform.SetParent(previousParent, true);
+    }
+
+    private static void NotifyEnemiesNavMeshReady(GameObject locationInstance)
+    {
+        if (locationInstance == null) return;
+
+        foreach (EnemyController enemy in locationInstance.GetComponentsInChildren<EnemyController>(true))
+            enemy.NotifyNavMeshReady();
     }
 
     /// <summary>
@@ -215,6 +256,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         }
         loadedLocations.Clear();
         hasCurrentLocation = false;
+
+        GridSystem.Instance.ClearActiveMapGrid();
 
         if (MinimapManager.Instance != null)
         {
@@ -269,12 +312,20 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
                 snapshot.torches.Add(torch.ToRecord());
             }
 
-            // 3. 미니맵 탐색 기록 (개척도 포함)
+            // 3. 사망 위치에 설치된 묘비 (같은 셀은 하나만)
+            foreach (PlayerGrave grave in instance.GetComponentsInChildren<PlayerGrave>(true))
+            {
+                GraveRecord record = grave.ToRecord();
+                ReplaceGraveRecord(snapshot.graves, record);
+            }
+
+            // 4. 미니맵 탐색 기록 (개척도 포함)
             if (MinimapManager.Instance != null &&
-                MinimapManager.Instance.TryCaptureExploration(kvp.Key, out bool[] visited, out int visitedCount))
+                MinimapManager.Instance.TryCaptureExploration(kvp.Key, out bool[] visited, out int visitedCount, out Vector2Int gridSize))
             {
                 snapshot.minimapVisited = visited;
                 snapshot.minimapVisitedCount = visitedCount;
+                snapshot.minimapGridSize = gridSize;
             }
 
             DungeonRunState.Save(mapId, snapshot);
@@ -296,6 +347,9 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
         // 2. 설치했던 횃불 다시 세우기
         RestoreTorches(instance, snapshot);
+
+        // 3. 사망 위치에 설치했던 묘비 다시 세우기
+        RestoreGraves(instance, snapshot);
     }
 
     private void RestoreTorches(GameObject instance, MapSnapshot snapshot)
@@ -330,9 +384,125 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             // 이 면에 다시 설치되지 않도록 벽에 표시를 되돌린다.
             if (wallsByCell.TryGetValue(record.wallCell, out WallObject wall))
                 wall.MarkTorchPlaced(record.faceKey);
-
-            if (MinimapManager.Instance != null) MinimapManager.Instance.RegisterTorch(torch.transform);
         }
+    }
+
+    private void RestoreGraves(GameObject instance, MapSnapshot snapshot)
+    {
+        if (snapshot.graves.Count == 0) return;
+
+        foreach (GraveRecord record in snapshot.graves)
+            SpawnGrave(instance, record.cell, (PlayerGrave.Variant)record.variant, record.rotation);
+    }
+
+    /// <summary>현재 활성 층의 플레이어 사망 위치에 묘비를 설치합니다.</summary>
+    private void SpawnGraveAtCurrentPlayerPosition()
+    {
+        GameObject location = CurrentLocationInstance;
+        if (location == null) return;
+
+        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
+        if (player == null) return;
+
+        Vector3Int cell3 = GridSystem.Instance.WorldToCell(player.transform.position);
+        Vector2Int cell = new Vector2Int(cell3.x, cell3.z);
+        PlayerGrave.Variant variant = Random.value < 0.5f ? PlayerGrave.Variant.A : PlayerGrave.Variant.B;
+
+        SpawnGrave(location, cell, variant, Quaternion.identity);
+
+        if (MinimapManager.Instance != null)
+        {
+            foreach (PlayerGrave grave in location.GetComponentsInChildren<PlayerGrave>(true))
+            {
+                if (grave.Cell == cell)
+                {
+                    MinimapManager.Instance.RegisterGrave(grave.transform);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void SpawnGrave(GameObject location, Vector2Int cell, PlayerGrave.Variant variant, Quaternion rotation)
+    {
+        GameObject prefab = variant == PlayerGrave.Variant.A ? gravePrefabA : gravePrefabB;
+        if (prefab == null)
+        {
+            Debug.LogWarning("[DungeonManager] 묘비 프리팹이 연결되어 있지 않아 설치하지 못했습니다.");
+            return;
+        }
+
+        RemoveGraveAtCell(location, cell);
+
+        Vector3 worldPos = GridSystem.Instance.GetCellCenterWorld(new Vector3Int(cell.x, 0, cell.y))
+                         + Vector3.up;
+        GameObject graveObj = Instantiate(prefab, worldPos, rotation, location.transform);
+        ConfigureGraveObject(graveObj, cell, variant);
+    }
+
+    private static void ConfigureGraveObject(GameObject graveObj, Vector2Int cell, PlayerGrave.Variant variant)
+    {
+        int interactableLayer = LayerMask.NameToLayer("Interactable");
+        if (interactableLayer >= 0)
+        {
+            // SphereCast는 맞은 콜라이더의 레이어를 보므로 자식까지 Interactable로 맞춥니다.
+            foreach (Transform t in graveObj.GetComponentsInChildren<Transform>(true))
+                t.gameObject.layer = interactableLayer;
+        }
+
+        foreach (Collider col in graveObj.GetComponentsInChildren<Collider>(true))
+            col.isTrigger = true;
+
+        PlayerGrave marker = graveObj.GetComponent<PlayerGrave>();
+        if (marker == null) marker = graveObj.AddComponent<PlayerGrave>();
+        marker.Initialize(cell, variant);
+    }
+
+    private static void RemoveGraveAtCell(GameObject location, Vector2Int cell)
+    {
+        foreach (PlayerGrave grave in location.GetComponentsInChildren<PlayerGrave>(true))
+        {
+            if (grave.Cell != cell) continue;
+
+            if (MinimapManager.Instance != null)
+                MinimapManager.Instance.UnregisterGrave(grave.transform);
+
+            Destroy(grave.gameObject);
+        }
+    }
+
+    private static void ReplaceGraveRecord(List<GraveRecord> graves, GraveRecord record)
+    {
+        for (int i = graves.Count - 1; i >= 0; i--)
+        {
+            if (graves[i].cell == record.cell)
+            {
+                graves[i] = record;
+                return;
+            }
+        }
+
+        graves.Add(record);
+    }
+
+    /// <summary>F키로 묘비를 제거했을 때 저장 기록에서도 지웁니다.</summary>
+    public void RemoveGraveRecord(Vector2Int cell)
+    {
+        GameObject location = CurrentLocationInstance;
+        if (location == null) return;
+
+        string mapId = GetMapId(location);
+        MapSnapshot snapshot = DungeonRunState.Get(mapId);
+        if (snapshot == null) return;
+
+        for (int i = snapshot.graves.Count - 1; i >= 0; i--)
+        {
+            if (snapshot.graves[i].cell == cell)
+                snapshot.graves.RemoveAt(i);
+        }
+
+        if (MinimapManager.Instance != null)
+            MinimapManager.Instance.RefreshGraves();
     }
 
     /// <summary>테스트용. 저장된 던전 진행 기록을 전부 지웁니다. (플레이 중 인스펙터에서 우클릭)</summary>

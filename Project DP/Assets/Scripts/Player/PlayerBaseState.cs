@@ -37,15 +37,23 @@ public abstract class PlayerBaseState
         if (player.focusedObject != null)
         {
             // 1. 보물상자인지 확인
-            TreasureChest chest = player.focusedObject.GetComponent<TreasureChest>();
+            TreasureChest chest = player.focusedObject.GetComponentInParent<TreasureChest>();
             if (chest != null && !chest.isOpen)
             {
                 stateMachine.ChangeState<OpenChestState_Player>();
                 return;
             }
 
-            // 2. 밀 수 있는 물체인지 확인 (단, 함정을 메워 잠긴 오브젝트는 밀 수 없음)
-            PushableObject pushObj = player.focusedObject.GetComponent<PushableObject>();
+            // 2. 묘비인지 확인 (F키로 제거)
+            PlayerGrave grave = player.focusedObject.GetComponentInParent<PlayerGrave>();
+            if (grave != null)
+            {
+                grave.Interact();
+                return;
+            }
+
+            // 3. 밀 수 있는 물체인지 확인 (단, 함정을 메워 잠긴 오브젝트는 밀 수 없음)
+            PushableObject pushObj = player.focusedObject.GetComponentInParent<PushableObject>();
             if (pushObj != null)
             {
                 if (!pushObj.IsLocked)
@@ -53,9 +61,9 @@ public abstract class PlayerBaseState
                 return;
             }
 
-            // ★ 3. 벽인지 확인 — 재고/중복 검사와 개수 차감은 전부 TryPlaceTorch가 처리한다.
+            // ★ 4. 벽인지 확인 — 재고/중복 검사와 개수 차감은 전부 TryPlaceTorch가 처리한다.
             //      (횃불은 인벤토리 소모품이라 퀵슬롯으로 쓸 때와 같은 경로를 탄다)
-            if (player.focusedObject.GetComponent<WallObject>() != null)
+            if (player.focusedObject.GetComponentInParent<WallObject>() != null)
                 player.TryPlaceTorch();
         }
     }

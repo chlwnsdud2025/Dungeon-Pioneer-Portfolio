@@ -59,9 +59,31 @@ public class GridSystem : ScriptableObject
     [Tooltip("그리드 좌표 (0,0)이 월드 공간 어디에 위치하는지")]
     [SerializeField] private Vector3 origin = Vector3.zero;
 
-    public float TileSize => tileSize;
-    public float TileHeight => tileHeight;
-    public Vector3 Origin => origin;
+    // 활성 맵이 Demomap(간격 2)처럼 애셋 기본값과 다를 때 런타임에만 덮어씁니다.
+    private float? activeTileSize;
+    private float? activeTileHeight;
+    private Vector3? activeOrigin;
+
+    public float TileSize => activeTileSize ?? tileSize;
+    public float TileHeight => activeTileHeight ?? tileHeight;
+    public Vector3 Origin => activeOrigin ?? origin;
+
+    /// <summary>현재 로드된 맵의 실제 타일 간격/원점에 GridSystem을 맞춥니다.</summary>
+    public void ApplyActiveMapGrid(float mapTileSize, Vector3 mapOrigin)
+    {
+        if (mapTileSize <= 0.01f) return;
+        activeTileSize = mapTileSize;
+        activeTileHeight = mapTileSize;
+        activeOrigin = mapOrigin;
+    }
+
+    /// <summary>런타임 맵 그리드 덮어쓰기를 해제하고 애셋 기본값으로 되돌립니다.</summary>
+    public void ClearActiveMapGrid()
+    {
+        activeTileSize = null;
+        activeTileHeight = null;
+        activeOrigin = null;
+    }
 
     // ── 좌표 변환 유틸 ──────────────────────────────────────────
 
@@ -71,22 +93,22 @@ public class GridSystem : ScriptableObject
     /// </summary>
     public Vector3 GetCellCenterWorld(Vector3Int cell)
     {
-        return origin + new Vector3(cell.x * tileSize, cell.y * tileHeight, cell.z * tileSize);
+        return Origin + new Vector3(cell.x * TileSize, cell.y * TileHeight, cell.z * TileSize);
     }
 
     /// <summary>셀의 바닥 기준에서 한 칸 위로 솟아오른 위치. (벽/상자/적처럼 바닥 위에 놓이는 오브젝트용)</summary>
     public Vector3 GetElevatedWorld(Vector3Int cell)
     {
-        return GetCellCenterWorld(cell) + new Vector3(0f, tileHeight, 0f);
+        return GetCellCenterWorld(cell) + new Vector3(0f, TileHeight, 0f);
     }
 
     /// <summary>월드 좌표 → 그리드 셀 좌표(반올림 변환)</summary>
     public Vector3Int WorldToCell(Vector3 worldPos)
     {
-        Vector3 local = worldPos - origin;
-        int x = Mathf.RoundToInt(local.x / tileSize);
-        int y = Mathf.RoundToInt(local.y / tileHeight);
-        int z = Mathf.RoundToInt(local.z / tileSize);
+        Vector3 local = worldPos - Origin;
+        int x = Mathf.RoundToInt(local.x / TileSize);
+        int y = Mathf.RoundToInt(local.y / TileHeight);
+        int z = Mathf.RoundToInt(local.z / TileSize);
         return new Vector3Int(x, y, z);
     }
 

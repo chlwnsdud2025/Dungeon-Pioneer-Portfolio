@@ -12,7 +12,8 @@ public class EnemyAttackState : EnemyBaseState
 
     public override void Enter()
     {
-        enemy.MoveEnemy(Vector3.zero); // 공격 중에는 이동 멈춤
+        enemy.DeactivateNavMeshAgent();
+        enemy.MoveEnemy(Vector3.zero);
         enemy.lastAttackTime = Time.time;
 
         timer = 0f;
@@ -59,13 +60,11 @@ public class EnemyAttackState : EnemyBaseState
 
         foreach (Collider playerCol in hitPlayers)
         {
-            // 플레이어 컴포넌트를 가져와서 데미지와 '나(적)'의 Transform을 넘겨줍니다.
             PlayerController player = playerCol.GetComponent<PlayerController>();
-            if (player != null)
-            {
-                // 공격력과 공격자의 위치 전달
-                player.TakeDamage(5f, enemy.transform);
-            }
+            if (player == null) continue;
+            if (!enemy.IsInFieldOfView(player.transform.position)) continue;
+
+            player.TakeDamage(5f, enemy.transform);
         }
     }
 }

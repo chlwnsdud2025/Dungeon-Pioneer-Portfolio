@@ -10,14 +10,12 @@ public class EnemyDeadState : EnemyBaseState
 
     public override void Enter()
     {
+        enemy.DeactivateNavMeshAgent();
         timer = 0f;
         enemy.animator.CrossFadeInFixedTime(deadAnimHash, 0.1f);
 
-        // 플레이어가 시체를 뚫고 지나갈 수 있도록 CharacterController 비활성화
         if (enemy.characterController != null)
-        {
             enemy.characterController.enabled = false;
-        }
 
         Debug.Log("적 사망!");
 

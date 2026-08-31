@@ -41,30 +41,22 @@ public class ArrowTrap : MonoBehaviour
         }
 
         // [DEBUG] 이 로그가 뜨는 ArrowTrap만 실제로 발사 가능. 발판이 참조하는 트랩에서 이 로그가 안 뜨면 프리팹 에셋을 참조 중.
-        Debug.Log($"[ArrowTrap] Awake 완료: 화살 풀 {pool.Count}개 생성", this);
+        // Debug.Log($"[ArrowTrap] Awake 완료: 화살 풀 {pool.Count}개 생성", this);
     }
 
     /// <summary>PressurePlate가 밟혔을 때 호출됩니다. 화살 하나를 발사합니다.</summary>
-    public void Fire()
+    public bool Fire(PressurePlate source = null)
     {
-        // [DEBUG] Fire가 호출됐는지, 풀 상태는 어떤지 기록. pool=0이면 Awake 미실행(프리팹 에셋 참조 등).
-        Debug.Log($"[ArrowTrap] Fire() 호출. pool={pool.Count}, arrowPrefab={(arrowPrefab != null ? arrowPrefab.name : "null")}", this);
-
         Arrow arrow = GetAvailableArrow();
-        if (arrow == null)
-        {
-            Debug.LogWarning("[ArrowTrap] 사용 가능한 화살이 없음(pool이 비었거나 전부 사용 중) → 발사 안 됨", this);
-            return; // 풀에 여유가 없으면 이번 발사는 건너뜀
-        }
+        if (arrow == null) return false;
 
         Transform origin = spawnPoint != null ? spawnPoint : transform;
-        Vector3 dir = transform.forward; // z축 앞쪽 (오브젝트 회전으로 방향 조절)
+        Vector3 dir = transform.forward;
 
         arrow.transform.SetPositionAndRotation(origin.position, Quaternion.LookRotation(dir));
         arrow.gameObject.SetActive(true);
-        arrow.Launch(dir, arrowSpeed, this);
-
-        Debug.Log($"[ArrowTrap] 화살 발사! 위치={origin.position}, 방향={dir}, 속도={arrowSpeed}", this);
+        arrow.Launch(dir, arrowSpeed, this, source);
+        return true;
     }
 
     private Arrow GetAvailableArrow()

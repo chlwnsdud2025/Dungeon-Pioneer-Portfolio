@@ -68,7 +68,17 @@ public class RollingRock : MonoBehaviour
 
         // 1. 벽 감지: 진행 방향으로 돌 반경만큼 캐스트해서, 이번 프레임에 닿을 벽이 있으면 사라짐 (예측 → 벽 파고들지 않음)
         if (Physics.SphereCast(transform.position, rockRadius, moveDirection,
-                out RaycastHit _, step + rockRadius, wallLayer, QueryTriggerInteraction.Ignore))
+                out RaycastHit wallHit, step + rockRadius, wallLayer, QueryTriggerInteraction.Ignore))
+        {
+            Despawn();
+            return;
+        }
+
+        // Pushable 솔리드 콜라이더에도 부딪히면 돌만 회수 (Pushable은 유지)
+        if (Physics.SphereCast(transform.position, rockRadius, moveDirection,
+                out RaycastHit pushHit, step + rockRadius, ~0, QueryTriggerInteraction.Ignore)
+            && pushHit.collider != null
+            && pushHit.collider.GetComponentInParent<PushableObject>() != null)
         {
             Despawn();
             return;
@@ -94,7 +104,16 @@ public class RollingRock : MonoBehaviour
     // 피격 판정: 트리거 콜라이더로 처리. 같은 대상은 이번 발사에서 한 번만 맞습니다.
     private void OnTriggerEnter(Collider other)
     {
-        if (!active || damage <= 0f) return;
+        if (!active) return;
+
+        // Pushable과 충돌하면 돌만 사라지고 Pushable은 유지됩니다.
+        if (other.GetComponentInParent<PushableObject>() != null)
+        {
+            Despawn();
+            return;
+        }
+
+        if (damage <= 0f) return;
 
         // 콜라이더가 자식에 있을 수도 있으므로 부모까지 탐색
         PlayerController player = other.GetComponentInParent<PlayerController>();
