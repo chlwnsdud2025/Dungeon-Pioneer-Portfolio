@@ -215,6 +215,25 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
                 }
             }
         }
+
+        RevealDecorationIfExplored(instance);
+    }
+
+    /// <summary>
+    /// 이미 개척을 마친 맵이면 장식을 켭니다. 개척을 '완료한 순간'이 아니라 그 층에 다시 들어설 때
+    /// 나타나는 연출이라, 층 전환이 끝나는 이 지점에서 한 번만 판정합니다.
+    ///
+    /// 호출 위치가 중요합니다. RestoreExploration '뒤'여야 재입장 경로에서 복원된 방문 기록이 반영되고,
+    /// isNew 분기 '밖'이어야 층 재방문(SetActive) 경로까지 한 번에 커버됩니다.
+    /// </summary>
+    private static void RevealDecorationIfExplored(GameObject instance)
+    {
+        if (instance == null || MinimapManager.Instance == null) return;
+
+        MapDecoration decoration = instance.GetComponent<MapDecoration>();
+        if (decoration == null) return;   // 장식을 두지 않은 맵
+
+        decoration.SetRevealed(MinimapManager.Instance.IsCurrentExplored);
     }
 
     /// <summary>활성 층만 NavMesh에 포함해 굽습니다. (플레이어 횃불 등 씬 전역 메시 제외)</summary>

@@ -67,6 +67,7 @@ MonoBehaviour:
   enemyColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
   chestColor: {r: 0.9, g: 0.9, b: 0.2, a: 1}
   torchColor: {r: 1, g: 0.6, b: 0.1, a: 1}
+  graveColor: {r: 0.65, g: 0.2, b: 0.9, a: 1}
   playerDotRadiusPx: 8
   enemyDotRadiusPx: 8
   chestDotRadiusPx: 5

@@ -31470,8 +31470,29 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1850909407837209897, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6780467751644577367}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 214371697484952447, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4272832927138597053}
   m_SourcePrefab: {fileID: 100100000, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
+--- !u!1 &7287898888474771720 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 214371697484952447, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
+  m_PrefabInstance: {fileID: 7483373451210404471}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4272832927138597053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7287898888474771720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c28ef12d79403594f827c85daa43b755, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MapDecoration
+  decorationRoot: {fileID: 0}
 --- !u!4 &9112339837744904030 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1850909407837209897, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
