@@ -61,7 +61,6 @@ public class DungeonGenerator : MonoBehaviour
         //   미니맵/상호작용 판정 등이 맵의 일부만 인식하는 문제가 생기므로, 실제 타일들의 최소 좌표를
         //   찾아서 GridSystem의 셀 (0,0)에 정확히 맞도록 맵 전체를 이동시켜 정규화합니다.
         NormalizeMapOrigin(spawnedMap);
-        ApplyGridSystemToMap(spawnedMap);
 
         LocationRoot root = spawnedMap.AddComponent<LocationRoot>();
         root.Initialize(id);
@@ -405,9 +404,9 @@ public class DungeonGenerator : MonoBehaviour
 
         if (!foundAnyTile) return;
 
-        // 미세 오차(0.97 등)를 제거하고 정수/반칸 격자에 스냅
-        minX = SnapCoordToHalf(minX);
-        minZ = SnapCoordToHalf(minZ);
+        // 미세 오차(0.97 등)를 제거하고 타일 격자에 스냅
+        minX = SnapToTileGrid(minX);
+        minZ = SnapToTileGrid(minZ);
 
         Vector3 origin = GridSystem.Instance.Origin;
         Vector3 offset = new Vector3(origin.x - minX, 0f, origin.z - minZ);
@@ -431,65 +430,11 @@ public class DungeonGenerator : MonoBehaviour
         }
     }
 
-    private static float SnapCoordToHalf(float value)
+    /// <summary>맵 원점을 타일 격자(2 단위)에 맞춥니다. 장식 오브젝트의 미세 오차를 흡수합니다.</summary>
+    private static float SnapToTileGrid(float value)
     {
-        return Mathf.Round(value * 2f) / 2f;
-    }
-
-    /// <summary>
-    /// Demomap(간격 2)처럼 애셋 기본 tileSize(3)와 다른 맵이면 GridSystem을 맵 실측 간격에 맞춥니다.
-    /// Push/Latch/Restore가 미니맵·타일과 같은 칸을 쓰게 됩니다.
-    /// </summary>
-    public void SyncGridSystemToLocation(GameObject mapInstance)
-    {
-        ApplyGridSystemToMap(mapInstance);
-    }
-
-    private void ApplyGridSystemToMap(GameObject mapInstance)
-    {
-        if (!TryInferMapTileSpacing(mapInstance, out float spacing, out Vector3 origin))
-            return;
-
-        GridSystem.Instance.ApplyActiveMapGrid(spacing, origin);
-        Debug.Log($"<color=yellow>[DungeonGenerator] GridSystem을 맵에 맞춤: tileSize={spacing}, origin={origin}</color>");
-    }
-
-    private static bool TryInferMapTileSpacing(GameObject mapInstance, out float spacing, out Vector3 origin)
-    {
-        float fallback = 3f;
-        // 이전 런의 잘못된 덮어쓰기(예: 0.97)에 물리지 않도록 애셋 기본값을 우선 사용합니다.
-        GridSystem.Instance.ClearActiveMapGrid();
-        fallback = GridSystem.Instance.TileSize;
-        spacing = fallback;
-        origin = GridSystem.Instance.Origin;
-
-        var xs = new List<float>();
-        var zs = new List<float>();
-        float minX = float.MaxValue;
-        float minZ = float.MaxValue;
-        Transform mapRoot = mapInstance.transform;
-
-        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (!IsMapTileRoot(child, mapRoot)) continue;
-
-            Vector3 pos = child.position;
-            if (pos.x < minX) minX = pos.x;
-            if (pos.z < minZ) minZ = pos.z;
-            xs.Add(pos.x);
-            zs.Add(pos.z);
-        }
-
-        if (xs.Count == 0) return false;
-
-        origin = new Vector3(SnapCoordToHalf(minX), 0f, SnapCoordToHalf(minZ));
-
-        float inferredX = InferDominantTileSpacing(xs, fallback);
-        float inferredZ = InferDominantTileSpacing(zs, fallback);
-
-        float inferred = ChooseTileSpacing(inferredX, inferredZ, fallback);
-        spacing = inferred > 0f ? inferred : (SnapTileSpacing(fallback) > 0f ? SnapTileSpacing(fallback) : 3f);
-        return true;
+        float tile = GridSystem.Instance.TileSize;
+        return Mathf.Round(value / tile) * tile;
     }
 
     private static bool IsMapTileRoot(Transform obj, Transform mapRoot)
@@ -510,62 +455,6 @@ public class DungeonGenerator : MonoBehaviour
         }
 
         return true;
-    }
-
-    private static float SnapTileSpacing(float spacing)
-    {
-        if (Mathf.Abs(spacing - 2f) <= 0.35f) return 2f;
-        if (Mathf.Abs(spacing - 3f) <= 0.35f) return 3f;
-        // 2/3이 아니면 애셋 기본값을 쓰기 위해 NaN 대신 0을 돌려 호출부에서 fallback 처리
-        return 0f;
-    }
-
-    private static float ChooseTileSpacing(float a, float b, float fallback)
-    {
-        float snappedA = SnapTileSpacing(a);
-        float snappedB = SnapTileSpacing(b);
-        bool aOk = snappedA > 0f;
-        bool bOk = snappedB > 0f;
-
-        if (!aOk && !bOk) return SnapTileSpacing(fallback) > 0f ? SnapTileSpacing(fallback) : 3f;
-        if (!aOk) return snappedB;
-        if (!bOk) return snappedA;
-        if (Mathf.Approximately(snappedA, snappedB)) return snappedA;
-
-        // Demomap(2) 우선: 둘 다 타당하면 더 작은 간격
-        return Mathf.Min(snappedA, snappedB);
-    }
-
-    /// <summary>최소값이 아니라 가장 자주 나오는 타일 간격을 고릅니다. (장식 메시 오프셋 ~0.97 노이즈 무시)</summary>
-    private static float InferDominantTileSpacing(List<float> values, float fallback)
-    {
-        if (values == null || values.Count < 2) return fallback;
-
-        values.Sort();
-        var buckets = new Dictionary<int, int>();
-
-        for (int i = 1; i < values.Count; i++)
-        {
-            float delta = values[i] - values[i - 1];
-            if (delta < 1.5f || delta > 8f) continue;
-
-            int key = Mathf.RoundToInt(delta * 10f); // 0.1 단위
-            buckets.TryGetValue(key, out int count);
-            buckets[key] = count + 1;
-        }
-
-        if (buckets.Count == 0) return fallback;
-
-        int bestKey = 0;
-        int bestCount = -1;
-        foreach (KeyValuePair<int, int> pair in buckets)
-        {
-            if (pair.Value <= bestCount) continue;
-            bestCount = pair.Value;
-            bestKey = pair.Key;
-        }
-
-        return bestKey / 10f;
     }
 
     /// <summary>바닥 레이어 불일치로 Pushable이 맵 아래로 빠지지 않도록 스폰 직후 바닥에 붙입니다.</summary>

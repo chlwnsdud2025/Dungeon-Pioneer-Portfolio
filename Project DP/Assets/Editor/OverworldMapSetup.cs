@@ -11,9 +11,8 @@ using UnityEngine.SceneManagement;
 ///   OverworldTileSpacing = 2
 ///   예) Plane (3,5) → (6, 0, 10)
 ///
-/// KayKit dirt_with_grass 메시는 스케일 1에서 약 2월드유닛 폭에 맞추는 것이
-/// 맞물리므로, GridSystem(던전=3)과 별도로 spacing=2를 사용합니다.
-/// MapBuilder.tileSizeOverride = 2 로 편집합니다.
+/// KayKit dirt_with_grass 메시는 스케일 1에서 약 2월드유닛 폭이고, 프로젝트의 모든 타일이
+/// 2×2×2 규격이라 GridSystem.TileSize와 동일한 간격을 씁니다.
 /// </summary>
 public static class OverworldMapSetup
 {
@@ -28,6 +27,7 @@ public static class OverworldMapSetup
     /// Plane 프리팹 Scale은 (1,1,1)로 두고, 타일 간 월드 간격만 이 값을 씁니다.
     /// (유저 보정: grid 좌표 × 2)
     /// </summary>
+    // 프로젝트 전체가 2×2×2 규격. GridSystem.TileSize와 같은 값이어야 합니다.
     public const float OverworldTileSpacing = 2f;
 
     private const int DefaultMapWidth = 17;
@@ -47,8 +47,7 @@ public static class OverworldMapSetup
                 "완료되었습니다.\n\n" +
                 $"• {PlanePrefabPath} (scale = 1,1,1)\n" +
                 $"• {MapPrefabPath} (position = grid * {OverworldTileSpacing})\n" +
-                "• Overworld 씬에 OverworldMap 배치됨\n" +
-                $"• MapBuilder tileSizeOverride = {OverworldTileSpacing}",
+                "• Overworld 씬에 OverworldMap 배치됨",
                 "OK");
         }
         catch (System.Exception ex)
@@ -213,7 +212,7 @@ public static class OverworldMapSetup
         builder.savePath = "Assets/Prefabs/Maps/";
         builder.prefabToLoad = mapPrefab;
         builder.floorPrefab = planePrefab;
-        builder.tileSizeOverride = OverworldTileSpacing;
+
         builder.currentHeight = 0;
         builder.currentRotation = 0;
         builder.selectedPrefabIndex = 0;

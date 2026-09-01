@@ -50,40 +50,20 @@ public class GridSystem : ScriptableObject
     }
 
     [Header("전역 타일 설정 (이 값 하나만 바꾸면 게임 전체에 반영됩니다)")]
-    [Tooltip("타일 한 칸의 가로/세로(X, Z) 크기")]
-    [SerializeField] private float tileSize = 3f;
+    [Tooltip("타일 한 칸의 가로/세로(X, Z) 크기. 프로젝트 규격은 2입니다.")]
+    [SerializeField] private float tileSize = 2f;
 
-    [Tooltip("층(높이) 한 칸의 크기. 특별한 경우가 아니면 tileSize와 동일하게 사용")]
-    [SerializeField] private float tileHeight = 3f;
+    [Tooltip("층(높이) 한 칸의 크기. 타일이 2×2×2 규격이므로 tileSize와 동일하게 둡니다.")]
+    [SerializeField] private float tileHeight = 2f;
 
     [Tooltip("그리드 좌표 (0,0)이 월드 공간 어디에 위치하는지")]
     [SerializeField] private Vector3 origin = Vector3.zero;
 
-    // 활성 맵이 Demomap(간격 2)처럼 애셋 기본값과 다를 때 런타임에만 덮어씁니다.
-    private float? activeTileSize;
-    private float? activeTileHeight;
-    private Vector3? activeOrigin;
-
-    public float TileSize => activeTileSize ?? tileSize;
-    public float TileHeight => activeTileHeight ?? tileHeight;
-    public Vector3 Origin => activeOrigin ?? origin;
-
-    /// <summary>현재 로드된 맵의 실제 타일 간격/원점에 GridSystem을 맞춥니다.</summary>
-    public void ApplyActiveMapGrid(float mapTileSize, Vector3 mapOrigin)
-    {
-        if (mapTileSize <= 0.01f) return;
-        activeTileSize = mapTileSize;
-        activeTileHeight = mapTileSize;
-        activeOrigin = mapOrigin;
-    }
-
-    /// <summary>런타임 맵 그리드 덮어쓰기를 해제하고 애셋 기본값으로 되돌립니다.</summary>
-    public void ClearActiveMapGrid()
-    {
-        activeTileSize = null;
-        activeTileHeight = null;
-        activeOrigin = null;
-    }
+    // ★ 프로젝트의 모든 타일은 2×2×2 규격입니다. 런타임에 맵마다 간격을 추론해 덮어쓰던 구조를
+    //   걷어내고, 이 애셋 값 하나만을 단일 진실 공급원으로 삼습니다.
+    public float TileSize => tileSize;
+    public float TileHeight => tileHeight;
+    public Vector3 Origin => origin;
 
     // ── 좌표 변환 유틸 ──────────────────────────────────────────
 

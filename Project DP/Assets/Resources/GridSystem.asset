@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7ad397b9e7d9144dba2dfbae5328d52, type: 3}
   m_Name: GridSystem
   m_EditorClassIdentifier: Assembly-CSharp::GridSystem
-  tileSize: 3
-  tileHeight: 3
+  tileSize: 2
+  tileHeight: 2
   origin: {x: 0, y: 0, z: 0}

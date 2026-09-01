@@ -7,12 +7,8 @@ public class MapBuilder : MonoBehaviour
     public int mapWidth = 17;
     public int mapHeight = 17;
 
-    // GridSystem을 기본으로 쓰되, 오버월드(KayKit 1유닛 타일)처럼 칸 크기가 다를 때 override 합니다.
-    // 0 이하면 GridSystem.TileSize(던전=3)를 사용합니다.
-    [Tooltip("0 이하면 GridSystem.TileSize 사용. 오버월드 Plane(scale 1)은 spacing=2 → 2로 설정하세요.")]
-    public float tileSizeOverride = 0f;
-
-    public float tileSize => tileSizeOverride > 0f ? tileSizeOverride : GridSystem.Instance.TileSize;
+    // 프로젝트의 모든 타일은 2×2×2 규격이라 맵마다 예외를 두지 않고 GridSystem 값을 그대로 씁니다.
+    public float tileSize => GridSystem.Instance.TileSize;
 
     public Transform tileContainer;
 
@@ -56,7 +52,7 @@ public class MapBuilder : MonoBehaviour
         if (tileContainer == null) return;
 
         float size = tileSize;
-        float height = tileSizeOverride > 0f ? tileSizeOverride : GridSystem.Instance.TileHeight;
+        float height = GridSystem.Instance.TileHeight;
 
         foreach (Transform child in tileContainer)
         {

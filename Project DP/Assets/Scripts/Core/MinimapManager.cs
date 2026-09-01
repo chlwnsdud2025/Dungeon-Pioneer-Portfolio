@@ -70,9 +70,8 @@ public class MinimapManager : MonoBehaviour
 
     private class LocationMinimapState
     {
+        // 셀 좌표는 GridSystem을 그대로 씁니다. 맵마다 다른 건 '몇 칸짜리 맵인가'뿐입니다.
         public Vector2Int gridSize;
-        public float cellSize;
-        public Vector3 origin;
         public TileKind[,] staticMapData;
         public bool[,] visited;
         public bool[,] currentlyLitTiles;
@@ -192,30 +191,46 @@ public class MinimapManager : MonoBehaviour
     private LocationMinimapState BuildLocationState(GameObject locationInstance)
     {
         List<Transform> tileRoots = CollectTileRoots(locationInstance);
-        InferMapGrid(tileRoots, out float cellSize, out Vector3 origin, out Vector2Int mapGridSize);
+        Vector2Int mapGridSize = MeasureMapGridSize(tileRoots);
 
         var state = new LocationMinimapState
         {
             gridSize = mapGridSize,
-            cellSize = cellSize,
-            origin = origin,
             staticMapData = new TileKind[mapGridSize.x, mapGridSize.y],
             visited = new bool[mapGridSize.x, mapGridSize.y],
             currentlyLitTiles = new bool[mapGridSize.x, mapGridSize.y]
         };
 
+        // ★ 벽을 '먼저' 확정합니다. 벽이 놓인 칸에는 항상 바닥 타일(Xfloor)이 함께 깔려 있어서,
+        //   Floor를 먼저 처리하면 벽이 Floor로 덮여버립니다. 그러면 개척도 분모에 벽이 섞여
+        //   100%가 나올 수 없고, 미니맵에서도 벽이 바닥과 같은 색으로 칠해집니다.
         foreach (Transform obj in tileRoots)
         {
-            Vector3Int cell = WorldToMapCell(state, obj.position);
+            if (!obj.CompareTag("Wall")) continue;
+
+            Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
             if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
+
+            state.staticMapData[cell.x, cell.z] = TileKind.Wall;
+        }
+
+        foreach (Transform obj in tileRoots)
+        {
+            Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
+            if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
+
+            // 벽 칸은 무엇이 깔려 있든 벽으로 유지하고, 보행 기준점에도 넣지 않습니다.
+            bool isWallCell = state.staticMapData[cell.x, cell.z] == TileKind.Wall;
 
             if (obj.CompareTag("Trap"))
             {
+                if (isWallCell) continue;
                 state.staticMapData[cell.x, cell.z] = TileKind.Trap;
                 state.walkableWorldPositions.Add(obj.position);
             }
             else if (obj.CompareTag("Floor") || obj.CompareTag("Entrance") || obj.CompareTag("Exit"))
             {
+                if (isWallCell) continue;
                 if (state.staticMapData[cell.x, cell.z] != TileKind.Trap)
                     state.staticMapData[cell.x, cell.z] = TileKind.Floor;
                 state.walkableWorldPositions.Add(obj.position);
@@ -241,15 +256,7 @@ public class MinimapManager : MonoBehaviour
             }
         }
 
-        foreach (Transform obj in tileRoots)
-        {
-            if (!obj.CompareTag("Wall")) continue;
 
-            Vector3Int cell = WorldToMapCell(state, obj.position);
-            if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
-            if (state.staticMapData[cell.x, cell.z] == TileKind.Unexplored)
-                state.staticMapData[cell.x, cell.z] = TileKind.Wall;
-        }
 
         if (locationInstance != null)
         {
@@ -309,96 +316,24 @@ public class MinimapManager : MonoBehaviour
         return tiles;
     }
 
-    private void InferMapGrid(List<Transform> tiles, out float cellSize, out Vector3 origin, out Vector2Int mapGridSize)
+    /// <summary>
+    /// 맵이 몇 칸짜리인지만 측정합니다. 칸 크기·원점은 GridSystem이 단일 진실 공급원이므로
+    /// 여기서 추론하지 않습니다. (통계가 아니라 결정적인 최대 셀 인덱스 계산)
+    /// </summary>
+    private Vector2Int MeasureMapGridSize(List<Transform> tiles)
     {
-        cellSize = GridSystem.Instance.TileSize;
-        origin = GridSystem.Instance.Origin;
-        mapGridSize = gridSize;
-
-        if (tiles.Count == 0) return;
-
-        float minX = float.MaxValue;
-        float minZ = float.MaxValue;
-        var xs = new List<float>(tiles.Count);
-        var zs = new List<float>(tiles.Count);
-
-        foreach (Transform tile in tiles)
-        {
-            Vector3 pos = tile.position;
-            if (pos.x < minX) minX = pos.x;
-            if (pos.z < minZ) minZ = pos.z;
-            xs.Add(pos.x);
-            zs.Add(pos.z);
-        }
-
-        origin = new Vector3(minX, 0f, minZ);
-
-        float inferred = InferDominantSpacing(xs, cellSize);
-        float inferredZ = InferDominantSpacing(zs, cellSize);
-        if (inferredZ >= 1.5f && inferredZ <= 6f)
-        {
-            if (inferred < 1.5f || inferredZ < inferred)
-                inferred = inferredZ;
-        }
-        if (inferred >= 1.5f && inferred <= 6f)
-        {
-            if (Mathf.Abs(inferred - 2f) <= 0.35f) cellSize = 2f;
-            else if (Mathf.Abs(inferred - 3f) <= 0.35f) cellSize = 3f;
-            else cellSize = GridSystem.Instance.TileSize >= 2.5f ? 3f : 2f;
-        }
-
-        origin = new Vector3(Mathf.Round(origin.x * 2f) / 2f, 0f, Mathf.Round(origin.z * 2f) / 2f);
+        if (tiles == null || tiles.Count == 0) return gridSize;
 
         int maxX = 0;
         int maxZ = 0;
         foreach (Transform tile in tiles)
         {
-            int cx = Mathf.RoundToInt((tile.position.x - origin.x) / cellSize);
-            int cz = Mathf.RoundToInt((tile.position.z - origin.z) / cellSize);
-            if (cx > maxX) maxX = cx;
-            if (cz > maxZ) maxZ = cz;
+            Vector3Int cell = GridSystem.Instance.WorldToCell(tile.position);
+            if (cell.x > maxX) maxX = cell.x;
+            if (cell.z > maxZ) maxZ = cell.z;
         }
 
-        mapGridSize = new Vector2Int(Mathf.Max(1, maxX + 1), Mathf.Max(1, maxZ + 1));
-    }
-
-    private static float InferDominantSpacing(List<float> values, float fallback)
-    {
-        if (values == null || values.Count < 2) return fallback;
-
-        values.Sort();
-        var buckets = new Dictionary<int, int>();
-        for (int i = 1; i < values.Count; i++)
-        {
-            float delta = values[i] - values[i - 1];
-            if (delta < 1.5f || delta > 8f) continue;
-
-            int key = Mathf.RoundToInt(delta * 10f);
-            buckets.TryGetValue(key, out int count);
-            buckets[key] = count + 1;
-        }
-
-        if (buckets.Count == 0) return fallback;
-
-        int bestKey = 0;
-        int bestCount = -1;
-        foreach (KeyValuePair<int, int> pair in buckets)
-        {
-            if (pair.Value <= bestCount) continue;
-            bestCount = pair.Value;
-            bestKey = pair.Key;
-        }
-
-        return bestKey / 10f;
-    }
-
-    private static Vector3Int WorldToMapCell(LocationMinimapState state, Vector3 worldPos)
-    {
-        Vector3 local = worldPos - state.origin;
-        return new Vector3Int(
-            Mathf.RoundToInt(local.x / state.cellSize),
-            0,
-            Mathf.RoundToInt(local.z / state.cellSize));
+        return new Vector2Int(Mathf.Max(1, maxX + 1), Mathf.Max(1, maxZ + 1));
     }
 
     private static bool IsMapTileTransform(Transform obj)
@@ -477,7 +412,7 @@ public class MinimapManager : MonoBehaviour
 
         if (hasLastMarkedPlayerPos)
         {
-            float step = current.cellSize * 0.35f;
+            float step = GridSystem.Instance.TileSize * 0.35f;
             Vector3 last = lastMarkedPlayerPos;
             float dist = Vector3.Distance(
                 new Vector3(last.x, 0f, last.z),
@@ -510,7 +445,7 @@ public class MinimapManager : MonoBehaviour
     /// </summary>
     private void DiscoverNearbyPushables(Vector3 playerPos)
     {
-        float discoverDist = current.cellSize * 1.35f;
+        float discoverDist = GridSystem.Instance.TileSize * 1.35f;
         float discoverDistSq = discoverDist * discoverDist;
 
         for (int i = 0; i < current.activePushables.Count; i++)
@@ -529,7 +464,7 @@ public class MinimapManager : MonoBehaviour
     /// <summary>Chest/Bonus는 플레이어가 그 칸 근처를 밟거나 시야에 넣으면 발견됩니다.</summary>
     private void DiscoverNearbyLootMarkers(Vector3 playerPos)
     {
-        float discoverDist = current.cellSize * 1.15f;
+        float discoverDist = GridSystem.Instance.TileSize * 1.15f;
         float discoverDistSq = discoverDist * discoverDist;
 
         for (int i = 0; i < current.activeChests.Count; i++)
@@ -541,7 +476,7 @@ public class MinimapManager : MonoBehaviour
             float dz = playerPos.z - chest.position.z;
             if (dx * dx + dz * dz > discoverDistSq) continue;
 
-            Vector3Int cell = WorldToMapCell(current, chest.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(chest.position);
             MarkVisitedCell(cell.x, cell.z);
         }
 
@@ -554,7 +489,7 @@ public class MinimapManager : MonoBehaviour
             float dz = playerPos.z - bonus.position.z;
             if (dx * dx + dz * dz > discoverDistSq) continue;
 
-            Vector3Int cell = WorldToMapCell(current, bonus.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(bonus.position);
             MarkVisitedCell(cell.x, cell.z);
         }
     }
@@ -563,7 +498,7 @@ public class MinimapManager : MonoBehaviour
     {
         // 실제로 밟을 수 있는 타일(Road/Floor/Trap 등) 중심과의 거리로만 방문 처리합니다.
         // 폴백으로 임의 셀을 찍지 않아 Wall이 회색으로 물들지 않습니다.
-        float maxDist = current.cellSize * 0.55f;
+        float maxDist = GridSystem.Instance.TileSize * 0.55f;
         float maxDistSq = maxDist * maxDist;
 
         for (int i = 0; i < current.walkableWorldPositions.Count; i++)
@@ -573,7 +508,7 @@ public class MinimapManager : MonoBehaviour
             float dz = worldPos.z - tilePos.z;
             if (dx * dx + dz * dz > maxDistSq) continue;
 
-            Vector3Int cell = WorldToMapCell(current, tilePos);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(tilePos);
             MarkVisitedCell(cell.x, cell.z);
         }
     }
@@ -617,7 +552,7 @@ public class MinimapManager : MonoBehaviour
 
             pushablesToDrawThisFrame.Add(p);
 
-            Vector3Int cell = WorldToMapCell(current, p.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(p.position);
             if (IsValidGrid(cell.x, cell.z, grid))
                 pushableTilesThisFrame.Add(new Vector2Int(cell.x, cell.z));
         }
@@ -694,7 +629,7 @@ public class MinimapManager : MonoBehaviour
             EnemyController enemy = current.activeEnemies[i];
             if (enemy == null) { current.activeEnemies.RemoveAt(i); continue; }
 
-            Vector3Int cell = WorldToMapCell(current, enemy.transform.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(enemy.transform.position);
             if (IsValidGrid(cell.x, cell.z, current.gridSize) && current.visited[cell.x, cell.z])
                 DrawDot(enemy.transform.position, enemyColor, enemyDotRadiusPx);
         }
@@ -704,7 +639,7 @@ public class MinimapManager : MonoBehaviour
             Transform chest = current.activeChests[i];
             if (chest == null) { current.activeChests.RemoveAt(i); continue; }
 
-            Vector3Int cell = WorldToMapCell(current, chest.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(chest.position);
             if (IsValidGrid(cell.x, cell.z, current.gridSize) && current.visited[cell.x, cell.z])
                 DrawDot(chest.position, chestColor, chestDotRadiusPx);
         }
@@ -714,7 +649,7 @@ public class MinimapManager : MonoBehaviour
             Transform bonus = current.activeBonuses[i];
             if (bonus == null) { current.activeBonuses.RemoveAt(i); continue; }
 
-            Vector3Int cell = WorldToMapCell(current, bonus.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(bonus.position);
             if (IsValidGrid(cell.x, cell.z, current.gridSize) && current.visited[cell.x, cell.z])
                 DrawDot(bonus.position, chestColor, chestDotRadiusPx);
         }
@@ -747,7 +682,7 @@ public class MinimapManager : MonoBehaviour
             if (grave == null || !grave.isActiveAndEnabled || !grave.gameObject.activeInHierarchy)
                 continue;
 
-            Vector3Int cell = WorldToMapCell(current, grave.transform.position);
+            Vector3Int cell = GridSystem.Instance.WorldToCell(grave.transform.position);
             if (IsValidGrid(cell.x, cell.z, current.gridSize))
                 PaintTileBlock(cell.x, cell.z, graveColor);
         }
@@ -778,8 +713,8 @@ public class MinimapManager : MonoBehaviour
 
     private Vector2 WorldToPixel(Vector3 worldPos)
     {
-        float tileSize = current.cellSize;
-        Vector3 originWorld = current.origin;
+        float tileSize = GridSystem.Instance.TileSize;
+        Vector3 originWorld = GridSystem.Instance.Origin;
 
         float startX = originWorld.x - tileSize / 2f;
         float startZ = originWorld.z - tileSize / 2f;

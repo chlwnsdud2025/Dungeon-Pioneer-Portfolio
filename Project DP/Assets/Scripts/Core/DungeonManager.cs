@@ -95,8 +95,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         isLeaving = false;
         currentFloor = 1;
 
-        GridSystem.Instance.ClearActiveMapGrid();
-
         dungeonGenerator.PrepareNewRun(maxFloor > 0 ? maxFloor : 1); // 이번 런의 층별 맵 프리팹을 새로 셔플
         ResetWorld();                                                // 이전에 캐시된 층/플레이어 정리
 
@@ -184,7 +182,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         else
         {
             instance.SetActive(true);
-            dungeonGenerator.SyncGridSystemToLocation(instance);
         }
 
         currentLocationId = destination;
@@ -256,8 +253,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         }
         loadedLocations.Clear();
         hasCurrentLocation = false;
-
-        GridSystem.Instance.ClearActiveMapGrid();
 
         if (MinimapManager.Instance != null)
         {
