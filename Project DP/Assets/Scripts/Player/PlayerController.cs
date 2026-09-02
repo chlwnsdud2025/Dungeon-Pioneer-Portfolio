@@ -37,11 +37,13 @@ public class PlayerController : MonoBehaviour
 
     [Header("Combat System")]
     public LayerMask enemyLayer;        // 몬스터를 판별할 레이어 (무기 히트박스에 넘겨줌)
-    [Tooltip("공격 모션에서 타격 판정을 여는 시점. 실시간 초가 아니라 애니메이션 진행률(0~1)이라 " +
-             "클립 길이나 재생 속도를 바꿔도 그대로 따라갑니다.")]
-    [Range(0f, 1f)] public float hitboxOpenAt = 0.25f;
-    [Tooltip("타격 판정을 닫는 시점 (진행률 0~1).")]
-    [Range(0f, 1f)] public float hitboxCloseAt = 0.55f;
+    [Tooltip("공격 입력 후 타격 판정을 열기까지의 지연(초). 0이면 공격과 동시에 즉시 열립니다.\n" +
+             "애니메이션 진행률이 아니라 실제 시간 기준입니다 — 진행률은 애니메이터가 갱신되는 " +
+             "다음 프레임까지 읽을 수 없어 아무리 0으로 둬도 최소 1프레임이 늦습니다.")]
+    [Range(0f, 0.5f)] public float hitboxOpenDelay = 0f;
+    [Tooltip("타격 판정을 닫는 시점 (애니메이션 진행률 0~1). 닫기는 모션과 맞물려야 자연스러워 " +
+             "진행률 기준을 유지합니다.")]
+    [Range(0f, 1f)] public float hitboxCloseAt = 0.8f;
 
     [Header("Light & Torch System")]
     public GameObject torchPrefab;   // 벽에 붙일 횃불 프리팹(3D 오브젝트)
