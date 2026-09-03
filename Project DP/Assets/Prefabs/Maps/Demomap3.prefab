@@ -690,6 +690,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 9112339837744904030}
     m_Modifications:
+    - target: {fileID: 2688152489363651724, guid: 1f61e70412c582449ab6e407ce8f3516, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2762291073945947700, guid: 1f61e70412c582449ab6e407ce8f3516, type: 3}
       propertyPath: m_Name
       value: Bonus
@@ -3728,6 +3732,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 9112339837744904030}
     m_Modifications:
+    - target: {fileID: 2688152489363651724, guid: 1f61e70412c582449ab6e407ce8f3516, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2762291073945947700, guid: 1f61e70412c582449ab6e407ce8f3516, type: 3}
       propertyPath: m_Name
       value: Bonus
@@ -8378,6 +8386,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 9112339837744904030}
     m_Modifications:
+    - target: {fileID: 2688152489363651724, guid: 1f61e70412c582449ab6e407ce8f3516, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2762291073945947700, guid: 1f61e70412c582449ab6e407ce8f3516, type: 3}
       propertyPath: m_Name
       value: Bonus
@@ -36226,6 +36238,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 9112339837744904030}
     m_Modifications:
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[0].item
+      value: 
+      objectReference: {fileID: 11400000, guid: 980ae683a6915e146b33da948c8017c6, type: 2}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[0].count
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5605007482696669174, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 4

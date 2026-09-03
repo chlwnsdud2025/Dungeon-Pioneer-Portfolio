@@ -1225,6 +1225,7 @@ GameObject:
   - component: {fileID: 8809111419901610574}
   - component: {fileID: 645782376976200435}
   - component: {fileID: -1995656736143384122}
+  - component: {fileID: 7541362246512324375}
   m_Layer: 8
   m_Name: Player
   m_TagString: Player
@@ -1288,6 +1289,7 @@ MonoBehaviour:
   isRunning: 0
   moveInput: {x: 0, y: 0}
   stat: {fileID: 7013328044080664603}
+  wallet: {fileID: 7541362246512324375}
   isGuarding: 0
   knockbackDistance: 3.5
   knockbackTime: 1.2
@@ -1422,6 +1424,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 815919681a407ea4a90b3c7443fd3bfc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuickSlotHolder
+--- !u!114 &7541362246512324375
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4568866605203343792}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a59e993f510e4c108151274c1caf7262, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerWallet
+  gold: 0
 --- !u!1 &4810704672648079690
 GameObject:
   m_ObjectHideFlags: 0

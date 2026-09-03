@@ -47,6 +47,12 @@ public class UIInGameHUD : UIScene
     [Tooltip("개수 표시 형식. {0}에 개수가 들어갑니다.")]
     [SerializeField] private string torchCountFormat = "{0}";
 
+    [Header("Gold")]
+    [Tooltip("보유 골드 텍스트. PlayerWallet의 잔액을 그대로 보여줍니다.")]
+    [SerializeField] private TMP_Text goldText;
+    [Tooltip("골드 표시 형식. {0}에 잔액이 들어갑니다.")]
+    [SerializeField] private string goldFormat = "{0}";
+
     [Header("Quick Slot (단축키 1~4)")]
     [Tooltip("퀵슬롯 바. Player의 QuickSlotHolder와 인벤토리에 이 HUD가 연결해줍니다.")]
     [SerializeField] private UIQuickSlotBar quickSlotBar;
@@ -57,6 +63,7 @@ public class UIInGameHUD : UIScene
     private string _lastRegionLabel;
     private string _lastExplorationLabel;
     private int _lastTorchStock = -1;
+    private int _lastGold = -1;
 
 
 
@@ -68,6 +75,7 @@ public class UIInGameHUD : UIScene
         _lastRegionLabel = null;
         _lastExplorationLabel = null;
         _lastTorchStock = -1;
+        _lastGold = -1;
         Refresh();
     }
     private void OnEnable()
@@ -98,6 +106,7 @@ public class UIInGameHUD : UIScene
         RefreshRegion();
         RefreshExploration();
         RefreshTorch();
+        RefreshGold();
         EnsurePlayerBindings();
     }
 
@@ -143,6 +152,22 @@ public class UIInGameHUD : UIScene
 
         _lastTorchStock = stock;
         torchCountText.text = string.Format(torchCountFormat, stock);
+    }
+
+    // 골드는 Player의 PlayerWallet이 들고 있습니다. 상자 보상·상점 결제 등
+    // 어느 경로로 잔액이 바뀌어도 여기에 반영됩니다.
+    private void RefreshGold()
+    {
+        if (goldText == null) return;
+
+        // 플레이어/지갑 연결 전이면 0. 준비되면 실제 잔액이 채워집니다.
+        int gold = (_player != null && _player.wallet != null) ? _player.wallet.Gold : 0;
+
+        // 값이 바뀔 때만 갱신 (매 프레임 TMP 텍스트를 건드리지 않도록)
+        if (gold == _lastGold) return;
+
+        _lastGold = gold;
+        goldText.text = string.Format(goldFormat, gold);
     }
 
     /// <summary>

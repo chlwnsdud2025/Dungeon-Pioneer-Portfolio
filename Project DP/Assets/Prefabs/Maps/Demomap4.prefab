@@ -9524,6 +9524,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6501617391202317544}
     m_Modifications:
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[0].item
+      value: 
+      objectReference: {fileID: 11400000, guid: 77d480681da72b64e9d09c44f5b81cf2, type: 2}
+    - target: {fileID: 4128454485832068125, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: m_UseGravity
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5605007482696669174, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 30

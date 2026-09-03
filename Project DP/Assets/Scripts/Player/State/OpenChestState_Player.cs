@@ -28,8 +28,9 @@ public class OpenChestState_Player : PlayerBaseState
         // 3. 상자 여는 애니메이션 재생
         player.animator.CrossFadeInFixedTime(interactAnimHash, 0.1f);
 
-        // 4. 상자 쪽에 열렸다는 신호 보내기
-        targetChest.Open();
+        // 4. 상자 열림 확정 + 보상 지급
+        //    지급을 모션 끝으로 미루면, 여는 도중 피격으로 상태가 끊겼을 때 isOpen만 남고 보상이 증발합니다.
+        targetChest.Open(player);
 
         // 상호작용 중 이동 멈춤
         player.MoveCharacter(Vector3.zero);

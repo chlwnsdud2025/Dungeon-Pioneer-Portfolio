@@ -36782,6 +36782,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 5762498712031732633}
     m_Modifications:
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[0].item
+      value: 
+      objectReference: {fileID: 11400000, guid: fe88487ce13397a44aeb76afb8b8ddd8, type: 2}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[1].item
+      value: 
+      objectReference: {fileID: 11400000, guid: 6633872aad893a54ea1c281d0cf8d13c, type: 2}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[0].count
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 247025480207004830, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
+      propertyPath: loot.Array.data[1].count
+      value: 50
+      objectReference: {fileID: 0}
     - target: {fileID: 5605007482696669174, guid: d3f8ae5b48a7d2546a89847f857ab41e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 30

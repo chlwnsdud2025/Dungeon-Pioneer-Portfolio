@@ -1,7 +1,25 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class TreasureChest : MonoBehaviour, IFloorPersistent, IInteractable
 {
+    /// <summary>보상 아이템 한 줄: 아이템 + 지급 개수. (StartingItems.ConsumableGrant와 같은 패턴)</summary>
+    [Serializable]
+    public class LootEntry
+    {
+        public ItemData item;
+        [Min(1)] public int count = 1;
+    }
+
+    [Header("보상 (열었을 때 지급)")]
+    [Tooltip("지급할 아이템 목록. 장비/소모품 모두 넣을 수 있고, 비워두면 골드만 지급합니다.")]
+    [SerializeField] private List<LootEntry> loot = new();
+
+    [Tooltip("지급 골드 범위 [min, max]. 같은 값이면 고정 지급합니다.")]
+    [SerializeField, Min(0)] private int goldMin = 0;
+    [SerializeField, Min(0)] private int goldMax = 0;
+
     public bool isOpen = false;
 
     public Animator animator;
@@ -9,12 +27,55 @@ public class TreasureChest : MonoBehaviour, IFloorPersistent, IInteractable
     private readonly int openTriggerHash = Animator.StringToHash("OpenTrigger");
     private Vector2Int cell;
 
-    // OpenChestState_Player에서 이 함수를 호출할 예정입니다.
-    public void Open()
+    // 인스펙터에서 max를 min보다 작게 넣는 실수 방지 (ItemDataEditor의 maxStackSize 보정과 같은 결)
+    private void OnValidate()
+    {
+        if (goldMax < goldMin) goldMax = goldMin;
+    }
+
+    // 열리는 연출(플레이어 모션)은 OpenChestState_Player가, 열림 확정 + 보상 지급은 여기가 담당합니다.
+    public void Open(PlayerController player)
     {
         isOpen = true;
-        Debug.Log("상자가 열렸습니다! 아이템 획득!");
         animator.SetTrigger(openTriggerHash);
+        GrantLoot(player);
+    }
+
+    private void GrantLoot(PlayerController player)
+    {
+        // 골드 — 범위 롤은 여는 순간에 확정 (using System 탓에 Random이 모호해져 UnityEngine을 명시)
+        int goldAmount = UnityEngine.Random.Range(goldMin, goldMax + 1);
+        if (goldAmount > 0)
+        {
+            if (player.wallet != null)
+            {
+                player.wallet.AddGold(goldAmount);
+                Debug.Log($"<color=yellow>골드 {goldAmount} 획득!</color>");
+            }
+            else
+            {
+                Debug.LogWarning("[TreasureChest] Player에 PlayerWallet이 연결되지 않아 골드를 지급하지 못했습니다.", this);
+            }
+        }
+
+        if (loot.Count == 0) return;   // 아이템이 없는 상자면 골드만 지급
+
+        Inventory inventory = player.Inventory;
+        if (inventory == null)
+        {
+            Debug.LogWarning("[TreasureChest] 인벤토리 연결 전이라 아이템을 지급하지 못했습니다.", this);
+            return;
+        }
+
+        foreach (LootEntry entry in loot)
+        {
+            if (entry?.item == null || entry.count <= 0) continue;
+
+            if (inventory.AddItem(entry.item, entry.count))
+                Debug.Log($"<color=yellow>'{entry.item.displayName}' x{entry.count} 획득!</color>");
+            else
+                Debug.LogWarning($"[TreasureChest] 자리가 부족해 '{entry.item.displayName}'을(를) 다 넣지 못했습니다.", this);
+        }
     }
 
     // ── 상호작용 (IInteractable) ─────────────────────────────

@@ -65,6 +65,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Stats")]
     public PlayerStat stat;
+    public PlayerWallet wallet;
 
     [HideInInspector] public bool isGuarding = false; // 현재 방어 상태인지 판별
 
