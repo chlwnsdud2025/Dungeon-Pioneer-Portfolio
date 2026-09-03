@@ -4,7 +4,7 @@ using UnityEngine;
 /// 플레이어 사망 시 설치되는 묘비. F키 상호작용으로 제거할 수 있습니다.
 /// DungeonManager가 런타임에 생성·복원하며, MapSnapshot.graves에 기록됩니다.
 /// </summary>
-public class PlayerGrave : MonoBehaviour
+public class PlayerGrave : MonoBehaviour, IInteractable
 {
     public enum Variant
     {
@@ -32,8 +32,12 @@ public class PlayerGrave : MonoBehaviour
         rotation = transform.rotation
     };
 
-    /// <summary>F키 상호작용. 추후 유품/스킬 회수·이펙트는 여기에 연결할 수 있습니다.</summary>
-    public void Interact()
+    // ── 상호작용 (IInteractable) ─────────────────────────────
+
+    public bool CanInteract(PlayerController player) => true;
+
+    /// <summary>F키 상호작용으로 묘비 제거. 추후 유품/스킬 회수·이펙트는 여기에 연결할 수 있습니다.</summary>
+    public void Interact(PlayerController player)
     {
         if (MinimapManager.Instance != null)
             MinimapManager.Instance.UnregisterGrave(transform);

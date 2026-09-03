@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class PushableObject : MonoBehaviour, IFloorPersistent
+public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
 {
     [Header("Crush")]
     public float crushDamage = 9999f;
@@ -32,6 +32,15 @@ public class PushableObject : MonoBehaviour, IFloorPersistent
     // ★ 밀려서 움직이는 오브젝트라 '현재 셀'은 식별자가 될 수 없습니다.
     //   생성 직후(아직 안 움직였을 때) 확정한 원래 셀을 id로 쓰고, 현재 셀은 상태로 저장합니다.
     private Vector2Int originCell;
+
+    // ── 상호작용 (IInteractable) ─────────────────────────────
+
+    // 함정을 메워 잠긴 오브젝트는 밀 수 없습니다.
+    public bool CanInteract(PlayerController player) => !isLocked;
+
+    // 방향 스냅·장애물 검사·실제 밀기 요청은 PushState_Player.Enter()가 담당합니다.
+    public void Interact(PlayerController player)
+        => player.stateMachine.ChangeState<PushState_Player>();
 
     // ── 저장·복원 (IFloorPersistent) ─────────────────────────
 

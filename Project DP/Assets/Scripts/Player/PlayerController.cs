@@ -54,6 +54,10 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public Vector3 focusedHitPoint;  // 레이저가 닿은 정확한 점
     [HideInInspector] public Vector3 focusedHitNormal; // 벽이 바라보는 방향
 
+    /// <summary>지금 바라보는 상호작용 대상. 없으면 null. (인터페이스라 인스펙터에는 안 뜹니다)</summary>
+    public IInteractable focusedInteractable;
+    // focusedInteractable.transform과 항상 같은 값. 기존 상태(OpenChest/Push/PlaceTorch)들이
+    // Transform으로 대상을 다시 찾는 구조라 호환용으로 함께 유지합니다.
     [HideInInspector] public Transform focusedObject;
 
     [HideInInspector] public bool isRunning = false;
@@ -259,49 +263,20 @@ public class PlayerController : MonoBehaviour
         if (Physics.SphereCast(rayStart, sphereCastRadius, transform.forward, out RaycastHit hit,
                 interactRange, interactableLayer, QueryTriggerInteraction.Collide))
         {
-            // 컴포넌트가 자식/부모에 있어도 루트 상호작용 오브젝트를 포커스로 잡습니다.
-            PlayerGrave grave = hit.collider.GetComponentInParent<PlayerGrave>();
-            if (grave != null)
+            // 콜라이더가 자식에 있어도 부모 체인에서 가장 가까운 상호작용 컴포넌트를 포커스로 잡습니다.
+            IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
+            if (interactable != null)
             {
-                focusedObject = grave.transform;
+                focusedInteractable = interactable;
+                focusedObject = interactable.transform;
                 focusedHitPoint = hit.point;
                 focusedHitNormal = hit.normal;
                 return;
             }
-
-            TreasureChest chest = hit.collider.GetComponentInParent<TreasureChest>();
-            if (chest != null)
-            {
-                focusedObject = chest.transform;
-                focusedHitPoint = hit.point;
-                focusedHitNormal = hit.normal;
-                return;
-            }
-
-            PushableObject pushable = hit.collider.GetComponentInParent<PushableObject>();
-            if (pushable != null)
-            {
-                focusedObject = pushable.transform;
-                focusedHitPoint = hit.point;
-                focusedHitNormal = hit.normal;
-                return;
-            }
-
-            WallObject wall = hit.collider.GetComponentInParent<WallObject>();
-            if (wall != null)
-            {
-                focusedObject = wall.transform;
-                focusedHitPoint = hit.point;
-                focusedHitNormal = hit.normal;
-                return;
-            }
-
-            focusedObject = null;
         }
-        else
-        {
-            focusedObject = null;
-        }
+
+        focusedInteractable = null;
+        focusedObject = null;
     }
 
     private void OnDrawGizmos()
@@ -381,6 +356,7 @@ public class PlayerController : MonoBehaviour
         isRunning = false;
         isMoveKeyPressed = false;
         moveInput = Vector2.zero;
+        focusedInteractable = null;
         focusedObject = null;
 
         // ★ DeadState_Player.Enter()가 꺼둔 CharacterController를 반드시 되살립니다.

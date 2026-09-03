@@ -34,38 +34,11 @@ public abstract class PlayerBaseState
     }
     public virtual void OnInteractInput()
     {
-        if (player.focusedObject != null)
-        {
-            // 1. 보물상자인지 확인
-            TreasureChest chest = player.focusedObject.GetComponentInParent<TreasureChest>();
-            if (chest != null && !chest.isOpen)
-            {
-                stateMachine.ChangeState<OpenChestState_Player>();
-                return;
-            }
-
-            // 2. 묘비인지 확인 (F키로 제거)
-            PlayerGrave grave = player.focusedObject.GetComponentInParent<PlayerGrave>();
-            if (grave != null)
-            {
-                grave.Interact();
-                return;
-            }
-
-            // 3. 밀 수 있는 물체인지 확인 (단, 함정을 메워 잠긴 오브젝트는 밀 수 없음)
-            PushableObject pushObj = player.focusedObject.GetComponentInParent<PushableObject>();
-            if (pushObj != null)
-            {
-                if (!pushObj.IsLocked)
-                    stateMachine.ChangeState<PushState_Player>();
-                return;
-            }
-
-            // ★ 4. 벽인지 확인 — 재고/중복 검사와 개수 차감은 전부 TryPlaceTorch가 처리한다.
-            //      (횃불은 인벤토리 소모품이라 퀵슬롯으로 쓸 때와 같은 경로를 탄다)
-            if (player.focusedObject.GetComponentInParent<WallObject>() != null)
-                player.TryPlaceTorch();
-        }
+        // 대상별 분기는 각 오브젝트의 IInteractable 구현이 책임집니다.
+        // (상자 → OpenChestState, 밀기 → PushState 같은 상태 전환도 Interact() 안에서 일어남)
+        IInteractable target = player.focusedInteractable;
+        if (target != null && target.CanInteract(player))
+            target.Interact(player);
     }
 
     // [추가] 이동 방향으로 캐릭터를 부드럽게 회전시키는 공통 메서드

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class TreasureChest : MonoBehaviour, IFloorPersistent
+public class TreasureChest : MonoBehaviour, IFloorPersistent, IInteractable
 {
     public bool isOpen = false;
 
@@ -16,6 +16,14 @@ public class TreasureChest : MonoBehaviour, IFloorPersistent
         Debug.Log("상자가 열렸습니다! 아이템 획득!");
         animator.SetTrigger(openTriggerHash);
     }
+
+    // ── 상호작용 (IInteractable) ─────────────────────────────
+
+    public bool CanInteract(PlayerController player) => !isOpen;
+
+    // 열리는 연출(플레이어 모션 + Open() 호출)은 OpenChestState_Player가 담당합니다.
+    public void Interact(PlayerController player)
+        => player.stateMachine.ChangeState<OpenChestState_Player>();
 
     // ── 저장·복원 (IFloorPersistent) ─────────────────────────
 

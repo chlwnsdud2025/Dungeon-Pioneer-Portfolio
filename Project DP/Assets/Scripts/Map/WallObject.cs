@@ -1,11 +1,21 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class WallObject : MonoBehaviour
+public class WallObject : MonoBehaviour, IInteractable
 {
     // 벽 하나라도 네 측면에 각각 1개씩 횃불이 설치될 수 있으므로, '면 단위'로 설치 여부를 관리합니다.
     // 면은 설치할 때 사용하는 표면 노멀(hitNormal) 방향으로 식별합니다.
     private readonly HashSet<Vector3Int> torchFaces = new HashSet<Vector3Int>();
+
+    // ── 상호작용 (IInteractable) ─────────────────────────────
+
+    // 재고 부족/중복 설치 검사는 TryPlaceTorch가 직접 하며 실패 사유도 거기서 로그로 알려줍니다.
+    // 여기서 미리 걸러버리면 그 안내가 사라지므로 항상 통과시킵니다.
+    public bool CanInteract(PlayerController player) => true;
+
+    // 벽 상호작용 = 바라보는 면에 횃불 설치. 재고/중복 검사와 개수 차감은 전부 TryPlaceTorch가
+    // 처리합니다. (횃불은 인벤토리 소모품이라 퀵슬롯으로 쓸 때와 같은 경로를 탄다)
+    public void Interact(PlayerController player) => player.TryPlaceTorch();
 
     /// <summary>이 노멀 방향의 '면'에 이미 횃불이 설치됐는지.</summary>
     public bool HasTorchOnFace(Vector3 faceNormal) => torchFaces.Contains(ToFaceKey(faceNormal));
