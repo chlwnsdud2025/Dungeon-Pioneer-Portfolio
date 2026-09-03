@@ -53,7 +53,7 @@ MonoBehaviour:
   minimapAspectFitter: {fileID: 2981291369435485232}
   gridSize: {x: 17, y: 17}
   pixelsPerTile: 20
-  explorationCompleteThreshold: 0.9
+  explorationCompleteThreshold: 0.1
   playerVisionRadius: 1.5
   torchVisionRadius: 1.2
   unexploredColor: {r: 0, g: 0, b: 0, a: 1}

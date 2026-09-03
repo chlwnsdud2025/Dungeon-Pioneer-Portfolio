@@ -27,4 +27,10 @@ public abstract class UIPopup : UIPanel
     {
         UIManager.Instance.HidePopup().Forget();
     }
+
+    /// <summary>
+    /// ESC를 눌렀을 때 UIManager가 호출합니다. true를 반환하면 이 팝업이 입력을 소화한 것으로 보고
+    /// 팝업을 닫지 않습니다. (예: 인벤토리는 컨텍스트 메뉴가 떠 있으면 그것부터 닫습니다)
+    /// </summary>
+    public virtual bool OnCancel() => false;
 }

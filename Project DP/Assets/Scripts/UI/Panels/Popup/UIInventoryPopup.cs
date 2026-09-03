@@ -48,6 +48,21 @@ public class UIInventoryPopup : UIPopup
         BindEquipment();
     }
 
+    /// <summary>
+    /// ESC: 컨텍스트 메뉴가 떠 있으면 그것부터 닫고 인벤토리는 남깁니다. 안쪽 UI부터 하나씩
+    /// 닫히도록 하는 것으로, 바깥 클릭(Blocker → dimmed)으로 닫는 순서와 같습니다.
+    /// </summary>
+    public override bool OnCancel()
+    {
+        if (contextMenu != null && contextMenu.IsOpen)
+        {
+            contextMenu.Hide();
+            return true;
+        }
+
+        return false;   // → UIManager가 인벤토리를 닫습니다
+    }
+
     protected override UniTask OnHide()
     {
         Cursor.visible = false;

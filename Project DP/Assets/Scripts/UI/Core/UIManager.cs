@@ -48,8 +48,23 @@ public class UIManager : MonoSingleton<UIManager>
     {
         await InitializeAsync();
 
+        // ESC 라우팅. InputManager와 초기화 순서가 얽혀 있어 OnEnable이 아니라 초기화가 끝난 뒤에 겁니다.
+        if (InputManager.Instance != null)
+            InputManager.Instance.OnUICancel += HandleCancel;
+        else
+            Debug.LogWarning("[UIManager] InputManager가 없어 ESC로 UI를 닫을 수 없습니다. " +
+                             "먼저 로드되는 씬에 InputManager를 배치해주세요.");
+
         if (GetPanel<UIInGameHUD>() != null)
             ShowScene<UIInGameHUD>().Forget();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance != this) return;
+
+        if (InputManager.Instance != null)
+            InputManager.Instance.OnUICancel -= HandleCancel;
     }
 
     /// <summary>Registry의 모든 패널을 로드/등록합니다. (Start에서 자동 호출)</summary>
@@ -143,6 +158,20 @@ public class UIManager : MonoSingleton<UIManager>
     {
         while (_popupStack.Count > 0)
             await HidePopup(instant);
+    }
+
+    /// <summary>
+    /// ESC 처리. 맨 위 팝업에 먼저 물어보고(OnCancel), 팝업이 소화하지 않으면 그 팝업을 닫습니다.
+    /// 열린 팝업이 없으면 아무 일도 하지 않습니다.
+    /// </summary>
+    private void HandleCancel()
+    {
+        UIPopup popup = CurrentPopup;
+        if (popup == null) return;
+
+        if (popup.OnCancel()) return;   // 팝업이 자체적으로 처리 (예: 컨텍스트 메뉴만 닫기)
+
+        HidePopup().Forget();
     }
 
     // ── 조회 ─────────────────────────────────────────────────

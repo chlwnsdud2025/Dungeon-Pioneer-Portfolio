@@ -17,6 +17,16 @@ public class DungeonGenerator : MonoBehaviour
         "GameManager의 maxFloor보다 개수가 많거나 같아야 합니다.")]
     public GameObject[] mapPrefabs;
 
+    // ── 테스트용 임시 옵션 ────────────────────────────────────────
+    // 제거할 때는 아래 3곳만 지우면 됩니다:
+    //   ① 이 블록  ② PrepareNewRun의 FixFirstFloorPrefabForTest() 호출 1줄  ③ 그 헬퍼 메서드
+    [Header("테스트용 (커밋 전 반드시 OFF)")]
+    [Tooltip("켜면 1층 맵을 아래 인덱스의 프리팹으로 고정합니다. 2층부터는 평소대로 셔플됩니다.")]
+    public bool fixFirstFloorPrefab = false;
+    [Tooltip("1층에 고정할 mapPrefabs의 인덱스. 0이 첫 번째 프리팹입니다.")]
+    public int fixedFirstFloorPrefabIndex = 0;
+    // ─────────────────────────────────────────────────────────────
+
     private const string NavWalkSurfaceName = "NavWalkSurface";
 
     private List<int> shuffledPrefabIndices;
@@ -38,6 +48,36 @@ public class DungeonGenerator : MonoBehaviour
             int j = Random.Range(0, i + 1);
             (shuffledPrefabIndices[i], shuffledPrefabIndices[j]) = (shuffledPrefabIndices[j], shuffledPrefabIndices[i]);
         }
+
+        FixFirstFloorPrefabForTest();
+    }
+
+    /// <summary>
+    /// 테스트용. 셔플 결과에서 지정한 프리팹을 1층 자리로 끌어옵니다.
+    /// 자리를 '교환'하므로 전순열이 유지되어, 런 안에서 맵이 중복되지 않는 성질은 그대로입니다.
+    /// </summary>
+    private void FixFirstFloorPrefabForTest()
+    {
+        if (!fixFirstFloorPrefab) return;
+        if (shuffledPrefabIndices == null || shuffledPrefabIndices.Count == 0) return;
+
+        if (fixedFirstFloorPrefabIndex < 0 || fixedFirstFloorPrefabIndex >= mapPrefabs.Length)
+        {
+            Debug.LogWarning($"[DungeonGenerator] 테스트 옵션이 켜져 있지만 고정 인덱스({fixedFirstFloorPrefabIndex})가 " +
+                $"mapPrefabs 범위(0~{mapPrefabs.Length - 1})를 벗어나 무시합니다.");
+            return;
+        }
+
+        int slot = shuffledPrefabIndices.IndexOf(fixedFirstFloorPrefabIndex);
+        if (slot < 0) return;
+
+        (shuffledPrefabIndices[0], shuffledPrefabIndices[slot]) =
+            (shuffledPrefabIndices[slot], shuffledPrefabIndices[0]);
+
+        GameObject fixedPrefab = mapPrefabs[fixedFirstFloorPrefabIndex];
+        string mapName = fixedPrefab != null ? fixedPrefab.name : "(비어 있음)";
+        Debug.LogWarning($"[DungeonGenerator] 테스트 옵션 ON — 1층을 '{mapName}'" +
+            $"(인덱스 {fixedFirstFloorPrefabIndex})으로 고정했습니다. 랜덤 배정이 아닙니다.");
     }
 
     public GameObject CreateLocation(LocationId id)

@@ -20,6 +20,9 @@ public class InputManager : MonoSingleton<InputManager>
     // 인벤토리 토글 이벤트 (HUD가 구독)
     public event Action OnInventoryToggle;
 
+    // ESC 등 UI 취소 이벤트 (UIManager가 구독해서 맨 위 팝업을 닫습니다)
+    public event Action OnUICancel;
+
     // 퀵슬롯 사용 이벤트. 인자는 슬롯 번호(0부터) — 단축키 1~4가 0~3에 대응합니다. (HUD가 구독)
     public event Action<int> OnQuickSlotUsed;
 
@@ -35,6 +38,7 @@ public class InputManager : MonoSingleton<InputManager>
 
         Actions = new PlayerInputActions();
         Actions.UIControll.Inventory.performed += OnInventoryPerformed;   // 액션 → 이벤트 중계
+        Actions.UIControll.Cancel.performed += OnCancelPerformed;
         SubscribeQuickSlots();
     }
 
@@ -45,11 +49,13 @@ public class InputManager : MonoSingleton<InputManager>
     {
         if (Instance != this || Actions == null) return;
         Actions.UIControll.Inventory.performed -= OnInventoryPerformed;
+        Actions.UIControll.Cancel.performed -= OnCancelPerformed;
         UnsubscribeQuickSlots();
         Actions.Dispose();
     }
 
     private void OnInventoryPerformed(InputAction.CallbackContext _) => OnInventoryToggle?.Invoke();
+    private void OnCancelPerformed(InputAction.CallbackContext _) => OnUICancel?.Invoke();
 
     // ── 퀵슬롯 ───────────────────────────────────────────────
 
