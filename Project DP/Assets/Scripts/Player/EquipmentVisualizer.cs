@@ -15,10 +15,6 @@ public class EquipmentVisualizer : MonoBehaviour
     [SerializeField] private Transform weaponSlot;       // handslot.r
     [SerializeField] private Transform shieldSlot;       // handslot.l
 
-    [Header("기본 무기/방패 프리팹")]
-    [SerializeField] private GameObject defaultWeaponPrefab;
-    [SerializeField] private GameObject defaultShieldPrefab;
-
     // ── 헬멧/갑옷 (Mesh Swap 방식) ──
 
     [Header("Body Part Renderers (기본 캐릭터 모델)")]
@@ -135,9 +131,7 @@ public class EquipmentVisualizer : MonoBehaviour
         if (weaponSlot == null) return;
 
         var equipped = _holder.GetEquipped(EquipmentSlot.Weapon);
-        GameObject prefab = (equipped?.Data is WeaponItemData w && w.equipPrefab != null)
-            ? w.equipPrefab
-            : defaultWeaponPrefab;
+        GameObject prefab = (equipped?.Data is WeaponItemData w) ? w.equipPrefab : null;
 
         SpawnInSlot(weaponSlot, prefab, ref _currentWeapon, ref _activeWeaponPrefab);
 
@@ -157,9 +151,7 @@ public class EquipmentVisualizer : MonoBehaviour
         if (shieldSlot == null) return;
 
         var equipped = _holder.GetEquipped(EquipmentSlot.Shield);
-        GameObject prefab = (equipped?.Data is ShieldItemData s && s.equipPrefab != null)
-            ? s.equipPrefab
-            : defaultShieldPrefab;
+        GameObject prefab = (equipped?.Data is ShieldItemData s) ? s.equipPrefab : null;
 
         SpawnInSlot(shieldSlot, prefab, ref _currentShield, ref _activeShieldPrefab);
     }

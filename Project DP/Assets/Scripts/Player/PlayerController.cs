@@ -92,10 +92,14 @@ public class PlayerController : MonoBehaviour
     //   캐릭터가 계속 움직입니다. 반드시 전역 인스턴스의 액션을 빌려 씁니다.
     private bool inputSubscribed;
     private EquipmentVisualizer equipmentVisualizer;
+    private EquipmentHolder equipmentHolder;
 
     /// <summary>현재 장착 무기의 타격 판정 콜라이더. 무기가 없거나 히트박스가 없으면 null.</summary>
     public WeaponHitbox WeaponHitbox =>
         equipmentVisualizer != null ? equipmentVisualizer.CurrentWeaponHitbox : null;
+
+    public bool HasWeapon => equipmentHolder != null && equipmentHolder.GetEquipped(EquipmentSlot.Weapon) != null;
+    public bool HasShield => equipmentHolder != null && equipmentHolder.GetEquipped(EquipmentSlot.Shield) != null;
 
     private void Awake()
     {
@@ -103,6 +107,7 @@ public class PlayerController : MonoBehaviour
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         equipmentVisualizer = GetComponent<EquipmentVisualizer>();
+        equipmentHolder = GetComponent<EquipmentHolder>();
 
         stateMachine.AddState(new IdleState_Player(this, stateMachine));
         stateMachine.AddState(new WalkState_Player(this, stateMachine));

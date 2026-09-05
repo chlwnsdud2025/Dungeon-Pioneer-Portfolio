@@ -13,21 +13,21 @@ MonoBehaviour:
   m_Name: Armor_Test
   m_EditorClassIdentifier: Assembly-CSharp::ArmorItemData
   itemId: 
-  displayName: "\uAE30\uC0AC \uAC11\uC637"
-  description: "\uAE30\uC0AC\uC758 \uAC11\uC637\uC785\uB2C8\uB2E4"
-  icon: {fileID: 21300000, guid: c35003b3ae4e37f4da0c14a2e6293af4, type: 3}
-  slotIcon: {fileID: 21300000, guid: d659f7396cd57754eba78763cf986c51, type: 3}
-  gridSize: {x: 2, y: 3}
-  shapeMask: 010101010101
-  iconScale: 1
+  displayName: "\uAE30\uBCF8 \uAC11\uC637"
+  description: "\uAE30\uBCF8 \uAC11\uC637\uC785\uB2C8\uB2E4"
+  icon: {fileID: 21300000, guid: d07ab46b44fba044b9b4e2e11fec5796, type: 3}
+  slotIcon: {fileID: 21300000, guid: d07ab46b44fba044b9b4e2e11fec5796, type: 3}
+  gridSize: {x: 2, y: 2}
+  shapeMask: 01010101
+  iconScale: 0.9
   iconOffset: {x: 0, y: 0}
   isStackable: 0
   maxStackSize: 1
   requiredLevel: 0
-  defense: 25
-  bodyMesh: {fileID: 2613797618117627391, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
-  armLeftMesh: {fileID: 511114097240222864, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
-  armRightMesh: {fileID: -6658358920128373585, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
-  legLeftMesh: {fileID: 2128348860342612566, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
-  legRightMesh: {fileID: 3530377713297018075, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
-  material: {fileID: -1418784290425750361, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
+  defense: 15
+  bodyMesh: {fileID: -2411995115122161221, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+  armLeftMesh: {fileID: 1878232383230736444, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+  armRightMesh: {fileID: 4552306151051564413, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+  legLeftMesh: {fileID: -409257593384186912, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+  legRightMesh: {fileID: -8963014954032880872, guid: 521d1907e1c6f574cbeb1a46af068335, type: 3}
+  material: {fileID: 5841620844538509439, guid: 80790b700a2cc514aa5308e117b9c5ba, type: 3}

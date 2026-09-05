@@ -18,10 +18,15 @@ public abstract class PlayerBaseState
 
     public virtual void OnAttackInput()
     {
+        if (!player.HasWeapon) return;
         stateMachine.ChangeState<AttackState_Player>();
     }
 
-    public virtual void OnGuardInput() { stateMachine.ChangeState<GuardState_Player>(); }
+    public virtual void OnGuardInput()
+    {
+        if (!player.HasShield) return;
+        stateMachine.ChangeState<GuardState_Player>();
+    }
     public virtual void OnGuardReleased() { }
 
     public virtual void OnJumpInput() {

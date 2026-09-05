@@ -4669,11 +4669,7 @@ MonoBehaviour:
     count: 5
   - item: {fileID: 11400000, guid: 6633872aad893a54ea1c281d0cf8d13c, type: 2}
     count: 50
-  equipment:
-  - {fileID: 11400000, guid: 2bba5611f58450348be3c987d17d96f7, type: 2}
-  - {fileID: 11400000, guid: 1702a1834fd18f94fbb17565824ea717, type: 2}
-  - {fileID: 11400000, guid: 77d480681da72b64e9d09c44f5b81cf2, type: 2}
-  - {fileID: 11400000, guid: 980ae683a6915e146b33da948c8017c6, type: 2}
+  equipment: []
 --- !u!114 &8253063535592924875
 MonoBehaviour:
   m_ObjectHideFlags: 0

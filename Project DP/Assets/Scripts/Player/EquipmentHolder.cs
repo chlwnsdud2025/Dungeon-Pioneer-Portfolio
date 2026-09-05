@@ -10,9 +10,11 @@ using UnityEngine;
 public class EquipmentHolder : MonoBehaviour
 {
     [SerializeField] private PlayerStat stat;   // 같은 Player 오브젝트 — 인스펙터 연결
+    [SerializeField] private List<EquipmentItemData> startingEquipment = new();
 
     private Inventory _inventory;               // UI 쪽이라 런타임에 Init으로 받음
     private readonly Dictionary<EquipmentSlot, InventoryItem> _slots = new();
+    private bool _startingEquipped;
 
     public bool IsInitialized => _inventory != null && stat != null;
 
@@ -24,6 +26,25 @@ public class EquipmentHolder : MonoBehaviour
     {
         _inventory = inventory;
         if (stat == null) stat = GetComponent<PlayerStat>();
+    }
+
+    private void Start() => EquipStartingGear();
+
+    public void EquipStartingGear()
+    {
+        if (_startingEquipped) return;
+        _startingEquipped = true;
+
+        if (stat == null) stat = GetComponent<PlayerStat>();
+
+        foreach (EquipmentItemData data in startingEquipment)
+        {
+            if (data == null || _slots.ContainsKey(data.Slot)) continue;
+            _slots[data.Slot] = new InventoryItem(data, 1);
+        }
+
+        RecalculateStats();
+        OnEquipmentChanged?.Invoke();
     }
 
     /// <summary>해당 슬롯에 장착된 아이템 조회. 없으면 null.</summary>

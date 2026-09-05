@@ -13,17 +13,17 @@ MonoBehaviour:
   m_Name: Shield_Test
   m_EditorClassIdentifier: Assembly-CSharp::ShieldItemData
   itemId: 
-  displayName: "\uD070 \uBC29\uD328"
-  description: "\uD070 \uBC29\uD328\uC785\uB2C8\uB2E4"
-  icon: {fileID: 21300000, guid: e31a0c55d1ced5649b4ea5e624bc5dc4, type: 3}
-  slotIcon: {fileID: 21300000, guid: e31a0c55d1ced5649b4ea5e624bc5dc4, type: 3}
-  gridSize: {x: 3, y: 3}
-  shapeMask: 010101010101010101
-  iconScale: 0.9
+  displayName: "\uB098\uBB34 \uBC29\uD328"
+  description: "\uB098\uBB34 \uBC29\uD328\uC785\uB2C8\uB2E4"
+  icon: {fileID: 21300000, guid: 63fad63030cdc1d4eaeb4b9107e70a71, type: 3}
+  slotIcon: {fileID: 21300000, guid: 63fad63030cdc1d4eaeb4b9107e70a71, type: 3}
+  gridSize: {x: 2, y: 2}
+  shapeMask: 01010101
+  iconScale: 0.8
   iconOffset: {x: 0, y: 0}
   isStackable: 0
   maxStackSize: 1
   requiredLevel: 0
-  defense: 20
+  defense: 10
   blockChance: 10
-  equipPrefab: {fileID: 7643105733119812025, guid: 6138e6c3cfd09a84dad1ebb6388f7d75, type: 3}
+  equipPrefab: {fileID: 2052530004992794073, guid: 945729e8baa43134eb53ed1c1d78dd37, type: 3}
