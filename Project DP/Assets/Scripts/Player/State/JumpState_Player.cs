@@ -4,15 +4,18 @@ public class JumpState_Player : PlayerBaseState
 {
     private readonly int jumpingHash = Animator.StringToHash("Jumping"); // 애니메이션 하나로 통일
 
-    private bool isLongJump;
-    private Vector3 fixedJumpDirection;
-    private float fixedJumpSpeed;
-
     public JumpState_Player(PlayerController player, PlayerStateMachine stateMachine) : base(player, stateMachine) { }
 
     public override void Enter()
     {
-        isLongJump = player.isRunning;
+        if (player.resumeAirborne)
+        {
+            player.resumeAirborne = false;
+            player.animator.CrossFadeInFixedTime(jumpingHash, 0.1f);
+            return;
+        }
+
+        bool isLongJump = player.isRunning;
 
         if (player.currentJumps >= player.maxJumps) return;
 
@@ -23,11 +26,10 @@ public class JumpState_Player : PlayerBaseState
 
         // 1. 위로 뛰는 힘 적용
         player.verticalVelocity = player.jumpForce;
-        fixedJumpDirection = CalculateMoveDirection();
 
         if (player.moveInput == Vector2.zero)
         {
-            fixedJumpSpeed = 0f;
+            player.airMomentum = Vector3.zero;
         }
         else
         {
@@ -44,7 +46,7 @@ public class JumpState_Player : PlayerBaseState
 
             // 속력 = 거리 / 시간
             // 이 속도로 수평 이동하면 바닥에 닿는 순간 정확히 targetDistance에 도달함
-            fixedJumpSpeed = targetDistance / estimatedAirTime;
+            player.airMomentum = CalculateMoveDirection() * (targetDistance / estimatedAirTime);
         }
     }
 
@@ -64,12 +66,11 @@ public class JumpState_Player : PlayerBaseState
             return;
         }
 
-        // --- 공중 조작 (Enter에서 정해둔 고정 속도로 날아감) ---
-        if (fixedJumpSpeed > 0f)
+        if (player.airMomentum != Vector3.zero)
         {
-            HandleRotation(fixedJumpDirection);
+            HandleRotation(player.airMomentum.normalized);
         }
 
-        player.MoveCharacter(fixedJumpDirection * fixedJumpSpeed * Time.deltaTime);
+        player.MoveCharacter(player.airMomentum * Time.deltaTime);
     }
 }

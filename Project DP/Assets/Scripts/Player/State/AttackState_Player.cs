@@ -28,13 +28,10 @@ public class AttackState_Player : PlayerBaseState
 
         // 방향키를 누르고 공격했다면 그 방향으로 즉시 회전
         Vector3 attackDir = CalculateMoveDirection();
-        if (attackDir != Vector3.zero)
+        if (attackDir != Vector3.zero && player.characterController.isGrounded)
         {
             player.transform.rotation = Quaternion.LookRotation(attackDir);
         }
-
-        // 공격 중에는 미끄러지지 않도록 제자리에 멈춥니다.
-        player.MoveCharacter(Vector3.zero);
 
         // 지연이 0이면 여기서 바로 엽니다. Update를 기다리면 최소 1프레임이 늦습니다.
         UpdateHitbox();
@@ -42,12 +39,19 @@ public class AttackState_Player : PlayerBaseState
 
     public override void Update()
     {
+        player.MoveCharacter(player.airMomentum * Time.deltaTime);
+
         UpdateHitbox();
 
         // 상태 종료 판정만 애니메이션 진행률을 씁니다.
         if (TryGetAttackProgress(out float progress) && progress >= EndNormalized)
         {
-            if (player.moveInput == Vector2.zero)
+            if (!player.characterController.isGrounded)
+            {
+                player.resumeAirborne = true;
+                stateMachine.ChangeState<JumpState_Player>();
+            }
+            else if (player.moveInput == Vector2.zero)
                 stateMachine.ChangeState<IdleState_Player>();
             else
                 stateMachine.ChangeState<WalkState_Player>();

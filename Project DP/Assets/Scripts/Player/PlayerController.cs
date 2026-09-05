@@ -29,6 +29,8 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public float verticalVelocity;
     public int maxJumps = 1; // 추후 유틸리티 스킬 해금 시 값 상승
     [HideInInspector] public int currentJumps = 0;
+    [HideInInspector] public Vector3 airMomentum;
+    [HideInInspector] public bool resumeAirborne;
 
     [Header("Interaction System")]
     public float interactRange = 1.5f;     // 상호작용 탐색 길이
@@ -172,6 +174,7 @@ public class PlayerController : MonoBehaviour
             {
                 verticalVelocity = -2f;
                 currentJumps = 0; // "땅에 붙어있음"이 아니라 "떨어지다가 착지함"일 때만 리셋
+                airMomentum = Vector3.zero;
             }
         }
         else
@@ -352,6 +355,8 @@ public class PlayerController : MonoBehaviour
     {
         verticalVelocity = 0f;
         currentJumps = 0;
+        airMomentum = Vector3.zero;
+        resumeAirborne = false;
         isInvincible = false;
         isGuarding = false;
         isRunning = false;
