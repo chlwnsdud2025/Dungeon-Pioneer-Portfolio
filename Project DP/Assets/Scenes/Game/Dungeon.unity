@@ -19842,7 +19842,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &286777861
 MonoBehaviour:
@@ -19884,7 +19884,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -22484,7 +22484,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &317375397
 MonoBehaviour:
@@ -22526,7 +22526,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -47374,7 +47374,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &632077207
 MonoBehaviour:
@@ -47416,7 +47416,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -48252,7 +48252,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &644401463
 MonoBehaviour:
@@ -48294,7 +48294,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -58888,7 +58888,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &828824009
 MonoBehaviour:
@@ -58930,7 +58930,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -81949,7 +81949,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &1133090301
 MonoBehaviour:
@@ -81991,7 +81991,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -83312,7 +83312,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &1151784110
 MonoBehaviour:
@@ -83354,7 +83354,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -96383,7 +96383,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &1338225141
 MonoBehaviour:
@@ -96425,7 +96425,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
@@ -133904,7 +133904,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
   anisotropy: 0.33
-  scattering: 9.33
+  scattering: 3.47
   radius: 0
 --- !u!114 &1909894255
 MonoBehaviour:
@@ -133946,7 +133946,7 @@ Light:
   serializedVersion: 12
   m_Type: 0
   m_Color: {r: 1, g: 0.9108806, b: 0.79559743, a: 1}
-  m_Intensity: 17
+  m_Intensity: 22
   m_Range: 30
   m_SpotAngle: 32
   m_InnerSpotAngle: 32
