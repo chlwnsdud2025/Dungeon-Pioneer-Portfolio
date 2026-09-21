@@ -24,7 +24,7 @@ MonoBehaviour:
   isStackable: 0
   maxStackSize: 1
   requiredLevel: 0
-  defense: 15
+  defense: 5
   headMesh: {fileID: 1980654953083619707, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
   accessoryMesh: {fileID: -3175723430499807473, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
   material: {fileID: -1418784290425750361, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}

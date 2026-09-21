@@ -15,8 +15,8 @@ MonoBehaviour:
   itemId: Torch
   displayName: Torch
   description: Torch
-  icon: {fileID: 21300000, guid: 4dc051a0301cecb4aa1a85036ace2a58, type: 3}
-  slotIcon: {fileID: 21300000, guid: 4dc051a0301cecb4aa1a85036ace2a58, type: 3}
+  icon: {fileID: 21300000, guid: f6e74d8ecf2ffca4fb1ff975f35631ae, type: 3}
+  slotIcon: {fileID: 21300000, guid: f6e74d8ecf2ffca4fb1ff975f35631ae, type: 3}
   gridSize: {x: 1, y: 1}
   shapeMask: 01
   iconScale: 1

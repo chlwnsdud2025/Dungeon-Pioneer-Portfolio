@@ -24,7 +24,7 @@ MonoBehaviour:
   isStackable: 0
   maxStackSize: 1
   requiredLevel: 0
-  defense: 25
+  defense: 10
   bodyMesh: {fileID: 2613797618117627391, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
   armLeftMesh: {fileID: 511114097240222864, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
   armRightMesh: {fileID: -6658358920128373585, guid: ffb954bd3f78abb4087163731d9cb969, type: 3}
