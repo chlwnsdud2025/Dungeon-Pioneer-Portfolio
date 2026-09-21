@@ -10,7 +10,7 @@ public class EnemyHitState : EnemyBaseState
     public override void Enter()
     {
         hitTimer = 0f;
-        enemy.DeactivateNavMeshAgent();
+        enemy.Mover.Stop();
         enemy.animator.CrossFadeInFixedTime(hitAnimHash, 0.1f);
     }
 

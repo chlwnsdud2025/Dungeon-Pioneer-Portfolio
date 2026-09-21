@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
 
 public class TrapTile : MonoBehaviour, IFloorPersistent
 {
@@ -21,6 +20,9 @@ public class TrapTile : MonoBehaviour, IFloorPersistent
     private bool isFilled = false;
 
     public bool IsFilled => isFilled;
+    public Vector2Int Cell => cell;
+
+    public bool IsActorInsidePit(Transform actorRoot) => IsFeetInsidePit(actorRoot);
 
     // ★ 추가: 가시가 올라가는 중(true) / 내려가는 중(false)
     private bool spikeGoingUp = false;
@@ -140,35 +142,6 @@ public class TrapTile : MonoBehaviour, IFloorPersistent
             return false;
 
         return feet.y <= rimY + 0.12f;
-    }
-
-    /// <summary>구덩이에 빠진 액터를 함정 NavMesh 보행면(입구 높이)으로 올립니다.</summary>
-    public bool TryGetRescueWorldPosition(out Vector3 rescuePos)
-    {
-        rescuePos = transform.position;
-
-        Transform walkSurface = transform.Find("NavWalkSurface");
-        if (walkSurface != null)
-        {
-            rescuePos = walkSurface.position;
-            return true;
-        }
-
-        float rimY = GetTrapRimWorldY();
-        Vector3 center = transform.position;
-        if (TryGetPitWorldBounds(out Bounds pitBounds))
-            center = new Vector3(pitBounds.center.x, rimY, pitBounds.center.z);
-        else
-            center.y = rimY;
-
-        if (NavMesh.SamplePosition(center + Vector3.up * 0.5f, out NavMeshHit hit, 2f, NavMesh.AllAreas))
-        {
-            rescuePos = hit.position;
-            return true;
-        }
-
-        rescuePos = center;
-        return true;
     }
 
     /// <summary>월드 위치가 이 함정 구덩이 안에 있는지 (Enemy 탈출 판정용).</summary>

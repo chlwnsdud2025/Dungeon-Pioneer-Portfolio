@@ -10,7 +10,7 @@ public class EnemyDeadState : EnemyBaseState
 
     public override void Enter()
     {
-        enemy.DeactivateNavMeshAgent();
+        enemy.Mover.Stop();
         timer = 0f;
         enemy.animator.CrossFadeInFixedTime(deadAnimHash, 0.1f);
 

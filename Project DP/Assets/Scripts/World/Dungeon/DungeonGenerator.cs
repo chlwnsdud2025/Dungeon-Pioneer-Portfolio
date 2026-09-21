@@ -1,13 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI;
-using Unity.AI.Navigation;
 
 /// <summary>
 /// 던전 층 프리팹을 만들어내는 생성기. DungeonManager가 소유하며 다음 3가지를 제공합니다:
 ///  - PrepareNewRun: 런 시작 시 맵 프리팹 순서를 한 번 섞어 층마다 다른 맵이 배정되게 함
-///  - CreateLocation: 해당 층 프리팹을 인스턴스화 + 좌표 정규화 + 스폰 지점 등록 + Trap 영역 태깅
-///  - OnNavMeshBaked: Trap NavWalkSurface 렌더러 숨김 (베이크용 투명 메시)
+///  - CreateLocation: 해당 층 프리팹을 인스턴스화 + 좌표 정규화 + 스폰 지점 등록 + LocationGrid 빌드
 /// "어떻게 던전을 만들지"만 알고, "지금 어느 층인지/플레이어를 어디로 옮길지"는 DungeonManager가 담당합니다.
 /// </summary>
 public class DungeonGenerator : MonoBehaviour
@@ -26,8 +23,6 @@ public class DungeonGenerator : MonoBehaviour
     [Tooltip("1층에 고정할 mapPrefabs의 인덱스. 0이 첫 번째 프리팹입니다.")]
     public int fixedFirstFloorPrefabIndex = 0;
     // ─────────────────────────────────────────────────────────────
-
-    private const string NavWalkSurfaceName = "NavWalkSurface";
 
     private List<int> shuffledPrefabIndices;
 
@@ -118,309 +113,12 @@ public class DungeonGenerator : MonoBehaviour
 
         SnapPushablesToGround(spawnedMap);
 
-        // ★ FloorTrap: 구덩이·가시는 NavMesh에서 제외하고, 일반 Floor와 같은 높이의 보행면을 깔아
-        //   함정 칸도 끊기지 않게 합니다. (베이크 후 렌더러는 숨깁니다)
-        PrepareFloorTrapNavMesh(spawnedMap);
-        PrepareStandardFloorWalkSurfaces(spawnedMap);
-        PrepareWallNavMeshBlockers(spawnedMap);
-        PrepareWallNavMeshObstacles(spawnedMap);
-        PrepareNavMeshExclusions(spawnedMap);
-
         // 발판 ↔ 화살 함정 연결 (프리팹 수동 참조가 런타임에서 null이 되는 경우 대비)
         ArrowTrapRuntimeWire.WireMap(spawnedMap, onlyIfMissing: false);
 
         Debug.Log($"<color=cyan>{floor}층 던전 생성 완료: {spawnedMap.name}</color>");
 
         return spawnedMap;
-    }
-
-    /// <summary>NavMesh 베이크 직후 Trap 보행면(베이크 전용 메시) 렌더러를 숨깁니다.</summary>
-    public void OnNavMeshBaked(GameObject locationInstance)
-    {
-        HideNavWalkSurfaceRenderers(locationInstance);
-    }
-
-    /// <summary>NavMesh 재베이크 직전 준비: Floor/Trap 보행면 보장 + 비보행 Renderer 제외.</summary>
-    public void PrepareNavMeshForBake(GameObject mapInstance)
-    {
-        PrepareStandardFloorWalkSurfaces(mapInstance);
-        PrepareWallNavMeshBlockers(mapInstance);
-        PrepareWallNavMeshObstacles(mapInstance);
-        PrepareNavWalkSurfacesForBake(mapInstance);
-        PrepareNavMeshExclusions(mapInstance);
-        PrepareNonMapNavMeshExclusions();
-    }
-
-    /// <summary>
-    /// FloorTrap(TrapTile)마다 구덩이·장식 메시는 NavMesh 베이크에서 제외하고,
-    /// 일반 FloorTile과 같은 높이의 얇은 보행면(NavWalkSurface)을 추가해 NavMesh가 이어지게 합니다.
-    /// </summary>
-    private void PrepareFloorTrapNavMesh(GameObject mapInstance)
-    {
-        if (!TryGetStandardWalkSurfaceY(mapInstance, out float walkSurfaceY))
-        {
-            Debug.LogWarning("[DungeonGenerator] 일반 Floor 타일에서 보행면 높이를 찾지 못했습니다. " +
-                "GridSystem 기준 높이로 Trap 보행면을 깝니다.");
-            walkSurfaceY = GridSystem.Instance.GetCellCenterWorld(Vector3Int.zero).y + GridSystem.Instance.TileHeight;
-        }
-
-        float tileSize = GridSystem.Instance.TileSize;
-        const float walkSurfaceThickness = 0.05f;
-        const float walkSurfaceInset = 0.72f;
-
-        foreach (Transform trap in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (!trap.CompareTag("Trap")) continue;
-            if (trap.GetComponent<TrapTile>() == null) continue;
-
-            foreach (Renderer renderer in trap.GetComponentsInChildren<Renderer>(true))
-            {
-                NavMeshModifier exclude = renderer.gameObject.GetComponent<NavMeshModifier>();
-                if (exclude == null) exclude = renderer.gameObject.AddComponent<NavMeshModifier>();
-                exclude.ignoreFromBuild = true;
-            }
-
-            Transform walkSurface = trap.Find(NavWalkSurfaceName);
-            if (walkSurface == null)
-            {
-                GameObject walkObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                walkObj.name = NavWalkSurfaceName;
-                walkObj.transform.SetParent(trap, false);
-
-                Collider walkCollider = walkObj.GetComponent<Collider>();
-                if (walkCollider != null) Destroy(walkCollider);
-            }
-            else
-            {
-                walkSurface.gameObject.name = NavWalkSurfaceName;
-            }
-
-            walkSurface = trap.Find(NavWalkSurfaceName);
-            walkSurface.position = new Vector3(trap.position.x, walkSurfaceY, trap.position.z);
-            walkSurface.localScale = new Vector3(tileSize * walkSurfaceInset, walkSurfaceThickness, tileSize * walkSurfaceInset);
-
-            Renderer walkRenderer = walkSurface.GetComponent<Renderer>();
-            if (walkRenderer != null) walkRenderer.enabled = true;
-
-            NavMeshModifier walkModifier = walkSurface.GetComponent<NavMeshModifier>();
-            if (walkModifier == null) walkModifier = walkSurface.gameObject.AddComponent<NavMeshModifier>();
-            int trapArea = NavMesh.GetAreaFromName("Trap");
-            walkModifier.area = trapArea >= 0 ? trapArea : NavMesh.GetAreaFromName("Walkable");
-            walkModifier.ignoreFromBuild = false;
-        }
-    }
-
-    private static void HideNavWalkSurfaceRenderers(GameObject mapInstance)
-    {
-        SetNavWalkSurfaceRenderersEnabled(mapInstance, false);
-    }
-
-    private static void SetNavWalkSurfaceRenderersEnabled(GameObject mapInstance, bool enabled)
-    {
-        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (child.name != NavWalkSurfaceName) continue;
-
-            Renderer renderer = child.GetComponent<Renderer>();
-            if (renderer != null) renderer.enabled = enabled;
-        }
-    }
-
-    private void PrepareNavWalkSurfacesForBake(GameObject mapInstance)
-    {
-        SetNavWalkSurfaceRenderersEnabled(mapInstance, true);
-    }
-
-    /// <summary>
-    /// Floor 태그 타일(Road 등)마다 NavWalkSurface 큐브를 깔아 NavMesh를 만듭니다.
-    /// gravel·floor_tile_small처럼 Read/Write가 꺼진 장식 메시만으로는 NavMesh가 생성되지 않습니다.
-    /// </summary>
-    private void PrepareStandardFloorWalkSurfaces(GameObject mapInstance)
-    {
-        float tileSize = GridSystem.Instance.TileSize;
-        const float walkSurfaceThickness = 0.05f;
-        const float walkSurfaceInset = 0.72f;
-        int walkableArea = NavMesh.GetAreaFromName("Walkable");
-
-        foreach (Transform tile in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (!tile.CompareTag("Floor")) continue;
-            if (tile.GetComponentInParent<TrapTile>() != null) continue;
-            if (tile.name == NavWalkSurfaceName) continue;
-
-            Transform walkSurface = tile.Find(NavWalkSurfaceName);
-            if (walkSurface == null)
-            {
-                GameObject walkObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                walkObj.name = NavWalkSurfaceName;
-                walkObj.transform.SetParent(tile, false);
-
-                Collider walkCollider = walkObj.GetComponent<Collider>();
-                if (walkCollider != null) Destroy(walkCollider);
-
-                walkSurface = walkObj.transform;
-            }
-
-            if (!TryGetTileTopSurface(tile, out Vector3 topSurfacePoint))
-                topSurfacePoint = tile.position;
-
-            walkSurface.position = topSurfacePoint;
-            walkSurface.localScale = new Vector3(tileSize * walkSurfaceInset, walkSurfaceThickness, tileSize * walkSurfaceInset);
-
-            Renderer walkRenderer = walkSurface.GetComponent<Renderer>();
-            if (walkRenderer != null) walkRenderer.enabled = true;
-
-            NavMeshModifier walkModifier = walkSurface.GetComponent<NavMeshModifier>();
-            if (walkModifier == null) walkModifier = walkSurface.gameObject.AddComponent<NavMeshModifier>();
-            walkModifier.area = walkableArea;
-            walkModifier.ignoreFromBuild = false;
-        }
-    }
-
-    /// <summary>베이크 시 Wall 셀에 Not Walkable 볼륨을 깔아 바닥 NavMesh가 벽을 관통하지 않게 합니다.</summary>
-    private static void PrepareWallNavMeshBlockers(GameObject mapInstance)
-    {
-        float tileSize = GridSystem.Instance.TileSize;
-        int notWalkable = NavMesh.GetAreaFromName("Not Walkable");
-        if (notWalkable < 0) notWalkable = 1;
-        Transform mapRoot = mapInstance.transform;
-
-        foreach (Transform wall in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (!wall.CompareTag("Wall") || !IsMapTileRoot(wall, mapRoot)) continue;
-
-            NavMeshModifierVolume volume = wall.GetComponent<NavMeshModifierVolume>();
-            if (volume == null) volume = wall.gameObject.AddComponent<NavMeshModifierVolume>();
-
-            volume.center = new Vector3(0f, tileSize * 0.5f, 0f);
-            volume.size = new Vector3(tileSize, tileSize, tileSize);
-            volume.area = notWalkable;
-        }
-    }
-
-    /// <summary>Wall 타일에 NavMeshObstacle을 붙여 벽을 통과하는 경로를 막습니다.</summary>
-    private static void PrepareWallNavMeshObstacles(GameObject mapInstance)
-    {
-        float tileSize = GridSystem.Instance.TileSize;
-        Transform mapRoot = mapInstance.transform;
-
-        foreach (Transform wall in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (!wall.CompareTag("Wall") || !IsMapTileRoot(wall, mapRoot)) continue;
-
-            NavMeshObstacle obstacle = wall.GetComponent<NavMeshObstacle>();
-            if (obstacle == null) obstacle = wall.gameObject.AddComponent<NavMeshObstacle>();
-
-            obstacle.shape = NavMeshObstacleShape.Box;
-            obstacle.center = new Vector3(0f, tileSize * 0.5f, 0f);
-            obstacle.size = new Vector3(tileSize * 0.95f, tileSize, tileSize * 0.95f);
-            obstacle.carving = true;
-            obstacle.carveOnlyStationary = true;
-        }
-    }
-
-    private bool TryGetStandardWalkSurfaceY(GameObject mapInstance, out float walkSurfaceY)
-    {
-        walkSurfaceY = 0f;
-
-        foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (!child.CompareTag("Floor")) continue;
-            if (child.GetComponentInParent<TrapTile>() != null) continue;
-
-            if (TryGetTileTopSurface(child, out Vector3 topSurfacePoint))
-            {
-                walkSurfaceY = topSurfacePoint.y;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// NavMesh 베이크 대상에서 장식·함정·적 등 보행면이 아닌 Renderer를 제외합니다.
-    /// Read/Write가 꺼진 임포트 메시(arrow_bow, floor_tile_small 등) 경고도 방지합니다.
-    /// </summary>
-    private static void PrepareNavMeshExclusions(GameObject mapInstance)
-    {
-        foreach (Renderer renderer in mapInstance.GetComponentsInChildren<Renderer>(true))
-        {
-            if (renderer.gameObject.name == NavWalkSurfaceName) continue;
-
-            if (ShouldExcludeRendererFromNavMesh(renderer))
-                SetIgnoreFromNavMeshBuild(renderer.gameObject, true);
-        }
-    }
-
-    private static bool ShouldExcludeRendererFromNavMesh(Renderer renderer)
-    {
-        Transform t = renderer.transform;
-
-        if (t.GetComponentInParent<ArrowTrap>() != null) return true;
-        if (t.GetComponentInParent<PressurePlate>() != null) return true;
-        if (t.GetComponentInParent<WallTrap>() != null) return true;
-        if (t.GetComponentInParent<RollingRockTrap>() != null) return true;
-        if (t.GetComponentInParent<EnemyController>() != null) return true;
-        if (t.GetComponentInParent<TreasureChest>() != null) return true;
-
-        if (t.CompareTag("Wall")) return true;
-
-        // TrapTile 보행면(NavWalkSurface)만 남기고 Trap 태그 장식 메시는 제외
-        if (t.CompareTag("Trap") && t.GetComponentInParent<TrapTile>() == null)
-            return true;
-
-        // Floor 장식 메시는 NavWalkSurface로 대체 (gravel 등 Read/Write 꺼진 메시)
-        if (t.CompareTag("Floor") && t.name != NavWalkSurfaceName)
-            return true;
-
-        MeshFilter meshFilter = renderer.GetComponent<MeshFilter>();
-        if (meshFilter != null && meshFilter.sharedMesh != null)
-        {
-            string meshName = meshFilter.sharedMesh.name;
-            if (meshName.Contains("torch") || meshName.Contains("arrow_bow") || meshName.Contains("floor_tile_small"))
-                return true;
-
-            if (!meshFilter.sharedMesh.isReadable)
-                return true;
-        }
-
-        return false;
-    }
-
-    /// <summary>플레이어·장착 무기 등 맵 밖 오브젝트를 NavMesh 베이크에서 제외합니다.</summary>
-    private static void PrepareNonMapNavMeshExclusions()
-    {
-        foreach (PlayerController player in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
-        {
-            foreach (Renderer renderer in player.GetComponentsInChildren<Renderer>(true))
-                SetIgnoreFromNavMeshBuild(renderer.gameObject, true);
-        }
-    }
-
-    private static void SetIgnoreFromNavMeshBuild(GameObject target, bool ignore)
-    {
-        NavMeshModifier modifier = target.GetComponent<NavMeshModifier>();
-        if (modifier == null) modifier = target.AddComponent<NavMeshModifier>();
-        modifier.ignoreFromBuild = ignore;
-    }
-
-    /// <summary>
-    /// 타일 오브젝트(빈 부모) 내부의 실제 모델링(자식 Renderer)을 찾아, 그 렌더링 바운즈의 윗면 중심
-    /// 좌표를 반환합니다. 부모의 피벗이 어디에 있든 상관없이 "실제로 밟는 표면"을 정확히 구합니다.
-    /// </summary>
-    private bool TryGetTileTopSurface(Transform tile, out Vector3 topSurfacePoint)
-    {
-        Renderer renderer = tile.GetComponentInChildren<Renderer>();
-        if (renderer == null)
-        {
-            topSurfacePoint = tile.position;
-            return false;
-        }
-
-        Bounds bounds = renderer.bounds;
-        topSurfacePoint = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
-        return true;
     }
 
     private void NormalizeMapOrigin(GameObject mapInstance)
@@ -433,7 +131,7 @@ public class DungeonGenerator : MonoBehaviour
         // 장식 자식/오프셋 타일(≈0.97)이 원점을 오염시키지 않도록 타일 루트만 사용합니다.
         foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
         {
-            if (!IsMapTileRoot(child, mapRoot)) continue;
+            if (!LocationGrid.IsTileRoot(child, mapRoot)) continue;
             // 원점은 바닥 계열만 — Wall 돌출이 min을 밀지 않게 합니다.
             if (!(child.CompareTag("Floor") || child.CompareTag("Entrance") ||
                   child.CompareTag("Exit") || child.CompareTag("Trap")))
@@ -477,26 +175,6 @@ public class DungeonGenerator : MonoBehaviour
     {
         float tile = GridSystem.Instance.TileSize;
         return Mathf.Round(value / tile) * tile;
-    }
-
-    private static bool IsMapTileRoot(Transform obj, Transform mapRoot)
-    {
-        if (obj == mapRoot) return false;
-        if (!(obj.CompareTag("Floor") || obj.CompareTag("Wall") || obj.CompareTag("Entrance") ||
-              obj.CompareTag("Exit") || obj.CompareTag("Trap")))
-            return false;
-
-        Transform parent = obj.parent;
-        while (parent != null && parent != mapRoot)
-        {
-            if (parent.CompareTag("Floor") || parent.CompareTag("Wall") || parent.CompareTag("Entrance") ||
-                parent.CompareTag("Exit") || parent.CompareTag("Trap") || parent.CompareTag("Chest") ||
-                parent.CompareTag("Pushable"))
-                return false;
-            parent = parent.parent;
-        }
-
-        return true;
     }
 
     /// <summary>바닥 레이어 불일치로 Pushable이 맵 아래로 빠지지 않도록 스폰 직후 바닥에 붙입니다.</summary>

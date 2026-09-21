@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Unity.AI.Navigation;
 
 /// <summary>
 /// ■ 던전 씬 하나를 통째로 책임지는 단일 매니저.
@@ -9,7 +8,7 @@ using Unity.AI.Navigation;
 /// 던전과 관련된 모든 것을 여기서 처리합니다:
 ///  - 층 진행 규칙: 지금 몇 층인지(currentFloor), 몇 층에서 클리어인지(maxFloor)
 ///  - 층 로딩/전환: 층을 처음 방문하면 DungeonGenerator로 생성하고, 재방문이면 SetActive로 켜서 상태 복원
-///  - 플레이어 스폰/이동, NavMesh 굽기, 미니맵 전환
+///  - 플레이어 스폰/이동, 미니맵 전환
 ///  - 씬 경계 이동: 던전 1층 입구로 나가거나(탈출) 최종 클리어/사망 시 → 오버월드 씬 로드
 ///
 /// 층은 파괴하지 않고 SetActive로만 껐다 켭니다. 비활성 동안 적/애니메이션이 멈추고 HP·위치·열린 상자·
@@ -43,8 +42,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     [Header("생성 / 배치")]
     [Tooltip("층 프리팹 생성과 층 배정 셔플을 담당하는 생성기.")]
     public DungeonGenerator dungeonGenerator;
-    [Tooltip("층을 옮길 때마다 활성 층 기준으로 다시 굽습니다. 비활성 층은 자동 제외.")]
-    public NavMeshSurface navMeshSurface;
 
     [Header("씬 전환")]
     [Tooltip("던전을 나갈 때 로드할 오버월드 씬 이름. Build Settings에 등록되어 있어야 합니다.")]
@@ -175,8 +172,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             instance = dungeonGenerator.CreateLocation(destination);
             loadedLocations[destination] = instance;
 
-            // ★ 저장된 상호작용 기록을 되돌리는 자리. NavMesh를 굽기 '전'이어야 합니다 —
-            //   Pushable을 옮기고 함정을 메운 결과가 반영된 상태로 구워야 적이 바뀐 지형을 인식합니다.
+            // ★ 저장된 상호작용 기록을 되돌리는 자리. 적에게 층 준비 완료를 알리기 '전'이어야 합니다.
             RestoreMapState(instance);
         }
         else
@@ -187,12 +183,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         currentLocationId = destination;
         hasCurrentLocation = true;
 
-        if (navMeshSurface != null)
-        {
-            BakeNavMeshForLocation(instance);
-            dungeonGenerator.OnNavMeshBaked(instance);
-            NotifyEnemiesNavMeshReady(instance);
-        }
+        NotifyEnemiesLocationReady(instance);
 
         PlacePlayer(instance, arrivalSpawnPointId);
 
@@ -236,28 +227,12 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         decoration.SetRevealed(MinimapManager.Instance.IsCurrentExplored);
     }
 
-    /// <summary>활성 층만 NavMesh에 포함해 굽습니다. (플레이어 횃불 등 씬 전역 메시 제외)</summary>
-    private void BakeNavMeshForLocation(GameObject instance)
-    {
-        Transform previousParent = instance.transform.parent;
-        CollectObjects previousCollect = navMeshSurface.collectObjects;
-
-        instance.transform.SetParent(navMeshSurface.transform, true);
-        navMeshSurface.collectObjects = CollectObjects.Children;
-
-        dungeonGenerator.PrepareNavMeshForBake(instance);
-        navMeshSurface.BuildNavMesh();
-
-        navMeshSurface.collectObjects = previousCollect;
-        instance.transform.SetParent(previousParent, true);
-    }
-
-    private static void NotifyEnemiesNavMeshReady(GameObject locationInstance)
+    private static void NotifyEnemiesLocationReady(GameObject locationInstance)
     {
         if (locationInstance == null) return;
 
         foreach (EnemyController enemy in locationInstance.GetComponentsInChildren<EnemyController>(true))
-            enemy.NotifyNavMeshReady();
+            enemy.NotifyLocationReady();
     }
 
     /// <summary>
@@ -346,7 +321,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         }
     }
 
-    /// <summary>새로 만든 층에 저장된 기록을 되돌립니다. NavMesh를 굽기 전에 호출해야 합니다.</summary>
+    /// <summary>새로 만든 층에 저장된 기록을 되돌립니다.</summary>
     private void RestoreMapState(GameObject instance)
     {
         MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));

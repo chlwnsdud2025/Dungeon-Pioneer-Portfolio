@@ -12,7 +12,7 @@ public class EnemyAttackState : EnemyBaseState
 
     public override void Enter()
     {
-        enemy.DeactivateNavMeshAgent();
+        enemy.Mover.Stop();
         enemy.MoveEnemy(Vector3.zero);
         enemy.lastAttackTime = Time.time;
 

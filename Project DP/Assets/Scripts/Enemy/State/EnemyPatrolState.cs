@@ -1,284 +1,145 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-
-
 public class EnemyPatrolState : EnemyBaseState
-
 {
-
     private readonly int locomotionAnimHash = Animator.StringToHash("Chase");
-
     private const float PatrolAnimSpeed = 0.55f;
-
-
-
     private const int PatrolTileRadius = 4;
+    private const float RouteRetryInterval = 1f;
 
+    private static readonly Vector2Int[] Directions =
+    {
+        new Vector2Int(1, 0),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(0, -1)
+    };
 
+    private readonly Queue<Vector2Int> bfsQueue = new Queue<Vector2Int>();
+    private readonly Dictionary<Vector2Int, int> bfsDistance = new Dictionary<Vector2Int, int>();
+    private readonly List<Vector2Int> farthestCells = new List<Vector2Int>();
 
-    private float tileSize;
-
-    private Vector3 spawnNavPoint;
-
-    private Vector3 farNavPoint;
-
-    private bool movingToFarPoint;
-
-    private bool agentReady;
-
-    private float stuckTimer;
-
-    private Vector3 lastTrackedPosition;
-
-
+    private Vector2Int farCell;
+    private bool movingToFarCell;
+    private bool hasRoute;
+    private float routeRetryTimer;
 
     public EnemyPatrolState(EnemyController enemy, EnemyStateMachine stateMachine) : base(enemy, stateMachine) { }
 
-
-
     public override void Enter()
-
     {
-
         enemy.ResetAnimatorLocomotionSpeed();
-
         enemy.animator.CrossFadeInFixedTime(locomotionAnimHash, 0.1f);
-
         enemy.SetAnimatorLocomotionSpeed(PatrolAnimSpeed);
 
+        routeRetryTimer = 0f;
+        hasRoute = SetupPatrolRoute();
+        if (!hasRoute) return;
 
-
-        tileSize = GridSystem.Instance.TileSize;
-
-        stuckTimer = 0f;
-
-        lastTrackedPosition = enemy.transform.position;
-
-        agentReady = enemy.TryActivateNavMeshAgent(enemy.moveSpeed * 0.5f, 0.1f);
-
-
-
-        if (!agentReady)
-
-            return;
-
-
-
-        SetupPatrolRoute();
-
-        SetPatrolDestination(movingToFarPoint ? farNavPoint : spawnNavPoint);
-
+        movingToFarCell = true;
+        SetPatrolDestination();
     }
-
-
 
     public override void Update()
-
     {
-
         if (enemy.TryDetectPlayer())
-
         {
-
             stateMachine.ChangeState<EnemyChaseState>();
-
             return;
-
         }
-
-
 
         if (enemy.TryDetectRunningPlayerNearby(out _))
-
         {
-
             stateMachine.ChangeState<EnemyAlertState>();
-
             return;
-
         }
 
-
-
-        if (!agentReady)
-
+        if (!hasRoute)
         {
+            enemy.MoveEnemy(Vector3.zero);
 
-            agentReady = enemy.TryActivateNavMeshAgent(enemy.moveSpeed * 0.5f, 0.1f);
+            routeRetryTimer += Time.deltaTime;
+            if (routeRetryTimer < RouteRetryInterval) return;
 
-            if (!agentReady) return;
+            routeRetryTimer = 0f;
+            hasRoute = SetupPatrolRoute();
+            if (!hasRoute) return;
 
-
-
-            SetupPatrolRoute();
-
-            SetPatrolDestination(movingToFarPoint ? farNavPoint : spawnNavPoint);
-
+            movingToFarCell = true;
+            SetPatrolDestination();
+            return;
         }
 
-
-
-        if (enemy.agent == null || !enemy.agent.isOnNavMesh) return;
-
-
-
-        TrackStuckAndRepath();
-
-        if (!enemy.agent.pathPending && enemy.agent.remainingDistance <= enemy.agent.stoppingDistance + 0.05f)
+        if (enemy.Mover.HasArrived)
         {
-            movingToFarPoint = !movingToFarPoint;
-            SetPatrolDestination(movingToFarPoint ? farNavPoint : spawnNavPoint);
+            if (enemy.Mover.LastResult == PathResult.None)
+            {
+                routeRetryTimer += Time.deltaTime;
+                if (routeRetryTimer < RouteRetryInterval) return;
+                routeRetryTimer = 0f;
+            }
+
+            movingToFarCell = !movingToFarCell;
+            SetPatrolDestination();
         }
     }
-
-
 
     public override void Exit()
-
     {
-
         enemy.ResetAnimatorLocomotionSpeed();
-
-        enemy.DeactivateNavMeshAgent();
-
+        enemy.Mover.Stop();
     }
 
-
-
-    private void SetupPatrolRoute()
-
+    private bool SetupPatrolRoute()
     {
+        LocationGrid grid = enemy.Grid;
+        if (grid == null) return false;
 
-        spawnNavPoint = enemy.SampleReachableNavPoint(enemy.spawnPosition, enemy.spawnPosition);
+        Vector2Int start = enemy.spawnCell;
+        bfsQueue.Clear();
+        bfsDistance.Clear();
+        farthestCells.Clear();
 
+        bfsQueue.Enqueue(start);
+        bfsDistance[start] = 0;
+        int bestDistance = 0;
 
-
-        float patrolDistance = PatrolTileRadius * tileSize;
-
-        Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
-
-
-
-        farNavPoint = spawnNavPoint;
-
-        float bestDistance = 0f;
-
-
-
-        foreach (Vector3 dir in directions)
-
+        while (bfsQueue.Count > 0)
         {
-
-            Vector3 rawFarPoint = enemy.spawnPosition + dir * patrolDistance;
-
-            Vector3 candidate = enemy.SampleReachableNavPoint(enemy.spawnPosition, rawFarPoint);
-
-            float distance = Vector3.Distance(spawnNavPoint, candidate);
-
-
+            Vector2Int cell = bfsQueue.Dequeue();
+            int distance = bfsDistance[cell];
 
             if (distance > bestDistance)
-
             {
-
                 bestDistance = distance;
-
-                farNavPoint = candidate;
-
+                farthestCells.Clear();
             }
+            if (distance == bestDistance && distance > 0)
+                farthestCells.Add(cell);
 
-        }
+            if (distance >= PatrolTileRadius) continue;
 
-
-
-        if (bestDistance < tileSize * 0.25f)
-
-        {
-
-            foreach (Vector3 dir in directions)
-
+            foreach (Vector2Int dir in Directions)
             {
+                Vector2Int next = cell + dir;
+                if (bfsDistance.ContainsKey(next)) continue;
+                if (!grid.IsPassable(next, false)) continue;
 
-                Vector3 rawFarPoint = enemy.spawnPosition + dir * tileSize;
-
-                Vector3 candidate = enemy.SampleReachableNavPoint(enemy.spawnPosition, rawFarPoint);
-
-                float distance = Vector3.Distance(spawnNavPoint, candidate);
-
-
-
-                if (distance > bestDistance)
-
-                {
-
-                    bestDistance = distance;
-
-                    farNavPoint = candidate;
-
-                }
-
+                bfsDistance[next] = distance + 1;
+                bfsQueue.Enqueue(next);
             }
-
         }
 
+        if (farthestCells.Count == 0) return false;
 
-
-        movingToFarPoint = true;
-
+        farCell = farthestCells[Random.Range(0, farthestCells.Count)];
+        return true;
     }
 
-
-
-    private void SetPatrolDestination(Vector3 destination)
-
+    private void SetPatrolDestination()
     {
-
-        if (enemy.agent != null && enemy.agent.isOnNavMesh)
-
-            enemy.agent.SetDestination(destination);
-
+        Vector2Int goal = movingToFarCell ? farCell : enemy.spawnCell;
+        enemy.Mover.SetDestination(goal, false, enemy.moveSpeed * 0.5f);
     }
-
-
-
-    private void TrackStuckAndRepath()
-
-    {
-
-        Vector3 pos = enemy.transform.position;
-
-        float movedSq = (pos - lastTrackedPosition).sqrMagnitude;
-
-        lastTrackedPosition = pos;
-
-
-
-        if (movedSq > 0.0025f)
-
-        {
-
-            stuckTimer = 0f;
-
-            return;
-
-        }
-
-
-
-        stuckTimer += Time.deltaTime;
-
-        if (stuckTimer < 1.25f) return;
-
-
-
-        stuckTimer = 0f;
-
-        movingToFarPoint = !movingToFarPoint;
-
-        SetPatrolDestination(movingToFarPoint ? farNavPoint : spawnNavPoint);
-
-    }
-
 }
-
-
