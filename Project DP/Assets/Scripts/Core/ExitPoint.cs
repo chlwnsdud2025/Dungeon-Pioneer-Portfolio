@@ -24,7 +24,7 @@ public class ExitPoint : MonoBehaviour
 
         if (DungeonManager.Instance != null)
         {
-            DungeonManager.Instance.GoToNextFloor();
+            DungeonManager.Instance.GoToNextFloor(GetComponentInParent<StairTile>());
         }
         else
         {

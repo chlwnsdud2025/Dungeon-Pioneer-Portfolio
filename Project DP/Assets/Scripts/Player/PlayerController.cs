@@ -5,6 +5,10 @@ public class PlayerController : MonoBehaviour
 {
     // [핵심] 상태 머신
     public PlayerStateMachine stateMachine { get; private set; }
+    public StairTransitionState_Player StairTransitionState { get; private set; }
+    private bool transitionInputLocked;
+
+    public void SetTransitionInputLocked(bool locked) => transitionInputLocked = locked;
 
     [Header("Grid System")]
     // ★ 변경: 더 이상 이 스크립트가 tileSize 값을 직접 들고 있지 않고,
@@ -111,6 +115,8 @@ public class PlayerController : MonoBehaviour
 
         stateMachine.AddState(new IdleState_Player(this, stateMachine));
         stateMachine.AddState(new WalkState_Player(this, stateMachine));
+        StairTransitionState = new StairTransitionState_Player(this, stateMachine);
+        stateMachine.AddState(StairTransitionState);
         stateMachine.AddState(new RunState_Player(this, stateMachine));
         stateMachine.AddState(new JumpState_Player(this, stateMachine));
         stateMachine.AddState(new PushState_Player(this, stateMachine));
@@ -131,7 +137,8 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         HandleMovementInput();
-        UpdateFocus(); // 매 프레임 내가 무엇을 쳐다보는지 업데이트
+        if (!transitionInputLocked && !(stateMachine.CurrentState is StairTransitionState_Player))
+            UpdateFocus(); // 계단 연출 중에는 상호작용 포커스를 갱신하지 않음
         stateMachine.Update();
 
         Shader.SetGlobalVector("_PlayerPos", transform.position);
@@ -144,6 +151,14 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovementInput()
     {
+        if (transitionInputLocked)
+        {
+            moveInput = Vector2.zero;
+            isRunning = false;
+            isMoveKeyPressed = false;
+            return;
+        }
+
         // 인벤토리를 열면 InputManager가 PlayerControll 맵을 통째로 꺼서 여기서 자동으로 (0,0)이 읽힙니다.
         InputManager input = InputManager.Instance;
         Vector2 currentMoveInput = input != null ? input.Player.Movement.ReadValue<Vector2>() : Vector2.zero;
@@ -422,9 +437,9 @@ public class PlayerController : MonoBehaviour
         inputSubscribed = false;
     }
 
-    private void OnJumpPerformed(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnJumpInput();
-    private void OnInteractPerformed(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnInteractInput();
-    private void OnAttackPerformed(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnAttackInput();
-    private void OnGuardStarted(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnGuardInput();
-    private void OnGuardCanceled(InputAction.CallbackContext _) => stateMachine.CurrentState?.OnGuardReleased();
+    private void OnJumpPerformed(InputAction.CallbackContext _) { if (!transitionInputLocked) stateMachine.CurrentState?.OnJumpInput(); }
+    private void OnInteractPerformed(InputAction.CallbackContext _) { if (!transitionInputLocked) stateMachine.CurrentState?.OnInteractInput(); }
+    private void OnAttackPerformed(InputAction.CallbackContext _) { if (!transitionInputLocked) stateMachine.CurrentState?.OnAttackInput(); }
+    private void OnGuardStarted(InputAction.CallbackContext _) { if (!transitionInputLocked) stateMachine.CurrentState?.OnGuardInput(); }
+    private void OnGuardCanceled(InputAction.CallbackContext _) { if (!transitionInputLocked) stateMachine.CurrentState?.OnGuardReleased(); }
 }

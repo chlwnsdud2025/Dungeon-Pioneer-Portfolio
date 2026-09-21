@@ -112,8 +112,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.049999993, y: 0.020066628, z: 0.04000001}
-  m_Center: {x: 0.0000000020532522, y: -0.010033271, z: 0.020000003}
+  m_Size: {x: 0.049999993, y: 0.03611678, z: 0.040000018}
+  m_Center: {x: 0.0000000015794248, y: -0.0179583, z: 0.02}
 --- !u!64 &540229010456745616
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4bd31727463d0fb4aae3193c1208442a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::EntrancePoint
 --- !u!1 &2614898850705948117
 GameObject:
@@ -282,6 +282,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7322127924467838675}
+  - component: {fileID: 6718800026386846262}
   m_Layer: 6
   m_Name: EntranceTile
   m_TagString: Entrance
@@ -306,3 +307,20 @@ Transform:
   - {fileID: 9114660982733292001}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6718800026386846262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4755391832852263130}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 876b00f8cb45462ca4bc2604587b890a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::StairTile
+  kind: 0
+  frontLocal: {x: 0, y: 0, z: 1}
+  insideDepth: 1
+  heightDelta: 1.28
+  playerHeight: 0.21

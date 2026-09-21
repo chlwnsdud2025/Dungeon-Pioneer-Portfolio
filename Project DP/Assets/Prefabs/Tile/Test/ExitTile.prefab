@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1133581875145074952}
+  - component: {fileID: 3912985726922049689}
   m_Layer: 6
   m_Name: ExitTile
   m_TagString: Exit
@@ -32,6 +33,23 @@ Transform:
   - {fileID: 450980511003513355}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3912985726922049689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6954427645771039221}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 876b00f8cb45462ca4bc2604587b890a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::StairTile
+  kind: 1
+  frontLocal: {x: 0, y: 0, z: -1}
+  insideDepth: 1.62
+  heightDelta: 1.67
+  playerHeight: 0.92
 --- !u!1 &7463623692547338842
 GameObject:
   m_ObjectHideFlags: 0
@@ -144,8 +162,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.07, y: 0.016402548, z: 0.09677742}
-  m_Center: {x: 0, y: -0.008201255, z: 0.04838862}
+  m_Size: {x: 0.07, y: 0.03520927, z: 0.067169845}
+  m_Center: {x: 0, y: -0.02062949, z: 0.033585172}
 --- !u!114 &2078200971792937459
 MonoBehaviour:
   m_ObjectHideFlags: 0

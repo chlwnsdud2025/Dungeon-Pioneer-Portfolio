@@ -30,7 +30,8 @@ public class EntrancePoint : MonoBehaviour
         }
 
         // 1층 입구 = 던전 탈출(오버월드로), 2층 이상 = 한 층 위로
-        if (dm.currentFloor <= 1) dm.ReturnToOverworld();
-        else dm.GoToPreviousFloor();
+        StairTile stair = GetComponentInParent<StairTile>();
+        if (dm.currentFloor <= 1) dm.ReturnToOverworld(stair);
+        else dm.GoToPreviousFloor(stair);
     }
 }

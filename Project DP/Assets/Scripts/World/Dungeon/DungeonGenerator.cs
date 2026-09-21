@@ -188,6 +188,7 @@ public class DungeonGenerator : MonoBehaviour
     {
         foreach (Transform child in mapInstance.GetComponentsInChildren<Transform>(true))
         {
+            if (!LocationGrid.IsTileRoot(child, mapInstance.transform)) continue;
             if (child.CompareTag("Entrance")) root.RegisterSpawnPoint("Entrance", child);
             else if (child.CompareTag("Exit")) root.RegisterSpawnPoint("Exit", child);
         }

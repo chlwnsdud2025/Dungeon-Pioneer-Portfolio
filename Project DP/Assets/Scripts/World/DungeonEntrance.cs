@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -34,6 +35,11 @@ public class DungeonEntrance : MonoBehaviour
     [Header("Trigger (local space)")]
     [SerializeField] private Vector3 triggerSize = new Vector3(0.85f, 0.85f, 0.2f);
     [SerializeField] private Vector3 triggerCenter = new Vector3(0f, 0f, 0.5f);
+
+    [Header("진입 연출")]
+    [Min(0f), SerializeField] private float fadeDuration = 0.4f;
+    [Min(0.01f), SerializeField] private float moveSpeed = 4f;
+    [Min(0f), SerializeField] private float insideDistance = 1f;
 
     private bool hasLoaded;
     private bool ignoreUntilExit; // 던전에서 막 나와 입구와 겹쳐 있을 때 즉시 재진입 방지
@@ -111,6 +117,25 @@ public class DungeonEntrance : MonoBehaviour
         SceneTransition.ReturnAnchorId = returnAnchorId;
 
         // 던전 안에서의 스폰 좌표는 DungeonManager가 층 구조를 보고 직접 계산하므로 앵커는 넘기지 않습니다.
+        StartCoroutine(EnterDungeon());
+    }
+
+    private IEnumerator EnterDungeon()
+    {
+        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
+        StairTransitionState_Player motion = player != null ? player.StairTransitionState : null;
+        if (motion != null)
+        {
+            Vector3 outward = transform.TransformDirection(new Vector3(triggerCenter.x, 0f, triggerCenter.z));
+            outward.y = 0f;
+            outward = outward.sqrMagnitude > 0.001f ? outward.normalized : transform.forward;
+            Vector3 inside = transform.position - outward * insideDistance;
+            inside.y = player.transform.position.y;
+            motion.Begin(new[] { inside }, moveSpeed);
+        }
+
+        StartCoroutine(ScreenFader.Instance.FadeTo(1f, fadeDuration));
+        yield return new WaitUntil(() => ScreenFader.Instance.IsOpaque && (motion == null || motion.IsFinished));
         SceneTransition.Go(dungeonSceneName, null);
     }
 

@@ -51,6 +51,10 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     [Tooltip("플레이어 사망 후 사망 모션을 보여주고 오버월드로 돌아가기까지의 대기 시간(초).")]
     public float deathReturnDelay = 3f;
 
+    [Header("계단 전환")]
+    [Min(0f), SerializeField] private float stairFadeDuration = 0.4f;
+    [Min(0.01f), SerializeField] private float stairMoveSpeed = 4f;
+
     [Header("Player Graves")]
     [Tooltip("사망 위치에 랜덤으로 설치할 묘비 프리팹.")]
     public GameObject gravePrefabA;
@@ -61,6 +65,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     private LocationId currentLocationId;   // 지금 활성화된 층
     private bool hasCurrentLocation;
     private bool isLeaving;                 // 오버월드로 나가는 중(클리어/사망/탈출) → 중복 처리 방지
+    private bool isTransitioning;
+    private StairTile blockedArrivalStair;
 
     /// <summary>현재 활성화된 층 인스턴스. (횃불 설치 시 부모로 사용)</summary>
     public GameObject CurrentLocationInstance =>
@@ -84,28 +90,41 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         StartRun();
     }
 
+    private void Update()
+    {
+        if (blockedArrivalStair == null || PlayerManager.Instance == null || PlayerManager.Instance.Player == null) return;
+        if (LocationGrid.WorldToCell(PlayerManager.Instance.Player.transform.position) != blockedArrivalStair.Cell)
+            blockedArrivalStair = null;
+    }
+
+    public bool CanTriggerStairs(StairTile stair) =>
+        !isLeaving && !isTransitioning && stair != null && stair != blockedArrivalStair;
+
     // ── 외부에서 호출하는 의도 함수들 ─────────────────────────────
 
     /// <summary>새 런을 처음부터 시작. 던전 씬 로드 직후 Start()에서 자동 호출됩니다.</summary>
     public void StartRun()
     {
         isLeaving = false;
+        isTransitioning = true;
+        blockedArrivalStair = null;
         currentFloor = 1;
+
+        ScreenFader.Instance.SetOpaque();
 
         dungeonGenerator.PrepareNewRun(maxFloor > 0 ? maxFloor : 1); // 이번 런의 층별 맵 프리팹을 새로 셔플
         ResetWorld();                                                // 이전에 캐시된 층/플레이어 정리
 
-        LoadFloor(currentFloor, "Entrance"); // 1층 '입구'에 스폰
+        StairTile arrival = LoadFloor(currentFloor, "Entrance", true);
+        StartCoroutine(ArriveAtStair(arrival));
     }
 
     /// <summary>출구를 밟았을 때 (ExitPoint). 다음 층으로 내려가고, 마지막 층이면 클리어 → 오버월드.</summary>
-    public void GoToNextFloor()
+    public void GoToNextFloor(StairTile source = null)
     {
-        if (isLeaving) return;
+        if (!CanTriggerStairs(source)) return;
 
-        currentFloor++;
-
-        if (maxFloor > 0 && currentFloor > maxFloor)
+        if (maxFloor > 0 && currentFloor >= maxFloor)
         {
             // 최종 클리어 → 잠깐 연출 뒤 오버월드로 귀환
             isLeaving = true;
@@ -114,24 +133,81 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             return;
         }
 
-        LoadFloor(currentFloor, "Entrance"); // 새 층의 '입구'에 스폰
+        StartCoroutine(ChangeFloor(source, currentFloor + 1, "Entrance"));
     }
 
     /// <summary>2층 이상에서 입구를 밟았을 때 (EntrancePoint). 한 층 위로 이동.</summary>
-    public void GoToPreviousFloor()
+    public void GoToPreviousFloor(StairTile source = null)
     {
-        if (isLeaving) return;
-
-        currentFloor = Mathf.Max(1, currentFloor - 1);
-        LoadFloor(currentFloor, "Exit"); // 이전 층의 '출구'(원래 나갔던 자리)에 스폰
+        if (!CanTriggerStairs(source) || currentFloor <= 1) return;
+        StartCoroutine(ChangeFloor(source, currentFloor - 1, "Exit"));
     }
 
     /// <summary>던전 1층 입구로 나갈 때 (EntrancePoint). 오버월드 씬으로 즉시 복귀 = 던전 리셋.</summary>
-    public void ReturnToOverworld()
+    public void ReturnToOverworld(StairTile source = null)
     {
-        if (isLeaving) return;
+        if (!CanTriggerStairs(source)) return;
         isLeaving = true;
+        StartCoroutine(LeaveThroughStair(source));
+    }
+
+    private IEnumerator ChangeFloor(StairTile source, int destinationFloor, string arrivalId)
+    {
+        isTransitioning = true;
+        yield return DepartFromStair(source);
+
+        currentFloor = destinationFloor;
+        StairTile arrival = LoadFloor(destinationFloor, arrivalId, true);
+        yield return ArriveAtStair(arrival);
+    }
+
+    private IEnumerator LeaveThroughStair(StairTile source)
+    {
+        isTransitioning = true;
+        yield return DepartFromStair(source);
+        ScreenFader.Instance.RevealAfterNextSceneLoad(stairFadeDuration);
         LoadOverworldScene(revive: false);
+    }
+
+    private IEnumerator DepartFromStair(StairTile stair)
+    {
+        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
+        if (player == null || stair == null)
+        {
+            yield return ScreenFader.Instance.FadeTo(1f, stairFadeDuration);
+            yield break;
+        }
+
+        StairTransitionState_Player motion = player.StairTransitionState;
+        motion.Begin(new[] { stair.FootPoint, stair.HiddenPoint }, stairMoveSpeed);
+        yield return new WaitUntil(() => motion.ReachedFoot || motion.IsFinished);
+        StartCoroutine(ScreenFader.Instance.FadeTo(1f, stairFadeDuration));
+        yield return new WaitUntil(() => motion.IsFinished && ScreenFader.Instance.IsOpaque);
+    }
+
+    private IEnumerator ArriveAtStair(StairTile stair)
+    {
+        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
+        if (player != null && stair != null)
+        {
+            blockedArrivalStair = stair;
+            StairTransitionState_Player motion = player.StairTransitionState;
+            motion.Begin(new[] { stair.FootPoint, stair.FrontPoint }, stairMoveSpeed);
+            yield return new WaitUntil(() => motion.ReachedFoot || motion.IsFinished);
+            CameraFollow follow = Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
+            if (follow != null) follow.SnapToTarget();
+            StartCoroutine(ScreenFader.Instance.FadeTo(0f, stairFadeDuration));
+            yield return new WaitUntil(() => motion.IsFinished && ScreenFader.Instance.IsClear);
+            player.stateMachine.ChangeState<IdleState_Player>();
+        }
+        else
+        {
+            yield return null;
+            yield return ScreenFader.Instance.FadeTo(0f, stairFadeDuration);
+            if (player != null && player.stateMachine.CurrentState is StairTransitionState_Player)
+                player.stateMachine.ChangeState<IdleState_Player>();
+        }
+        isTransitioning = false;
     }
 
     /// <summary>
@@ -150,12 +226,12 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     // ── 내부 구현 ────────────────────────────────────────────────
 
     /// <summary>지정 층을 활성화(없으면 생성)하고 플레이어를 스폰 지점으로 옮깁니다. '씬 내부' 전환입니다.</summary>
-    private void LoadFloor(int floor, string arrivalSpawnPointId)
+    private StairTile LoadFloor(int floor, string arrivalSpawnPointId, bool arriveInside)
     {
         if (dungeonGenerator == null)
         {
             Debug.LogError("[DungeonManager] DungeonGenerator가 연결되어 있지 않습니다! 인스펙터를 확인해주세요.");
-            return;
+            return null;
         }
 
         LocationId destination = new LocationId(LocationType.Dungeon, floor);
@@ -185,7 +261,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
         NotifyEnemiesLocationReady(instance);
 
-        PlacePlayer(instance, arrivalSpawnPointId);
+        StairTile arrival = PlacePlayer(instance, arrivalSpawnPointId, arriveInside);
 
         GameObject player = PlayerManager.Instance != null ? PlayerManager.Instance.Player : null;
         if (MinimapManager.Instance != null && player != null)
@@ -208,6 +284,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         }
 
         RevealDecorationIfExplored(instance);
+        return arrival;
     }
 
     /// <summary>
@@ -512,18 +589,22 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     /// 플레이어를 목적지 층의 스폰 지점으로 옮깁니다. 생성/파괴는 PlayerManager가 전담하므로
     /// 여기서는 좌표만 계산해 넘깁니다. (층 간 이동은 '씬 안' 이동이라 바라보던 방향은 유지)
     /// </summary>
-    private void PlacePlayer(GameObject locationInstance, string spawnPointId)
+    private StairTile PlacePlayer(GameObject locationInstance, string spawnPointId, bool arriveInside)
     {
         LocationRoot root = locationInstance != null ? locationInstance.GetComponent<LocationRoot>() : null;
         Transform spawnPoint = root != null ? root.GetSpawnPoint(spawnPointId) : null;
+        StairTile stair = spawnPoint != null ? spawnPoint.GetComponent<StairTile>() : null;
 
         Vector3 spawnPosition;
-        if (spawnPoint != null)
+        if (stair != null)
         {
-            // ★ Entrance/Exit 타일 위에 그대로 스폰하면 그 타일의 트리거(ExitPoint/EntrancePoint)와 곧바로
-            //   겹쳐서 도착하자마자 반대 방향으로 튕겨나갑니다. 타일 자체가 아니라 그 주변 4방향 중
-            //   실제로 타일이 있고 벽이 없는 칸 위에 스폰합니다.
-            spawnPosition = GetSpawnPositionNearTile(locationInstance, spawnPoint.position);
+            if (root.Grid == null || !root.Grid.IsPassable(stair.FrontCell, false))
+            {
+                Debug.LogWarning($"[DungeonManager] {spawnPointId} 계단 앞 칸이 막혀 있어 인접한 통행 가능 칸을 찾습니다.");
+                stair = null;
+                spawnPosition = GetFallbackSpawn(root, spawnPoint.position);
+            }
+            else spawnPosition = arriveInside ? stair.HiddenPoint : stair.FrontPoint;
         }
         else
         {
@@ -535,67 +616,32 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         {
             Debug.LogError("[DungeonManager] PlayerManager가 없어 플레이어를 배치할 수 없습니다. " +
                            "씬에 PlayerManager를 배치해주세요.");
-            return;
+            return null;
         }
 
         // CharacterController 처리, 상태 정리, 카메라 재연결은 전부 PlaceAt 안에서 처리됩니다.
         PlayerManager.Instance.PlaceAt(spawnPosition);
+        return stair;
     }
 
     /// <summary>
     /// tilePosition(Entrance/Exit 타일 자체)의 상하좌우 4방향 중, 실제로 타일이 있고 벽이 없는 칸을 찾아
     /// 그 위의 스폰 좌표를 반환합니다.
     /// </summary>
-    private Vector3 GetSpawnPositionNearTile(GameObject locationInstance, Vector3 tilePosition)
+    private Vector3 GetFallbackSpawn(LocationRoot root, Vector3 tilePosition)
     {
-        float tileSize = GridSystem.Instance.TileSize;
-        Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+        Vector2Int cell = LocationGrid.WorldToCell(tilePosition);
+        Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
 
-        foreach (Vector3 dir in directions)
+        foreach (Vector2Int direction in directions)
         {
-            Vector3 candidate = tilePosition + dir * tileSize;
-            if (IsWalkableTile(locationInstance, candidate))
-            {
-                return candidate + Vector3.up * 1.5f;
-            }
+            Vector2Int candidate = cell + direction;
+            if (root != null && root.Grid != null && root.Grid.IsPassable(candidate, false))
+                return LocationGrid.CellToWorld(candidate) + Vector3.up * 1.5f;
         }
 
         Debug.LogWarning("[DungeonManager] 스폰 타일 주변 4방향에서 걸어갈 수 있는 타일을 찾지 못해 타일 위에 그대로 스폰합니다.");
         return tilePosition + Vector3.up * 1.5f;
     }
 
-    /// <summary>
-    /// worldPos가 속한 그리드 칸에 Wall 태그 오브젝트가 없고, 실제 타일(Floor/Entrance/Exit/Trap/Chest/Pushable)이
-    /// 존재하는지 확인합니다. (Wall/Entrance/Exit는 바닥보다 한 칸 높아 y는 무시하고 x, z만 비교)
-    /// </summary>
-    private bool IsWalkableTile(GameObject locationInstance, Vector3 worldPos)
-    {
-        if (locationInstance == null) return false;
-
-        Vector3Int cell = GridSystem.Instance.WorldToCell(worldPos);
-        bool hasWall = false;
-        bool hasTile = false;
-
-        foreach (Transform child in locationInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (child == locationInstance.transform) continue;
-
-            Vector3Int childCell = GridSystem.Instance.WorldToCell(child.position);
-            if (childCell.x != cell.x || childCell.z != cell.z) continue;
-
-            if (child.CompareTag("Wall"))
-            {
-                hasWall = true;
-                break;
-            }
-
-            if (child.CompareTag("Floor") || child.CompareTag("Entrance") || child.CompareTag("Exit") ||
-                child.CompareTag("Trap") || child.CompareTag("Chest") || child.CompareTag("Pushable"))
-            {
-                hasTile = true;
-            }
-        }
-
-        return hasTile && !hasWall;
-    }
 }

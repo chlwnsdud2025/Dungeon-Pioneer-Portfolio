@@ -24,4 +24,9 @@ public class CameraFollow : MonoBehaviour
 
         // ※ 회전(Rotation) 코드가 없으므로, 카메라의 원래 앵글(예: X축 50도 숙임)이 그대로 유지됩니다!
     }
+
+    public void SnapToTarget()
+    {
+        if (target != null) transform.position = target.position + offset;
+    }
 }
