@@ -134,4 +134,28 @@ public class LocationGrid
 
         return true;
     }
+
+    public bool IsSegmentClear(Vector3 from, Vector3 to, bool allowPits, float radius)
+    {
+        Vector3 delta = to - from;
+        delta.y = 0f;
+        float length = delta.magnitude;
+        if (length < 0.001f) return IsPassable(WorldToCell(from), allowPits);
+
+        Vector3 direction = delta / length;
+        Vector3 side = new Vector3(-direction.z, 0f, direction.x) * radius;
+        float step = GridSystem.Instance.TileSize * 0.25f;
+        int samples = Mathf.CeilToInt(length / step);
+
+        for (int i = 0; i <= samples; i++)
+        {
+            Vector3 point = from + direction * Mathf.Min(i * step, length);
+            if (!IsPassable(WorldToCell(point), allowPits)) return false;
+            if (radius <= 0f) continue;
+            if (!IsPassable(WorldToCell(point + side), allowPits)) return false;
+            if (!IsPassable(WorldToCell(point - side), allowPits)) return false;
+        }
+
+        return true;
+    }
 }

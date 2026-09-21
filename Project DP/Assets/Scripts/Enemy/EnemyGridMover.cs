@@ -7,6 +7,7 @@ public class EnemyGridMover
     private const float FollowRepathInterval = 0.5f;
     private const float StuckRepathTime = 0.5f;
     private const float ClimbGroundProbeHeight = 6f;
+    private const int SmoothingLookahead = 6;
 
     private readonly EnemyController enemy;
     private readonly List<Vector2Int> path = new List<Vector2Int>();
@@ -93,30 +94,27 @@ public class EnemyGridMover
         }
 
         if (ShouldRepath()) Repath();
+        AdvancePassedWaypoints();
 
-        Vector2Int nextCell;
-        Vector3 delta;
-        float distance;
-        while (true)
-        {
-            if (pathIndex >= path.Count)
-            {
-                enemy.MoveEnemy(Vector3.zero);
-                return;
-            }
-
-            nextCell = path[pathIndex];
-            delta = LocationGrid.CellToWorld(nextCell) - enemy.transform.position;
-            delta.y = 0f;
-            distance = delta.magnitude;
-            if (distance > WaypointReachDistance) break;
-
-            pathIndex++;
-        }
-
-        if (TryStartClimb(nextCell))
+        if (TryStartClimb())
         {
             IsMoving = true;
+            return;
+        }
+
+        if (!TryGetMoveTarget(out Vector3 moveTarget, out int targetIndex))
+        {
+            enemy.MoveEnemy(Vector3.zero);
+            return;
+        }
+
+        Vector3 delta = moveTarget - enemy.transform.position;
+        delta.y = 0f;
+        float distance = delta.magnitude;
+        if (distance <= WaypointReachDistance)
+        {
+            if (targetIndex >= 0) pathIndex = targetIndex + 1;
+            enemy.MoveEnemy(Vector3.zero);
             return;
         }
 
@@ -184,6 +182,79 @@ public class EnemyGridMover
             path.Add(goalCell);
     }
 
+    private void AdvancePassedWaypoints()
+    {
+        Vector2Int currentCell = enemy.CurrentCell;
+        float reachSq = WaypointReachDistance * WaypointReachDistance;
+
+        while (pathIndex < path.Count)
+        {
+            Vector2Int cell = path[pathIndex];
+            bool isLast = pathIndex == path.Count - 1;
+
+            if (!isLast && cell == currentCell)
+            {
+                pathIndex++;
+                continue;
+            }
+
+            Vector3 delta = LocationGrid.CellToWorld(cell) - enemy.transform.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude <= reachSq)
+            {
+                pathIndex++;
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    private bool TryGetMoveTarget(out Vector3 target, out int targetIndex)
+    {
+        targetIndex = -1;
+        Vector3 position = enemy.transform.position;
+        LocationGrid grid = enemy.Grid;
+        float radius = enemy.characterController != null ? enemy.characterController.radius : 0.5f;
+
+        if (pathIndex >= path.Count)
+        {
+            if (followTarget != null && grid != null
+                && grid.IsSegmentClear(position, followTarget.position, allowPits, radius))
+            {
+                target = followTarget.position;
+                return true;
+            }
+
+            target = position;
+            return false;
+        }
+
+        int best = pathIndex;
+        if (grid != null)
+        {
+            int maxIndex = Mathf.Min(path.Count - 1, pathIndex + SmoothingLookahead);
+            for (int i = maxIndex; i > pathIndex; i--)
+            {
+                if (!grid.IsSegmentClear(position, LocationGrid.CellToWorld(path[i]), allowPits, radius)) continue;
+
+                best = i;
+                break;
+            }
+
+            if (followTarget != null && best == path.Count - 1
+                && grid.IsSegmentClear(position, followTarget.position, allowPits, radius))
+            {
+                target = followTarget.position;
+                return true;
+            }
+        }
+
+        target = LocationGrid.CellToWorld(path[best]);
+        targetIndex = best;
+        return true;
+    }
+
     private void TrackStuck(Vector3 before, float expectedStep)
     {
         Vector3 moved = enemy.transform.position - before;
@@ -196,22 +267,33 @@ public class EnemyGridMover
             stuckTimer = 0f;
     }
 
-    private bool TryStartClimb(Vector2Int nextCell)
+    private static bool IsAdjacent(Vector2Int a, Vector2Int b)
+    {
+        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y) == 1;
+    }
+
+    private bool TryStartClimb()
     {
         LocationGrid grid = enemy.Grid;
         if (grid == null) return false;
 
         Vector2Int currentCell = enemy.CurrentCell;
-        if (currentCell == nextCell) return false;
         if (grid.Get(currentCell) != CellType.Pit) return false;
 
         TrapTile trap = grid.Traps[currentCell.x, currentCell.y];
         if (trap == null || trap.IsFilled) return false;
         if (!trap.IsActorInsidePit(enemy.transform)) return false;
 
+        if (pathIndex >= path.Count || !IsAdjacent(currentCell, path[pathIndex]))
+        {
+            Repath();
+            if (path.Count == 0 || !IsAdjacent(currentCell, path[0])) return false;
+        }
+
+        Vector2Int nextCell = path[pathIndex];
         Vector3 end = LocationGrid.CellToWorld(nextCell);
         if (!TryGetGroundHeight(end, out float groundY))
-            groundY = trap.transform.position.y + GridSystem.Instance.TileHeight;
+            groundY = trap.SurfaceWorldY;
         end.y = groundY;
 
         climbStart = enemy.transform.position;
