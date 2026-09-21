@@ -24,6 +24,17 @@ public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
     public bool IsBeingPushed => isPushing;
     public bool IsPushComplete => !isPushing;
 
+    public Vector2Int CurrentCell => LocationGrid.WorldToCell(transform.position);
+
+    public bool TryGetPushTargetCell(out Vector2Int cell)
+    {
+        cell = default;
+        if (!isPushing) return false;
+
+        cell = LocationGrid.WorldToCell(pushTargetPos);
+        return true;
+    }
+
     // ★ 함정을 메운 뒤에는 잠겨서 더 이상 밀 수 없게 됩니다. (TrapTile이 Lock()을 호출)
     private bool isLocked;
     public bool IsLocked => isLocked;

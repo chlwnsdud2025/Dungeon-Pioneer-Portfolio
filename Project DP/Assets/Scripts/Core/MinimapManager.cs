@@ -66,13 +66,11 @@ public class MinimapManager : MonoBehaviour
     public int torchDotRadiusPx = 1;
 
     // ── 내부 데이터 ─────────────────────────────────────────────
-    private enum TileKind { Unexplored = 0, Floor = 1, Wall = 2, Trap = 3 }
-
     private class LocationMinimapState
     {
         // 셀 좌표는 GridSystem을 그대로 씁니다. 맵마다 다른 건 '몇 칸짜리 맵인가'뿐입니다.
         public Vector2Int gridSize;
-        public TileKind[,] staticMapData;
+        public LocationGrid grid;
         public bool[,] visited;
         public bool[,] currentlyLitTiles;
         public Texture2D texture;
@@ -190,73 +188,26 @@ public class MinimapManager : MonoBehaviour
 
     private LocationMinimapState BuildLocationState(GameObject locationInstance)
     {
-        List<Transform> tileRoots = CollectTileRoots(locationInstance);
-        Vector2Int mapGridSize = MeasureMapGridSize(tileRoots);
+        LocationGrid grid = ResolveGrid(locationInstance);
+        Vector2Int mapGridSize = grid.Size;
 
         var state = new LocationMinimapState
         {
             gridSize = mapGridSize,
-            staticMapData = new TileKind[mapGridSize.x, mapGridSize.y],
+            grid = grid,
             visited = new bool[mapGridSize.x, mapGridSize.y],
             currentlyLitTiles = new bool[mapGridSize.x, mapGridSize.y]
         };
 
-        // ★ 벽을 '먼저' 확정합니다. 벽이 놓인 칸에는 항상 바닥 타일(Xfloor)이 함께 깔려 있어서,
-        //   Floor를 먼저 처리하면 벽이 Floor로 덮여버립니다. 그러면 개척도 분모에 벽이 섞여
-        //   100%가 나올 수 없고, 미니맵에서도 벽이 바닥과 같은 색으로 칠해집니다.
-        foreach (Transform obj in tileRoots)
+        state.walkableWorldPositions.AddRange(grid.WalkableCellCenters);
+
+        foreach (PushableObject pushable in grid.Pushables)
         {
-            if (!obj.CompareTag("Wall")) continue;
-
-            Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
-            if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
-
-            state.staticMapData[cell.x, cell.z] = TileKind.Wall;
+            if (pushable == null) continue;
+            state.activePushables.Add(pushable.transform);
         }
 
-        foreach (Transform obj in tileRoots)
-        {
-            Vector3Int cell = GridSystem.Instance.WorldToCell(obj.position);
-            if (!IsValidGrid(cell.x, cell.z, state.gridSize)) continue;
-
-            // 벽 칸은 무엇이 깔려 있든 벽으로 유지하고, 보행 기준점에도 넣지 않습니다.
-            bool isWallCell = state.staticMapData[cell.x, cell.z] == TileKind.Wall;
-
-            if (obj.CompareTag("Trap"))
-            {
-                if (isWallCell) continue;
-                state.staticMapData[cell.x, cell.z] = TileKind.Trap;
-                state.walkableWorldPositions.Add(obj.position);
-            }
-            else if (obj.CompareTag("Floor") || obj.CompareTag("Entrance") || obj.CompareTag("Exit"))
-            {
-                if (isWallCell) continue;
-                if (state.staticMapData[cell.x, cell.z] != TileKind.Trap)
-                    state.staticMapData[cell.x, cell.z] = TileKind.Floor;
-                state.walkableWorldPositions.Add(obj.position);
-            }
-            else if (obj.CompareTag("Pushable"))
-            {
-                state.activePushables.Add(obj);
-            }
-            else if (obj.CompareTag("Chest"))
-            {
-                state.activeChests.Add(obj);
-            }
-        }
-
-        // 타일 루트 스캔에 빠졌을 수 있어 PushableObject로 한 번 더 수집
-        if (locationInstance != null)
-        {
-            foreach (PushableObject pushable in locationInstance.GetComponentsInChildren<PushableObject>(true))
-            {
-                if (pushable == null) continue;
-                if (!state.activePushables.Contains(pushable.transform))
-                    state.activePushables.Add(pushable.transform);
-            }
-        }
-
-
+        state.activeChests.AddRange(grid.Chests);
 
         if (locationInstance != null)
         {
@@ -279,8 +230,7 @@ public class MinimapManager : MonoBehaviour
         {
             for (int x = 0; x < state.gridSize.x; x++)
             {
-                TileKind kind = state.staticMapData[x, y];
-                if (kind == TileKind.Floor || kind == TileKind.Trap) state.walkableTileCount++;
+                if (LocationGrid.IsWalkableTerrain(grid.Cells[x, y])) state.walkableTileCount++;
             }
         }
 
@@ -301,61 +251,15 @@ public class MinimapManager : MonoBehaviour
             state.pixelBuffer[i] = color;
     }
 
-    private List<Transform> CollectTileRoots(GameObject locationInstance)
+    private LocationGrid ResolveGrid(GameObject locationInstance)
     {
-        var tiles = new List<Transform>();
-        if (locationInstance == null) return tiles;
+        LocationRoot root = locationInstance != null ? locationInstance.GetComponent<LocationRoot>() : null;
+        if (root != null && root.Grid != null) return root.Grid;
 
-        Transform locationRoot = locationInstance.transform;
-        foreach (Transform obj in locationInstance.GetComponentsInChildren<Transform>(true))
-        {
-            if (IsTileRootTransform(obj, locationRoot))
-                tiles.Add(obj);
-        }
-
-        return tiles;
-    }
-
-    /// <summary>
-    /// 맵이 몇 칸짜리인지만 측정합니다. 칸 크기·원점은 GridSystem이 단일 진실 공급원이므로
-    /// 여기서 추론하지 않습니다. (통계가 아니라 결정적인 최대 셀 인덱스 계산)
-    /// </summary>
-    private Vector2Int MeasureMapGridSize(List<Transform> tiles)
-    {
-        if (tiles == null || tiles.Count == 0) return gridSize;
-
-        int maxX = 0;
-        int maxZ = 0;
-        foreach (Transform tile in tiles)
-        {
-            Vector3Int cell = GridSystem.Instance.WorldToCell(tile.position);
-            if (cell.x > maxX) maxX = cell.x;
-            if (cell.z > maxZ) maxZ = cell.z;
-        }
-
-        return new Vector2Int(Mathf.Max(1, maxX + 1), Mathf.Max(1, maxZ + 1));
-    }
-
-    private static bool IsMapTileTransform(Transform obj)
-    {
-        return obj.CompareTag("Wall") || obj.CompareTag("Floor") || obj.CompareTag("Entrance") ||
-               obj.CompareTag("Exit") || obj.CompareTag("Trap") || obj.CompareTag("Chest") ||
-               obj.CompareTag("Pushable");
-    }
-
-    /// <summary>타일 프리팹 루트만 스캔합니다. 자식 메시/콜라이더가 다른 셀을 오염시키는 것을 막습니다.</summary>
-    private static bool IsTileRootTransform(Transform obj, Transform locationRoot)
-    {
-        if (obj == locationRoot || !IsMapTileTransform(obj)) return false;
-
-        Transform parent = obj.parent;
-        while (parent != null && parent != locationRoot)
-        {
-            if (IsMapTileTransform(parent)) return false;
-            parent = parent.parent;
-        }
-
-        return true;
+        Debug.LogWarning("[MinimapManager] LocationRoot.Grid가 없어 미니맵이 직접 격자를 만듭니다.");
+        LocationGrid grid = LocationGridBuilder.Build(locationInstance, gridSize);
+        if (root != null) root.SetGrid(grid);
+        return grid;
     }
 
     private void ApplyAspectRatio()
@@ -517,14 +421,14 @@ public class MinimapManager : MonoBehaviour
     {
         if (!IsValidGrid(x, z, current.gridSize)) return;
         // Wall은 항상 검은색(미탐험) — 방문 표시 금지
-        if (current.staticMapData[x, z] == TileKind.Wall) return;
-        if (current.staticMapData[x, z] == TileKind.Unexplored) return;
+        CellType type = current.grid.Get(x, z);
+        if (type == CellType.Wall) return;
+        if (type == CellType.None) return;
         if (current.visited[x, z]) return;
 
         current.visited[x, z] = true;
 
-        TileKind kind = current.staticMapData[x, z];
-        if (kind == TileKind.Floor || kind == TileKind.Trap)
+        if (LocationGrid.IsWalkableTerrain(type))
             current.visitedTileCount++;
     }
 
@@ -579,14 +483,15 @@ public class MinimapManager : MonoBehaviour
     private Color GetMinimapTileColor(int tx, int ty)
     {
         // Wall은 방문 여부와 관계없이 항상 검은색
-        if (current.staticMapData[tx, ty] == TileKind.Wall)
+        CellType type = current.grid.Get(tx, ty);
+        if (type == CellType.Wall)
             return unexploredColor;
 
         if (!current.visited[tx, ty])
             return unexploredColor;
 
         // Pushable은 DrawEntities에서 주황 점으로 라이브 표시 (타일 전체를 칠하지 않음)
-        if (current.staticMapData[tx, ty] == TileKind.Trap)
+        if (LocationGrid.IsTrapTerrain(type))
             return trapColor;
 
         return visitedTrailColor;
@@ -614,7 +519,7 @@ public class MinimapManager : MonoBehaviour
                 float dy = cy - center.y;
                 if (dx * dx + dy * dy > radiusSq) continue;
 
-                if (current.staticMapData[tx, ty] == TileKind.Wall) continue;
+                if (current.grid.Get(tx, ty) == CellType.Wall) continue;
                 MarkVisitedCell(tx, ty);
             }
         }

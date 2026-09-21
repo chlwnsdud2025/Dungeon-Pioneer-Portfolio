@@ -114,6 +114,8 @@ public class DungeonGenerator : MonoBehaviour
             persistent.Latch();
         }
 
+        root.SetGrid(LocationGridBuilder.Build(spawnedMap));
+
         SnapPushablesToGround(spawnedMap);
 
         // ★ FloorTrap: 구덩이·가시는 NavMesh에서 제외하고, 일반 Floor와 같은 높이의 보행면을 깔아

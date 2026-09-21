@@ -20,6 +20,8 @@ public class TrapTile : MonoBehaviour, IFloorPersistent
     private float lastTriggerTime = -999f;
     private bool isFilled = false;
 
+    public bool IsFilled => isFilled;
+
     // ★ 추가: 가시가 올라가는 중(true) / 내려가는 중(false)
     private bool spikeGoingUp = false;
 

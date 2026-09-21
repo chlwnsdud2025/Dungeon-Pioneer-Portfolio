@@ -19,6 +19,10 @@ public class LocationRoot : MonoBehaviour
 
     public void SetMapId(string mapId) => MapId = mapId;
 
+    public LocationGrid Grid { get; private set; }
+
+    public void SetGrid(LocationGrid grid) => Grid = grid;
+
     private readonly Dictionary<string, Transform> spawnPoints = new Dictionary<string, Transform>();
 
     public void Initialize(LocationId id)
