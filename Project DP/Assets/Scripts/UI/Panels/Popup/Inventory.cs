@@ -68,7 +68,7 @@ public class Inventory : MonoBehaviour
         if (data == null) return false;
 
         foreach (InventoryItem it in Grid.Items)
-            if (it.Data == data) return UseItem(it, user);   // 찾는 즉시 반환 — 순회 중 목록이 바뀌지 않음
+            if (ItemData.IsSame(it.Data, data)) return UseItem(it, user);   // 찾는 즉시 반환 — 순회 중 목록이 바뀌지 않음
 
         return false;   // 재고 없음
     }
@@ -84,7 +84,7 @@ public class Inventory : MonoBehaviour
     {
         int total = 0;
         foreach (InventoryItem it in Grid.Items)
-            if (it.Data == item) total += it.Count;
+            if (ItemData.IsSame(it.Data, item)) total += it.Count;
         return total;
     }
     public bool Has(ItemData item, int count = 1) => CountOf(item) >= count;

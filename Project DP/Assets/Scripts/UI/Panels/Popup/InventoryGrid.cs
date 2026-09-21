@@ -84,7 +84,7 @@ public class InventoryGrid
         {
             foreach (InventoryItem existing in items)
             {
-                if (existing.Data != item) continue;
+                if (!ItemData.IsSame(existing.Data, item)) continue;
                 int space = item.maxStackSize - existing.Count;
                 if (space <= 0) continue;
 

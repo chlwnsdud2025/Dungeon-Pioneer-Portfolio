@@ -40,7 +40,7 @@ public class QuickSlotHolder : MonoBehaviour
     {
         if (data == null) return -1;
         for (int i = 0; i < SlotCount; i++)
-            if (_slots[i] == data) return i;
+            if (ItemData.IsSame(_slots[i], data)) return i;
         return -1;
     }
 

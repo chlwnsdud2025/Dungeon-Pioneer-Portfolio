@@ -31,6 +31,14 @@ public abstract class ItemData : ScriptableObject
 
     public abstract ItemCategory Category { get; }
 
+    public static bool IsSame(ItemData a, ItemData b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a == null || b == null) return false;
+        if (string.IsNullOrEmpty(a.itemId) || string.IsNullOrEmpty(b.itemId)) return false;
+        return a.itemId == b.itemId;
+    }
+
     public int GridWidth => Mathf.Max(1, gridSize.x);
     public int GridHeight => Mathf.Max(1, gridSize.y);
 
