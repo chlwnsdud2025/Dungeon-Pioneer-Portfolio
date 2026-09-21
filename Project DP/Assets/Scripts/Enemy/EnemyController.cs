@@ -26,6 +26,9 @@ public class EnemyController : MonoBehaviour
 
     [HideInInspector] public Vector3 spawnPosition;
     [HideInInspector] public Vector2Int spawnCell;
+    [HideInInspector] public Quaternion spawnRotation;
+
+    private bool spawnCaptured;
 
     [HideInInspector] public Transform target;
     [HideInInspector] public float lastAttackTime = -999f;
@@ -83,11 +86,30 @@ public class EnemyController : MonoBehaviour
         LocationRoot root = GetComponentInParent<LocationRoot>();
         Grid = root != null ? root.Grid : null;
 
-        SnapToCellCenter();
-        spawnPosition = transform.position;
-        spawnCell = CurrentCell;
+        if (!spawnCaptured)
+        {
+            Vector3 center = LocationGrid.CellToWorld(CurrentCell);
+            Teleport(new Vector3(center.x, transform.position.y, center.z), transform.rotation);
+            spawnPosition = transform.position;
+            spawnCell = CurrentCell;
+            spawnRotation = transform.rotation;
+            spawnCaptured = true;
+        }
 
         if (stateMachine.CurrentState is EnemyDeadState) return;
+
+        ResetToSpawn();
+    }
+
+    public void ResetToSpawn()
+    {
+        Mover.Stop();
+        Teleport(spawnPosition, spawnRotation);
+
+        currentHealth = maxHealth;
+        target = null;
+        lastAttackTime = -999f;
+        verticalVelocity = 0f;
 
         if (stateMachine.CurrentState == null)
             stateMachine.Initialize<EnemyIdleState>();
@@ -95,16 +117,13 @@ public class EnemyController : MonoBehaviour
             stateMachine.ChangeState<EnemyIdleState>();
     }
 
-    private void SnapToCellCenter()
+    private void Teleport(Vector3 position, Quaternion rotation)
     {
-        Vector3 center = LocationGrid.CellToWorld(CurrentCell);
-        Vector3 snapped = new Vector3(center.x, transform.position.y, center.z);
-
         bool ccWasEnabled = characterController != null && characterController.enabled;
         if (characterController != null)
             characterController.enabled = false;
 
-        transform.position = snapped;
+        transform.SetPositionAndRotation(position, rotation);
 
         if (characterController != null)
             characterController.enabled = ccWasEnabled;
