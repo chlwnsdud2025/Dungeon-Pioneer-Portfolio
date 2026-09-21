@@ -21,8 +21,97 @@ public class TrapTile : MonoBehaviour, IFloorPersistent
 
     public bool IsFilled => isFilled;
     public Vector2Int Cell => cell;
+    private bool surfaceMeasured;
+    private float surfaceWorldY;
+
+    public float SurfaceWorldY
+    {
+        get
+        {
+            if (!surfaceMeasured) MeasureSurfaceWorldY();
+            return surfaceWorldY;
+        }
+    }
+
+    private void MeasureSurfaceWorldY()
+    {
+        surfaceMeasured = true;
+        surfaceWorldY = transform.position.y + GridSystem.Instance.TileHeight;
+
+        LocationRoot root = GetComponentInParent<LocationRoot>();
+        LocationGrid grid = root != null ? root.Grid : null;
+
+        float tile = GridSystem.Instance.TileSize;
+        float probeHeight = GridSystem.Instance.TileHeight * 2f;
+        Vector2Int[] directions =
+        {
+            new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1)
+        };
+
+        bool found = false;
+        float best = float.MinValue;
+        foreach (Vector2Int dir in directions)
+        {
+            if (grid != null && !LocationGrid.IsWalkableTerrain(grid.Get(cell + dir))) continue;
+
+            Vector3 origin = transform.position + new Vector3(dir.x * tile, probeHeight, dir.y * tile);
+            if (!TryProbeFloorTop(origin, probeHeight * 2f, out float y)) continue;
+            if (y <= best) continue;
+
+            best = y;
+            found = true;
+        }
+
+        if (found) surfaceWorldY = best;
+    }
+
+    private bool TryProbeFloorTop(Vector3 origin, float distance, out float floorY)
+    {
+        floorY = 0f;
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, distance, ~0, QueryTriggerInteraction.Ignore);
+        if (hits == null || hits.Length == 0) return false;
+
+        bool found = false;
+        float bestDistance = float.MaxValue;
+        foreach (RaycastHit hit in hits)
+        {
+            Collider collider = hit.collider;
+            if (collider == null || collider.transform.IsChildOf(transform)) continue;
+            if (collider.GetComponentInParent<TrapTile>() != null) continue;
+            if (collider.GetComponentInParent<PushableObject>() != null) continue;
+            if (!HasFloorTag(collider.transform)) continue;
+            if (hit.distance >= bestDistance) continue;
+
+            bestDistance = hit.distance;
+            floorY = hit.point.y;
+            found = true;
+        }
+
+        return found;
+    }
+
+    private static bool HasFloorTag(Transform t)
+    {
+        while (t != null)
+        {
+            if (t.CompareTag("Floor") || t.CompareTag("Entrance") || t.CompareTag("Exit")) return true;
+            if (t.CompareTag("Wall") || t.CompareTag("Chest") || t.CompareTag("Pushable")) return false;
+            t = t.parent;
+        }
+
+        return false;
+    }
 
     public bool IsActorInsidePit(Transform actorRoot) => IsFeetInsidePit(actorRoot);
+
+    public void SettlePushable(PushableObject pushable, bool immediate)
+    {
+        if (pushable == null) return;
+
+        isFilled = true;
+        spikeGoingUp = false;
+        pushable.SettleIntoPit(SurfaceWorldY, immediate);
+    }
 
     // ★ 추가: 가시가 올라가는 중(true) / 내려가는 중(false)
     private bool spikeGoingUp = false;
@@ -344,13 +433,11 @@ public class TrapTile : MonoBehaviour, IFloorPersistent
     private void OnTriggerEnter(Collider other)
     {
         PushableObject pushable = other.GetComponent<PushableObject>();
-        if (pushable != null)
+        if (pushable != null && !pushable.IsLocked)
         {
-            isFilled = true;
             // ★ 메워지면 가시를 완전히 내려서 더 이상 튀어나오지 않게 함
-            spikeGoingUp = false;
             // ★ 함정을 메운 오브젝트는 다시 밀 수 없도록 잠급니다 (한 번 더 밀어서 빠지는 것 방지)
-            pushable.Lock();
+            SettlePushable(pushable, immediate: false);
             Debug.Log("함정이 밀려온 오브젝트로 메워졌습니다! (해당 오브젝트 잠김)");
         }
     }

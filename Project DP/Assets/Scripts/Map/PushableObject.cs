@@ -40,6 +40,70 @@ public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
     public bool IsLocked => isLocked;
     public void Lock() => isLocked = true;
 
+    private bool settling;
+    private float settleY;
+
+    public void SettleIntoPit(float surfaceY, bool immediate)
+    {
+        settleY = surfaceY - GetColliderTopOffset();
+        isLocked = true;
+
+        if (immediate || transform.position.y <= settleY + 0.001f)
+        {
+            FinishSettle();
+            return;
+        }
+
+        settling = true;
+    }
+
+    private void FinishSettle()
+    {
+        settling = false;
+        verticalVelocity = 0f;
+
+        Vector3 pos = transform.position;
+        pos.y = settleY;
+        if (isPushing)
+        {
+            pos.x = pushTargetPos.x;
+            pos.z = pushTargetPos.z;
+            isPushing = false;
+        }
+
+        transform.position = pos;
+        if (rb != null) rb.position = pos;
+    }
+
+    private float GetColliderTopOffset()
+    {
+        float best = 0f;
+        foreach (BoxCollider box in GetComponents<BoxCollider>())
+        {
+            if (box.isTrigger) continue;
+            float top = (box.center.y + box.size.y * 0.5f) * transform.lossyScale.y;
+            if (top > best) best = top;
+        }
+
+        return best > 0f ? best : GridSystem.Instance.TileHeight;
+    }
+
+    private bool TrySettleIntoTrapAtCurrentCell()
+    {
+        LocationRoot root = GetComponentInParent<LocationRoot>();
+        LocationGrid grid = root != null ? root.Grid : null;
+        if (grid == null) return false;
+
+        Vector2Int cell = CurrentCell;
+        if (!grid.InBounds(cell)) return false;
+
+        TrapTile trap = grid.Traps[cell.x, cell.y];
+        if (trap == null) return false;
+
+        trap.SettlePushable(this, immediate: true);
+        return true;
+    }
+
     // ★ 밀려서 움직이는 오브젝트라 '현재 셀'은 식별자가 될 수 없습니다.
     //   생성 직후(아직 안 움직였을 때) 확정한 원래 셀을 id로 쓰고, 현재 셀은 상태로 저장합니다.
     private Vector2Int originCell;
@@ -83,7 +147,13 @@ public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
         transform.position = new Vector3(target.x, transform.position.y, target.z);
 
         isPushing = false;
-        if (state.flag) isLocked = true;
+
+        if (state.flag)
+        {
+            isLocked = true;
+            if (TrySettleIntoTrapAtCurrentCell()) return;
+        }
+
         SnapToGround();
     }
 
@@ -122,6 +192,8 @@ public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
 
     private void Update()
     {
+        if (isLocked && !settling) return;
+
         Vector3 current = transform.position;
         float nextX = current.x;
         float nextZ = current.z;
@@ -138,25 +210,48 @@ public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
         }
 
         // 2. 수직 중력 (Kinematic이라 자동으로 안 떨어지므로 직접 계산)
-        bool grounded = TryFindGround(current + Vector3.up * 0.1f, groundCheckDistance + 0.1f, out RaycastHit hit);
-
         float nextY;
-        if (grounded && verticalVelocity <= 0f)
+        if (settling)
         {
-            verticalVelocity = 0f;
-            nextY = hit.point.y; // 바닥(또는 함정 바닥)에 딱 붙임
+            bool onFloor = TryFindGround(current + Vector3.up * 0.1f, groundCheckDistance + 0.1f, out RaycastHit floorHit, ignoreTrapFloors: true);
+
+            if (onFloor && verticalVelocity <= 0f && floorHit.point.y > settleY + 0.001f)
+            {
+                verticalVelocity = 0f;
+                nextY = floorHit.point.y;
+            }
+            else
+            {
+                verticalVelocity += gravity * gravityMultiplier * Time.deltaTime;
+                nextY = current.y + verticalVelocity * Time.deltaTime;
+                if (nextY <= settleY)
+                {
+                    FinishSettle();
+                    return;
+                }
+            }
         }
         else
         {
-            verticalVelocity += gravity * gravityMultiplier * Time.deltaTime;
-            nextY = current.y + verticalVelocity * Time.deltaTime;
+            bool grounded = TryFindGround(current + Vector3.up * 0.1f, groundCheckDistance + 0.1f, out RaycastHit hit);
+
+            if (grounded && verticalVelocity <= 0f)
+            {
+                verticalVelocity = 0f;
+                nextY = hit.point.y; // 바닥(또는 함정 바닥)에 딱 붙임
+            }
+            else
+            {
+                verticalVelocity += gravity * gravityMultiplier * Time.deltaTime;
+                nextY = current.y + verticalVelocity * Time.deltaTime;
+            }
         }
 
         // 3. 수평+수직을 한 번에 합쳐서 단 한 번만 MovePosition 호출
         rb.MovePosition(new Vector3(nextX, nextY, nextZ));
     }
 
-    private bool TryFindGround(Vector3 origin, float maxDistance, out RaycastHit hit)
+    private bool TryFindGround(Vector3 origin, float maxDistance, out RaycastHit hit, bool ignoreTrapFloors = false)
     {
         hit = default;
         RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, maxDistance, ~0, QueryTriggerInteraction.Ignore);
@@ -168,6 +263,8 @@ public class PushableObject : MonoBehaviour, IFloorPersistent, IInteractable
         {
             if (candidate.collider == null) continue;
             if (candidate.collider.transform.IsChildOf(transform) || candidate.collider.transform == transform)
+                continue;
+            if (ignoreTrapFloors && candidate.collider.GetComponentInParent<TrapTile>() != null)
                 continue;
 
             bool layerOk = ((1 << candidate.collider.gameObject.layer) & groundLayer) != 0;
