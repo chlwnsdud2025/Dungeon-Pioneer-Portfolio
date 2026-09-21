@@ -51,7 +51,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 05d2fb93420838043956563e4fb93d7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
-  animator: {fileID: 0}
+  animator: {fileID: 8933633182824979231}
   characterController: {fileID: 5313849622180225790}
   agent: {fileID: 0}
   maxHealth: 100
@@ -60,6 +60,7 @@ MonoBehaviour:
   detectionRadius: 7
   attackRange: 1.5
   attackCooldown: 2
+  attackDamage: 35
   playerLayer:
     serializedVersion: 2
     m_Bits: 256
@@ -70,11 +71,11 @@ MonoBehaviour:
   target: {fileID: 0}
   lastAttackTime: -999
   viewAngle: 60
+  backstabDamageMultiplier: 1.5
   gravity: -9.81
   gravityMultiplier: 2
   verticalVelocity: 0
-  trapAvoidCost: 10
-  trapAllowCost: 1
+  trapPathCost: 1
 --- !u!143 &5313849622180225790
 CharacterController:
   m_ObjectHideFlags: 0

@@ -21,6 +21,7 @@ public class EnemyController : MonoBehaviour
     public float detectionRadius = 7f;   // 플레이어 인지 범위
     public float attackRange = 1.5f;     // 공격 사거리
     public float attackCooldown = 2f;    // 공격 쿨타임
+    public float attackDamage = 5f;      // 공격 데미지
     public LayerMask playerLayer;        // 플레이어 레이어
     public LayerMask obstacleLayer;      // 벽 등 시야를 가리는 장애물 레이어
 

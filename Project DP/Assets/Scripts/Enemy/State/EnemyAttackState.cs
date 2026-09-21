@@ -64,7 +64,7 @@ public class EnemyAttackState : EnemyBaseState
             if (player == null) continue;
             if (!enemy.IsInFieldOfView(player.transform.position)) continue;
 
-            player.TakeDamage(5f, enemy.transform);
+            player.TakeDamage(enemy.attackDamage, enemy.transform);
         }
     }
 }
