@@ -13,8 +13,9 @@ GameObject:
   - component: {fileID: 3618584548417928282}
   - component: {fileID: 295293940614411462}
   - component: {fileID: -2761473720625133522}
+  - component: {fileID: 4795359974529373020}
   m_Layer: 6
-  m_Name: Wall
+  m_Name: BaseDungeonWall
   m_TagString: Wall
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -68,7 +69,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -1340270957083844871, guid: b440c4fc27e2c6743bd0adda8d099a28, type: 3}
+  - {fileID: 2100000, guid: 1683dd81fca2e2441a9f5a2326ccf02c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -125,3 +126,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cdfe39c23aa473c4a9045e4286389784, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WallObject
+--- !u!114 &4795359974529373020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7749681633486640535}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdf9b54b4692157448fbe2e07fe8a482, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TEST_DUNGEONBLOCK_SETUP

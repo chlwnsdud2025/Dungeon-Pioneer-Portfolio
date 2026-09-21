@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c01700fd266d6914ababb731e09af2eb, type: 3}
   m_Name: DepthOfField
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DepthOfField
-  active: 1
+  active: 0
   mode:
     m_OverrideState: 1
     m_Value: 2
@@ -64,7 +64,7 @@ MonoBehaviour:
     m_Value: 20
   baseHeight:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 2
   maximumHeight:
     m_OverrideState: 1
     m_Value: 12
@@ -110,7 +110,7 @@ MonoBehaviour:
     dimension: 1
   noise3DIntensity:
     m_OverrideState: 1
-    m_Value: 0.882
+    m_Value: 0.326
   noise3DTiling:
     m_OverrideState: 1
     m_Value: {x: 0.2, y: 0.2, z: 0.2}
@@ -208,7 +208,7 @@ MonoBehaviour:
     dimension: 1
   contribution:
     m_OverrideState: 1
-    m_Value: 0.589
+    m_Value: 0.888
 --- !u!114 &-2076663271979611117
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -319,14 +319,14 @@ MonoBehaviour:
     m_OverrideState: 0
     m_Value: {r: 0, g: 0, b: 0, a: 1}
   blurSpread:
-    m_OverrideState: 0
-    m_Value: 1
+    m_OverrideState: 1
+    m_Value: 1.3
   blurQuality:
     m_OverrideState: 1
     m_Value: 2
   downsampling:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 1.5
   highQualityFiltering:
     m_OverrideState: 0
     m_Value: 0
@@ -376,8 +376,8 @@ MonoBehaviour:
     m_OverrideState: 0
     m_Value: 0
   saturation:
-    m_OverrideState: 0
-    m_Value: 1
+    m_OverrideState: 1
+    m_Value: 1.476
   limitToVolumeBounds:
     m_OverrideState: 0
     m_Value: 0
@@ -608,7 +608,7 @@ MonoBehaviour:
     m_Value: 0
   radius:
     m_OverrideState: 1
-    m_Value: 2.57
+    m_Value: 1.36
   maxRadiusPixels:
     m_OverrideState: 0
     m_Value: 128
@@ -617,10 +617,10 @@ MonoBehaviour:
     m_Value: 0.05
   intensity:
     m_OverrideState: 1
-    m_Value: 1.43
+    m_Value: 1.32
   useMultiBounce:
-    m_OverrideState: 1
-    m_Value: 1
+    m_OverrideState: 0
+    m_Value: 0
   multiBounceInfluence:
     m_OverrideState: 0
     m_Value: 1
@@ -655,10 +655,10 @@ MonoBehaviour:
     m_OverrideState: 0
     m_Value: 8
   colorBleedingEnabled:
-    m_OverrideState: 1
-    m_Value: 1
+    m_OverrideState: 0
+    m_Value: 0
   saturation:
-    m_OverrideState: 1
+    m_OverrideState: 0
     m_Value: 3.48
   brightnessMask:
     m_OverrideState: 0
