@@ -30,13 +30,13 @@ MonoBehaviour:
     m_Value: 0
   focusDistance:
     m_OverrideState: 1
-    m_Value: 7.5
+    m_Value: 8.92
   aperture:
     m_OverrideState: 1
-    m_Value: 2.5
+    m_Value: 1
   focalLength:
     m_OverrideState: 1
-    m_Value: 94
+    m_Value: 61
   bladeCount:
     m_OverrideState: 0
     m_Value: 5
@@ -46,6 +46,105 @@ MonoBehaviour:
   bladeRotation:
     m_OverrideState: 0
     m_Value: 0
+--- !u!114 &-7727574646547535300
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a074ec59f6e910b4e8c49f57e56cf95a, type: 3}
+  m_Name: VolumetricFogVolumeComponent
+  m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricFogVolumeComponent
+  active: 1
+  distance:
+    m_OverrideState: 1
+    m_Value: 20
+  baseHeight:
+    m_OverrideState: 1
+    m_Value: 1
+  maximumHeight:
+    m_OverrideState: 1
+    m_Value: 12
+  enableGround:
+    m_OverrideState: 1
+    m_Value: 0
+  groundHeight:
+    m_OverrideState: 1
+    m_Value: 0
+  density:
+    m_OverrideState: 1
+    m_Value: 0.928
+  attenuationDistance:
+    m_OverrideState: 0
+    m_Value: 128
+  enableAPVContribution:
+    m_OverrideState: 1
+    m_Value: 0
+  APVContributionWeight:
+    m_OverrideState: 0
+    m_Value: 1
+  enableMainLightContribution:
+    m_OverrideState: 1
+    m_Value: 1
+  anisotropy:
+    m_OverrideState: 0
+    m_Value: 0.4
+  scattering:
+    m_OverrideState: 0
+    m_Value: 0.15
+  tint:
+    m_OverrideState: 0
+    m_Value: {r: 1, g: 1, b: 1, a: 1}
+  enableAdditionalLightsContribution:
+    m_OverrideState: 1
+    m_Value: 1
+  enableNoise3D:
+    m_OverrideState: 1
+    m_Value: 1
+  noise3DTexture:
+    m_OverrideState: 1
+    m_Value: {fileID: 11700000, guid: bff9bdd076ef82545afc3edea035ca8e, type: 3}
+    dimension: 1
+  noise3DIntensity:
+    m_OverrideState: 1
+    m_Value: 0.882
+  noise3DTiling:
+    m_OverrideState: 1
+    m_Value: {x: 0.2, y: 0.2, z: 0.2}
+  noise3DScrollSpeed:
+    m_OverrideState: 1
+    m_Value: {x: 0.2, y: 0, z: 0.2}
+  noise3DPointFilter:
+    m_OverrideState: 1
+    m_Value: 1
+  enableCubemapNoise:
+    m_OverrideState: 0
+    m_Value: 0
+  cubemapNoiseTexture:
+    m_OverrideState: 1
+    m_Value: {fileID: 0}
+    dimension: 1
+  cubemapNoiseIntensity:
+    m_OverrideState: 1
+    m_Value: 1
+  cubemapNoisePointFilter:
+    m_OverrideState: 1
+    m_Value: 1
+  maxSteps:
+    m_OverrideState: 0
+    m_Value: 128
+  blurIterations:
+    m_OverrideState: 0
+    m_Value: 2
+  enabled:
+    m_OverrideState: 1
+    m_Value: 1
+  renderPassEvent:
+    m_OverrideState: 0
+    m_Value: 550
 --- !u!114 &-5113582922888264621
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -90,6 +189,26 @@ MonoBehaviour:
   rounded:
     m_OverrideState: 0
     m_Value: 0
+--- !u!114 &-4049992018587959893
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e021b4c809a781e468c2988c016ebbea, type: 3}
+  m_Name: ColorLookup
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.ColorLookup
+  active: 1
+  texture:
+    m_OverrideState: 1
+    m_Value: {fileID: 2800000, guid: 8b62c98b68d1526489113761405f638b, type: 3}
+    dimension: 1
+  contribution:
+    m_OverrideState: 1
+    m_Value: 0.589
 --- !u!114 &-2076663271979611117
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -331,6 +450,8 @@ MonoBehaviour:
   - {fileID: -4330963731713964369}
   - {fileID: 6445721565062641026}
   - {fileID: -2076663271979611117}
+  - {fileID: -7727574646547535300}
+  - {fileID: -4049992018587959893}
 --- !u!114 &370586952926033085
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -349,16 +470,16 @@ MonoBehaviour:
     m_Value: 1
   threshold:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.8
   intensity:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 1.54
   scatter:
     m_OverrideState: 1
-    m_Value: 0.542
+    m_Value: 0.725
   clamp:
     m_OverrideState: 1
-    m_Value: 35
+    m_Value: 1.7
   tint:
     m_OverrideState: 1
     m_Value: {r: 1, g: 1, b: 1, a: 1}
@@ -380,7 +501,7 @@ MonoBehaviour:
     dimension: 1
   dirtIntensity:
     m_OverrideState: 0
-    m_Value: 0
+    m_Value: 40
 --- !u!114 &889992872173871524
 MonoBehaviour:
   m_ObjectHideFlags: 3

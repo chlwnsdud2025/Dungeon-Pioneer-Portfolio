@@ -42934,7 +42934,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &582953480
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -43088,7 +43088,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 998734575}
   m_LocalEulerAnglesHint: {x: 48.794, y: -180, z: 0}
 --- !u!1 &585781632
 GameObject:
@@ -45503,13 +45503,14 @@ GameObject:
   - component: {fileID: 621417764}
   - component: {fileID: 621417763}
   - component: {fileID: 621417762}
+  - component: {fileID: 621417765}
   m_Layer: 0
   m_Name: Spot Light
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &621417762
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -45617,8 +45618,23 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 998734575}
   m_LocalEulerAnglesHint: {x: 96.871, y: -105.709, z: -113.763}
+--- !u!114 &621417765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 621417761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c8bca95f7c947b4db5fb152a0d693d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
+  anisotropy: 0.25
+  scattering: 1
+  radius: 0.2
 --- !u!1 &621650733
 GameObject:
   m_ObjectHideFlags: 0
@@ -67294,13 +67310,14 @@ GameObject:
   - component: {fileID: 946579646}
   - component: {fileID: 946579645}
   - component: {fileID: 946579644}
+  - component: {fileID: 946579647}
   m_Layer: 0
   m_Name: Point Light
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &946579644
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67403,13 +67420,28 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 946579643}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 18.001, y: 3.48, z: 10.722}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 998734575}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &946579647
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 946579643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c8bca95f7c947b4db5fb152a0d693d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: com.cqf.urpvolumetricfog.runtime::VolumetricAdditionalLight
+  anisotropy: 0.25
+  scattering: 1
+  radius: 0
 --- !u!1 &948342089
 GameObject:
   m_ObjectHideFlags: 0
@@ -70944,7 +70976,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &998734573
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -71568,6 +71600,9 @@ Transform:
   - {fileID: 404949592}
   - {fileID: 991620565}
   - {fileID: 1208194370}
+  - {fileID: 582953485}
+  - {fileID: 946579646}
+  - {fileID: 621417764}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1000949840
@@ -146952,9 +146987,6 @@ SceneRoots:
   - {fileID: 1566138933}
   - {fileID: 2046083672}
   - {fileID: 111195990}
-  - {fileID: 582953485}
   - {fileID: 998734575}
   - {fileID: 1939006705}
   - {fileID: 800966073}
-  - {fileID: 946579646}
-  - {fileID: 621417764}
