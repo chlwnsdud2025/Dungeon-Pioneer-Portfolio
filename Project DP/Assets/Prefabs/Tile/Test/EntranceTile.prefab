@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4bd31727463d0fb4aae3193c1208442a, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EntrancePoint
 --- !u!1 &2614898850705948117
 GameObject:
@@ -317,10 +317,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 876b00f8cb45462ca4bc2604587b890a, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StairTile
   kind: 0
   frontLocal: {x: 0, y: 0, z: 1}
-  insideDepth: 1
-  heightDelta: 1.28
-  playerHeight: 0.21
+  insideDepth: 0.77
+  heightDelta: 0.59
+  playerHeight: 0.79
