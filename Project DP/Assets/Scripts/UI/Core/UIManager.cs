@@ -32,8 +32,7 @@ public class UIManager : MonoSingleton<UIManager>
         StartupAsync().Forget();
     }
 
-    // 초기화가 끝나면 상시 표시할 인게임 HUD를 한 번 띄웁니다.
-    // 전역 상주(DontDestroyOnLoad)라 이후 씬(오버월드/던전)을 넘어도 계속 유지됩니다.
+    // 어떤 Scene UI를 띄울지(타이틀/HUD)는 씬 도착 시 WorldManager가 정합니다.
     private async UniTaskVoid StartupAsync()
     {
         await InitializeAsync();
@@ -44,9 +43,6 @@ public class UIManager : MonoSingleton<UIManager>
         else
             Debug.LogWarning("[UIManager] InputManager가 없어 ESC로 UI를 닫을 수 없습니다. " +
                              "먼저 로드되는 씬에 InputManager를 배치해주세요.");
-
-        if (GetPanel<UIInGameHUD>() != null)
-            ShowScene<UIInGameHUD>().Forget();
     }
 
     private void OnDestroy()

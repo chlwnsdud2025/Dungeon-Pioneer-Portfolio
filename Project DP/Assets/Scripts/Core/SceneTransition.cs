@@ -7,13 +7,6 @@ public static class SceneTransition
     private static bool reviveOnArrival;
 
     /// <summary>
-    /// 던전에서 나올 때 돌아갈 오버월드 SpawnAnchor의 id.
-    /// 오버월드의 DungeonEntrance가 '들어갈 때' 자기 id를 기록해두고, DungeonManager가 '나올 때' 그대로 씁니다.
-    /// 그래서 던전 입구가 여러 개로 늘어나도 들어간 문으로 정확히 되돌아옵니다.
-    /// </summary>
-    public static string ReturnAnchorId { get; set; } = "DungeonExit";
-
-    /// <summary>
     /// 씬을 전환합니다.
     /// </summary>
     /// <param name="sceneName">로드할 씬 이름. Build Settings에 등록되어 있어야 합니다.</param>

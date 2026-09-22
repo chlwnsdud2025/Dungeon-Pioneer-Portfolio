@@ -20,8 +20,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     public DungeonGenerator dungeonGenerator;
 
     [Header("씬 전환")]
-    [Tooltip("던전을 나갈 때 로드할 오버월드 씬 이름. Build Settings에 등록되어 있어야 합니다.")]
-    public string overworldSceneName = "Overworld";
     [Tooltip("최종 클리어 후 오버월드로 돌아가기까지의 대기 시간(초). 0이면 즉시.")]
     public float victoryReturnDelay = 3f;
     [Tooltip("플레이어 사망 후 사망 모션을 보여주고 오버월드로 돌아가기까지의 대기 시간(초).")]
@@ -313,8 +311,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         // 씬이 언로드되면 층 인스턴스가 전부 파괴되므로, 나가기 직전에 상호작용 기록을 챙긴다.
         CaptureAllMapStates();
 
-        // 들어올 때 DungeonEntrance가 기록해둔 앵커로 되돌아갑니다. (입구가 여러 개여도 정확히 그 문 앞)
-        SceneTransition.Go(overworldSceneName, SceneTransition.ReturnAnchorId, revive);
+        // 들어올 때 DungeonEntrance가 WorldManager에 기억시킨 지역·앵커로 되돌아갑니다. (입구가 여러 개여도 정확히 그 문 앞)
+        WorldManager.TravelBack(revive);
     }
 
     // ── 상호작용 기록 저장·복원 ──────────────────────────────

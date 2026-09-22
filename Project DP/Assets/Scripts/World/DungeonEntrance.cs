@@ -4,9 +4,6 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider))]
 public class DungeonEntrance : MonoBehaviour
 {
-    [Tooltip("이 입구로 들어갔을 때 로드할 던전 씬 이름. Build Settings에 등록되어 있어야 합니다.")]
-    [SerializeField] private string dungeonSceneName = "Dungeon";
-
     [Header("복귀 지점")]
     [Tooltip("던전에서 나올 때 플레이어가 도착할 SpawnAnchor의 id.")]
     [SerializeField] private string returnAnchorId = "DungeonExit";
@@ -86,16 +83,10 @@ public class DungeonEntrance : MonoBehaviour
         if (hasLoaded || ignoreUntilExit) return;
         if (!IsPlayer(other)) return;
 
-        if (string.IsNullOrEmpty(dungeonSceneName))
-        {
-            Debug.LogWarning("[DungeonEntrance] 로드할 던전 씬 이름이 비어 있습니다. 인스펙터를 확인해주세요.");
-            return;
-        }
-
         hasLoaded = true;
 
-        // 나올 때 어디로 돌아올지 기록해둡니다.
-        SceneTransition.ReturnAnchorId = returnAnchorId;
+        // 나올 때 어느 지역의 어느 앵커로 돌아올지 기억해둡니다.
+        WorldManager.RememberReturn(returnAnchorId);
 
         // 던전 안에서의 스폰 좌표는 DungeonManager가 층 구조를 보고 직접 계산하므로 앵커는 넘기지 않습니다.
         StartCoroutine(EnterDungeon());
@@ -117,7 +108,7 @@ public class DungeonEntrance : MonoBehaviour
 
         StartCoroutine(ScreenFader.Instance.FadeTo(1f, fadeDuration));
         yield return new WaitUntil(() => ScreenFader.Instance.IsOpaque && (motion == null || motion.IsFinished));
-        SceneTransition.Go(dungeonSceneName, null);
+        WorldManager.Travel(new LocationId(LocationType.Dungeon), null);
     }
 
     private void OnTriggerExit(Collider other)

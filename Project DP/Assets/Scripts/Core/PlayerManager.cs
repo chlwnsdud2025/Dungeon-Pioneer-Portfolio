@@ -89,6 +89,19 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         PlaceAt(position, Player != null ? Player.transform.rotation : Quaternion.identity);
     }
 
+    /// <summary>현재 씬의 SpawnAnchor로 옮깁니다. 앵커가 없으면 false. (같은 씬 안의 지역 이동용)</summary>
+    public bool PlaceAtAnchor(string anchorId)
+    {
+        if (!SpawnAnchor.TryGetPose(anchorId, out Vector3 position, out Quaternion rotation))
+        {
+            Debug.LogError($"[PlayerManager] SpawnAnchor '{anchorId}'를 찾지 못했습니다.");
+            return false;
+        }
+
+        PlaceAt(position, rotation);
+        return true;
+    }
+
     /// <summary>
     /// 플레이어를 지정한 위치/방향에 배치하는 유일한 진입점.
     /// 부활 처리 → 위치 이동 → 활성화 → 상태 정리 → 카메라 연결 순서가 중요합니다.
@@ -165,6 +178,9 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         Player = Instantiate(playerPrefab);
         Player.name = playerPrefab.name; // 하이어라키에서 찾기 쉽도록 "(Clone)" 제거
         DontDestroyOnLoad(Player);
+
+        // 첫 배치(PlaceAt) 전까지는 보이지 않게 둔다. 타이틀 씬처럼 플레이어가 서 있을 곳이 없는 씬 대비.
+        Player.SetActive(false);
 
         Controller = Player.GetComponent<PlayerController>();
         Stat = Player.GetComponent<PlayerStat>();
