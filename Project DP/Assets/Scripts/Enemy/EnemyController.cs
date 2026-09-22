@@ -24,14 +24,50 @@ public class EnemyController : MonoBehaviour, IDamageable
     public LayerMask playerLayer;        // 플레이어 레이어
     public LayerMask obstacleLayer;      // 벽 등 시야를 가리는 장애물 레이어
 
+    [Header("Torch Hunting")]
+    [Tooltip("순찰 중 시야에 들어온 횃불을 찾아가 꺼뜨릴지. 플레이어가 보이면 언제나 플레이어가 우선입니다.")]
+    public bool huntsTorches = true;
+    [Tooltip("횃불 앞에 도착했는데도 사거리에 들지 못한 채 이 시간(초)이 지나거나, 경로가 없으면 그 횃불을 포기합니다.")]
+    public float torchGiveUpSeconds = 3f;
+    [Tooltip("포기한 횃불을 다시 노리기까지 무시하는 시간(초). 벽 너머 횃불에 계속 매달리는 것을 막습니다.")]
+    public float torchIgnoreSeconds = 10f;
+
     [HideInInspector] public Vector3 spawnPosition;
     [HideInInspector] public Vector2Int spawnCell;
     [HideInInspector] public Quaternion spawnRotation;
 
     private bool spawnCaptured;
 
-    [HideInInspector] public Transform target;
+    /// <summary>
+    /// 지금 쫓는 대상. 플레이어일 수도, 횃불일 수도 있습니다. 상태 머신은 이 인터페이스만 보고
+    /// '누구'인지는 구분하지 않습니다 — 플레이어 우선순위는 상태 전환이 아니라 이 값의 교체로 구현됩니다.
+    /// </summary>
+    [HideInInspector] public ITarget target;
     [HideInInspector] public float lastAttackTime = -999f;
+
+    // 포기한 대상을 잠시 무시하는 목록 (대상 → 다시 노려도 되는 시각)
+    private readonly Dictionary<ITarget, float> ignoreUntil = new Dictionary<ITarget, float>();
+
+    // "Torch" 레이어는 프로젝트에 하나뿐이라 인스펙터 배선 대신 이름으로 찾습니다. 없으면 0(아무것도 안 맞음).
+    private static int torchLayerMask = -1;
+
+    /// <summary>공격 히트박스가 때릴 수 있는 레이어 = 플레이어 + 횃불.</summary>
+    public int AttackTargetMask => playerLayer.value | TorchLayerMask;
+
+    private static int TorchLayerMask
+    {
+        get
+        {
+            if (torchLayerMask < 0)
+            {
+                int layer = LayerMask.NameToLayer("Torch");
+                torchLayerMask = layer >= 0 ? 1 << layer : 0;
+                if (layer < 0)
+                    Debug.LogWarning("[EnemyController] 'Torch' 레이어가 없어 적이 횃불을 때리지 못합니다. Tags and Layers에서 추가하세요.");
+            }
+            return torchLayerMask;
+        }
+    }
 
     [Range(0, 360)]
     public float viewAngle = 120f;
@@ -108,6 +144,7 @@ public class EnemyController : MonoBehaviour, IDamageable
 
         currentHealth = maxHealth;
         target = null;
+        ignoreUntil.Clear();
         lastAttackTime = -999f;
         verticalVelocity = 0f;
 
@@ -181,14 +218,18 @@ public class EnemyController : MonoBehaviour, IDamageable
         return Vector3.Angle(transform.forward, dirToTarget.normalized) <= viewAngle * 0.5f;
     }
 
-    /// <summary>타겟이 FOV 안에 있고 벽으로 시야가 막히지 않았는지.</summary>
-    public bool CanSeeTarget(Transform target)
+    /// <summary>
+    /// 대상이 FOV 안에 있고 벽으로 시야가 막히지 않았는지.
+    /// 레이의 끝점은 대상이 알려주는 AimPoint입니다 — 플레이어는 눈높이, 벽에 붙은 횃불은 벽에서
+    /// 살짝 띄운 점이라 자기 벽에 막혀 '안 보임'으로 오판하지 않습니다.
+    /// </summary>
+    public bool CanSeeTarget(ITarget target)
     {
-        if (target == null) return false;
-        if (!IsInFieldOfView(target.position)) return false;
+        if (target == null || target.Transform == null) return false;
+        if (!IsInFieldOfView(target.Transform.position)) return false;
 
         Vector3 eyePosition = transform.position + Vector3.up * 1.5f;
-        Vector3 targetPos = target.position + Vector3.up * 1.5f;
+        Vector3 targetPos = target.AimPoint;
         Vector3 rayDir = (targetPos - eyePosition).normalized;
         float distanceToTarget = Vector3.Distance(eyePosition, targetPos);
 
@@ -231,12 +272,12 @@ public class EnemyController : MonoBehaviour, IDamageable
         return delta.magnitude;
     }
 
-    private Transform FindNearestPlayerInRange(float maxRange)
+    private PlayerController FindNearestPlayerInRange(float maxRange)
     {
         Collider[] hitPlayers = Physics.OverlapSphere(transform.position, maxRange, playerLayer);
         if (hitPlayers.Length == 0) return null;
 
-        Transform nearest = null;
+        PlayerController nearest = null;
         float nearestDistance = float.MaxValue;
 
         foreach (Collider hit in hitPlayers)
@@ -244,15 +285,17 @@ public class EnemyController : MonoBehaviour, IDamageable
             if (hit == null) continue;
 
             PlayerController controller = hit.GetComponentInParent<PlayerController>();
-            Transform candidate = controller != null ? controller.transform : hit.transform;
-            float distance = GetHorizontalDistanceTo(candidate.position);
-            float allowedRange = GetDetectionRangeForPosition(candidate.position);
+            if (controller == null) continue;
+
+            Vector3 candidatePos = controller.transform.position;
+            float distance = GetHorizontalDistanceTo(candidatePos);
+            float allowedRange = GetDetectionRangeForPosition(candidatePos);
             if (distance > allowedRange) continue;
 
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
-                nearest = candidate;
+                nearest = controller;
             }
         }
 
@@ -262,9 +305,9 @@ public class EnemyController : MonoBehaviour, IDamageable
     /// <summary>플레이어 탐지: FOV 방향은 전체 반경 + 시야선, 성공 시 target에 할당.</summary>
     public bool TryDetectPlayer()
     {
-        Transform potentialTarget = FindNearestPlayerInRange(detectionRadius);
+        PlayerController potentialTarget = FindNearestPlayerInRange(detectionRadius);
         if (potentialTarget == null) return false;
-        if (!IsInFieldOfView(potentialTarget.position)) return false;
+        if (!IsInFieldOfView(potentialTarget.transform.position)) return false;
         if (!CanSeeTarget(potentialTarget)) return false;
 
         target = potentialTarget;
@@ -275,7 +318,7 @@ public class EnemyController : MonoBehaviour, IDamageable
     /// FOV 밖에서 플레이어가 달리며 접근했을 때 반응합니다.
     /// 탐지 반경은 전방 FOV의 1/3입니다.
     /// </summary>
-    public bool TryDetectRunningPlayerNearby(out Transform player)
+    public bool TryDetectRunningPlayerNearby(out PlayerController player)
     {
         player = null;
 
@@ -283,24 +326,24 @@ public class EnemyController : MonoBehaviour, IDamageable
         Collider[] hitPlayers = Physics.OverlapSphere(transform.position, peripheralRange, playerLayer);
         if (hitPlayers.Length == 0) return false;
 
-        Transform nearest = null;
+        PlayerController nearest = null;
         float nearestDistance = float.MaxValue;
 
         foreach (Collider hit in hitPlayers)
         {
             if (hit == null) continue;
 
-            Transform candidate = hit.transform;
-            if (IsInFieldOfView(candidate.position)) continue;
+            Vector3 candidatePos = hit.transform.position;
+            if (IsInFieldOfView(candidatePos)) continue;
 
-            PlayerController controller = candidate.GetComponentInParent<PlayerController>();
+            PlayerController controller = hit.GetComponentInParent<PlayerController>();
             if (controller == null || !controller.isRunning) continue;
 
-            float distance = GetHorizontalDistanceTo(candidate.position);
+            float distance = GetHorizontalDistanceTo(candidatePos);
             if (distance > peripheralRange || distance >= nearestDistance) continue;
 
             nearestDistance = distance;
-            nearest = candidate;
+            nearest = controller;
         }
 
         if (nearest == null) return false;
@@ -310,12 +353,60 @@ public class EnemyController : MonoBehaviour, IDamageable
         return true;
     }
 
+    /// <summary>
+    /// 횃불 탐지: FOV 안 + 탐지 반경 안 + 시야선이 닿고 + 횃불 앞 바닥 셀에 설 수 있고 + 포기 목록에
+    /// 없는 것 중 가장 가까운 횃불을 target에 넣습니다. 플레이어 탐지가 실패했을 때만 부르세요.
+    /// </summary>
+    public bool TryDetectTorch()
+    {
+        if (!huntsTorches || Grid == null) return false;
+
+        TorchInstance nearest = null;
+        float nearestDistance = float.MaxValue;
+
+        foreach (TorchInstance torch in TorchInstance.EnumerateActiveTorches())
+        {
+            if (torch == null || !torch.IsAlive) continue;
+            if (IsTargetIgnored(torch)) continue;
+
+            float distance = GetHorizontalDistanceTo(torch.transform.position);
+            if (distance > detectionRadius || distance >= nearestDistance) continue;
+            if (!IsInFieldOfView(torch.transform.position)) continue;
+            if (!Grid.IsPassable(torch.ApproachCell, false)) continue;
+            if (!CanSeeTarget(torch)) continue;
+
+            nearestDistance = distance;
+            nearest = torch;
+        }
+
+        if (nearest == null) return false;
+
+        target = nearest;
+        return true;
+    }
+
+    /// <summary>대상을 잠시 포기합니다. (경로가 없거나 시야를 오래 잃은 횃불 등)</summary>
+    public void IgnoreTarget(ITarget ignored, float seconds)
+    {
+        if (ignored == null) return;
+        ignoreUntil[ignored] = Time.time + seconds;
+    }
+
+    private bool IsTargetIgnored(ITarget candidate)
+    {
+        if (!ignoreUntil.TryGetValue(candidate, out float until)) return false;
+        if (Time.time < until) return true;
+
+        ignoreUntil.Remove(candidate);   // 기한이 지났으면 목록에서 정리
+        return false;
+    }
+
     /// <summary>현재 추적 대상이 감지 범위를 벗어났는지 확인합니다. 추격 중에는 FOV와 무관하게 전체 반경을 유지합니다.</summary>
     public bool IsTargetWithinDetectionRange()
     {
-        if (target == null) return false;
+        if (target == null || target.Transform == null) return false;
 
-        float distance = GetHorizontalDistanceTo(target.position);
+        float distance = GetHorizontalDistanceTo(target.Transform.position);
         return distance <= detectionRadius * 1.5f;
     }
 
@@ -335,8 +426,10 @@ public class EnemyController : MonoBehaviour, IDamageable
         float finalDamage = damage;
         if (attacker != null)
         {
-            if (attacker.GetComponentInParent<PlayerController>() != null)
-                target = attacker;
+            // 플레이어에게 맞으면 무엇을 쫓고 있었든(횃불 포함) 플레이어가 우선이 된다.
+            PlayerController attackingPlayer = attacker.GetComponentInParent<PlayerController>();
+            if (attackingPlayer != null)
+                target = attackingPlayer;
 
             if (!IsInFieldOfView(attacker.position))
             {

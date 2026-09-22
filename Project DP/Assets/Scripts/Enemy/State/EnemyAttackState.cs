@@ -1,5 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 공격 모션을 한 번 재생하고, 타격 시점에 전방 히트박스 안의 IDamageable을 때립니다.
+/// 무엇을 맞힐지는 EnemyController.AttackTargetMask(플레이어 + 횃불)가 정하고, 맞은 쪽이 피해를
+/// 어떻게 해석할지(체력/남은 시간)는 각자의 TakeDamage가 정합니다.
+/// </summary>
 public class EnemyAttackState : EnemyBaseState
 {
     private readonly int attackAnimHash = Animator.StringToHash("Attack");
@@ -7,6 +13,9 @@ public class EnemyAttackState : EnemyBaseState
     private float hitTime = 0.5f; // 무기를 휘둘러 데미지가 들어가는 시점 (애니메이션에 맞춰 조절 필요)
     private float timer = 0f;
     private bool hasDealtDamage = false;
+
+    // 한 번의 휘두름에 콜라이더가 여러 개인 대상을 중복으로 때리지 않도록
+    private readonly HashSet<IDamageable> hitThisSwing = new HashSet<IDamageable>();
 
     public EnemyAttackState(EnemyController enemy, EnemyStateMachine stateMachine) : base(enemy, stateMachine) { }
 
@@ -21,16 +30,9 @@ public class EnemyAttackState : EnemyBaseState
 
         enemy.animator.CrossFadeInFixedTime(attackAnimHash, 0.1f);
 
-        // 공격 시작 시 플레이어 방향으로 확실하게 한 번 바라봅니다.
-        if (enemy.target != null)
-        {
-            Vector3 dirToTarget = (enemy.target.position - enemy.transform.position).normalized;
-            dirToTarget.y = 0f;
-            if (dirToTarget != Vector3.zero)
-            {
-                enemy.transform.rotation = Quaternion.LookRotation(dirToTarget);
-            }
-        }
+        // 공격 시작 시 대상 방향으로 확실하게 한 번 바라봅니다.
+        if (enemy.target != null && enemy.target.Transform != null)
+            enemy.FaceToward(enemy.target.Transform.position);
     }
 
     public override void Update()
@@ -48,23 +50,35 @@ public class EnemyAttackState : EnemyBaseState
         AnimatorStateInfo stateInfo = enemy.animator.GetCurrentAnimatorStateInfo(0);
         if (stateInfo.shortNameHash == attackAnimHash && stateInfo.normalizedTime >= 0.95f)
         {
-            // 공격이 끝나면 다시 추적 상태로 돌아가서 거리를 재평가합니다.
-            stateMachine.ChangeState<EnemyChaseState>();
+            // 대상이 아직 살아 있으면 추적으로 돌아가 거리를 재평가하고(쿨타임 뒤 재타격),
+            // 이번 타격으로 없어졌으면(횃불 소멸 등) 순찰로 돌아갑니다.
+            if (enemy.target != null && enemy.target.IsAlive)
+                stateMachine.ChangeState<EnemyChaseState>();
+            else
+            {
+                enemy.target = null;
+                stateMachine.ChangeState<EnemyPatrolState>();
+            }
         }
     }
 
     private void PerformAttackHitbox()
     {
+        hitThisSwing.Clear();
+
         Vector3 hitCenter = enemy.transform.position + enemy.transform.forward * 1f + Vector3.up * 0.5f;
-        Collider[] hitPlayers = Physics.OverlapSphere(hitCenter, enemy.attackRange, enemy.playerLayer);
+        Collider[] hits = Physics.OverlapSphere(hitCenter, enemy.attackRange, enemy.AttackTargetMask,
+                                                QueryTriggerInteraction.Collide);
 
-        foreach (Collider playerCol in hitPlayers)
+        foreach (Collider col in hits)
         {
-            PlayerController player = playerCol.GetComponent<PlayerController>();
-            if (player == null) continue;
-            if (!enemy.IsInFieldOfView(player.transform.position)) continue;
+            IDamageable damageable = col.GetComponentInParent<IDamageable>();
+            if (damageable == null || !damageable.IsAlive) continue;
+            if (damageable == (IDamageable)enemy) continue;             // 자기 자신 제외
+            if (!enemy.IsInFieldOfView(col.bounds.center)) continue;
+            if (!hitThisSwing.Add(damageable)) continue;
 
-            player.TakeDamage(enemy.attackDamage, enemy.transform);
+            damageable.TakeDamage(enemy.attackDamage, enemy.transform);
         }
     }
 }

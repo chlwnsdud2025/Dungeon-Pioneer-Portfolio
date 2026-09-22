@@ -55,6 +55,13 @@ public class EnemyPatrolState : EnemyBaseState
             return;
         }
 
+        // 플레이어가 없을 때만 횃불을 노린다. 횃불도 같은 Chase 상태로 쫓아가 끈다.
+        if (enemy.TryDetectTorch())
+        {
+            stateMachine.ChangeState<EnemyChaseState>();
+            return;
+        }
+
         if (!hasRoute)
         {
             enemy.MoveEnemy(Vector3.zero);

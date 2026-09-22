@@ -57,7 +57,7 @@ MonoBehaviour:
   currentHealth: 100
   moveSpeed: 2
   turnSpeed: 540
-  detectionRadius: 7
+  detectionRadius: 5
   attackRange: 1.5
   attackCooldown: 2
   attackDamage: 35
@@ -69,6 +69,7 @@ MonoBehaviour:
     m_Bits: 64
   spawnPosition: {x: 0, y: 0, z: 0}
   spawnCell: {x: 0, y: 0}
+  spawnRotation: {x: 0, y: 0, z: 0, w: 0}
   target: {fileID: 0}
   lastAttackTime: -999
   viewAngle: 60

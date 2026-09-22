@@ -18,7 +18,7 @@ public class EnemyAlertState : EnemyBaseState
         if (enemy.target != null)
         {
             enemy.Mover.SetDestination(
-                LocationGrid.WorldToCell(enemy.target.position), false, enemy.moveSpeed, enemy.target, 0.25f);
+                enemy.target.ApproachCell, false, enemy.moveSpeed, enemy.target.Transform, 0.25f);
         }
     }
 
@@ -37,7 +37,8 @@ public class EnemyAlertState : EnemyBaseState
             return;
         }
 
-        PlayerController controller = enemy.target.GetComponentInParent<PlayerController>();
+        // 이 상태는 '달리는 플레이어'에게만 반응하므로 대상은 항상 플레이어여야 한다.
+        PlayerController controller = enemy.target as PlayerController;
         if (controller == null || !controller.isRunning)
         {
             enemy.target = null;
@@ -45,7 +46,7 @@ public class EnemyAlertState : EnemyBaseState
             return;
         }
 
-        enemy.FaceToward(enemy.target.position);
+        enemy.FaceToward(enemy.target.Transform.position);
     }
 
     public override void Exit()
