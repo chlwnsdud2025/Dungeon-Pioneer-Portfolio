@@ -2,10 +2,10 @@ using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(BoxCollider))]
-public class DungeonEntrance : MonoBehaviour
+public class DungeonEntrance : TransitionArrivalPoint
 {
     [Header("복귀 지점")]
-    [Tooltip("던전에서 나올 때 플레이어가 도착할 SpawnAnchor의 id.")]
+    [Tooltip("던전에서 나올 때 플레이어가 도착할 지점의 id. 도착 연출도 이 id로 이 입구를 찾습니다.")]
     [SerializeField] private string returnAnchorId = "DungeonExit";
     [Tooltip("해당 id의 SpawnAnchor를 배치하지 않았을 때 쓸 예비 거리. 입구 정면(+Z) 기준.")]
     [SerializeField] private float fallbackSpawnDistance = 2f;
@@ -14,12 +14,24 @@ public class DungeonEntrance : MonoBehaviour
     [SerializeField] private Vector3 triggerSize = new Vector3(0.85f, 0.85f, 0.2f);
     [SerializeField] private Vector3 triggerCenter = new Vector3(0f, 0f, 0.5f);
 
-    [Header("진입 연출")]
-    [Tooltip("걸어 들어가는 경로. 비우면 페이드만 합니다.")]
+    [Header("진입 / 복귀 연출")]
+    [Tooltip("걸어 들어가고 걸어 나오는 경로. 비우면 페이드만 합니다.")]
     [SerializeField] private TransitionPath transitionPath;
 
-    private bool hasLoaded;
-    private bool ignoreUntilExit; // 던전에서 막 나와 입구와 겹쳐 있을 때 즉시 재진입 방지
+    private BoxCollider trigger;
+    private bool isTraveling;
+
+    public override string ArrivalId => returnAnchorId;
+    public override TransitionPath ArrivalPath => transitionPath;
+
+    protected override Collider TriggerCollider
+    {
+        get
+        {
+            if (trigger == null) trigger = GetComponent<BoxCollider>();
+            return trigger;
+        }
+    }
 
     private void Reset()
     {
@@ -54,13 +66,6 @@ public class DungeonEntrance : MonoBehaviour
         SpawnAnchor.RegisterFallback(returnAnchorId, spawnPosition, Quaternion.LookRotation(direction, Vector3.up));
     }
 
-    private void Start()
-    {
-        // 씬이 새로 로드되면서 hasLoaded가 초기화되므로, 도착 지점이 트리거와 겹쳐 있으면
-        // 나오자마자 그대로 다시 들어가버립니다. 한 번 벗어나기 전까지는 무시합니다.
-        ignoreUntilExit = IsPlayerOverlapping();
-    }
-
     private void OnValidate()
     {
         ApplyTrigger();
@@ -79,12 +84,12 @@ public class DungeonEntrance : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (hasLoaded || ignoreUntilExit) return;
+        if (isTraveling || ignoreUntilExit) return;
         if (!IsPlayer(other)) return;
 
-        hasLoaded = true;
+        isTraveling = true;
 
-        // 나올 때 어느 지역의 어느 앵커로 돌아올지 기억해둡니다.
+        // 나올 때 어느 지역의 어느 입구로 돌아올지 기억해둡니다.
         WorldManager.RememberReturn(returnAnchorId);
 
         // 던전 안에서의 스폰 좌표는 DungeonManager가 층 구조를 보고 직접 계산하므로 앵커는 넘기지 않습니다.
@@ -94,42 +99,11 @@ public class DungeonEntrance : MonoBehaviour
     private IEnumerator EnterDungeon()
     {
         yield return TransitionMotion.Depart(transitionPath);
-        WorldManager.Travel(new LocationId(LocationType.Dungeon), null);
-    }
 
-    private void OnTriggerExit(Collider other)
-    {
-        if (IsPlayer(other)) ignoreUntilExit = false;
-    }
+        if (WorldManager.Travel(new LocationId(LocationType.Dungeon), null)) yield break;
 
-    /// <summary>지금 이 트리거 안에 플레이어가 들어와 있는지 확인합니다.</summary>
-    private bool IsPlayerOverlapping()
-    {
-        BoxCollider col = GetComponent<BoxCollider>();
-        if (col == null) return false;
-
-        Collider[] hits = Physics.OverlapBox(
-            transform.TransformPoint(col.center),
-            Vector3.Scale(col.size, transform.lossyScale) * 0.5f,
-            transform.rotation,
-            ~0,
-            QueryTriggerInteraction.Ignore);
-
-        foreach (Collider hit in hits)
-        {
-            if (IsPlayer(hit)) return true;
-        }
-
-        return false;
-    }
-
-    private static bool IsPlayer(Collider other)
-    {
-        if (other == null) return false;
-        if (other.CompareTag("Player")) return true;
-
-        // CharacterController / 자식 콜라이더가 다른 태그를 가질 때 대비
-        Transform root = other.transform.root;
-        return root != null && root.CompareTag("Player");
+        // 이동에 실패했으면 까만 화면에 갇히지 않도록 입구 밖으로 도로 걸어 나옵니다.
+        isTraveling = false;
+        yield return WalkOutRoutine();
     }
 }

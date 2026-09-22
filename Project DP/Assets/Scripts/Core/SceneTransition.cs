@@ -15,12 +15,12 @@ public static class SceneTransition
     /// (던전 씬처럼 그 씬의 매니저가 직접 배치하는 경우).
     /// </param>
     /// <param name="revive">사망 후 복귀라 도착 시 체력을 최대치로 되돌려야 하면 true.</param>
-    public static void Go(string sceneName, string anchorId, bool revive = false)
+    public static bool Go(string sceneName, string anchorId, bool revive = false)
     {
         if (string.IsNullOrEmpty(sceneName))
         {
             Debug.LogError("[SceneTransition] 로드할 씬 이름이 비어 있습니다.");
-            return;
+            return false;
         }
 
         pendingAnchorId = anchorId;
@@ -31,6 +31,7 @@ public static class SceneTransition
         if (PlayerManager.Instance != null) PlayerManager.Instance.PrepareForSceneChange();
 
         SceneManager.LoadScene(sceneName);
+        return true;
     }
 
     /// <summary>도착 씬에서 한 번만 읽어갑니다. (읽고 나면 비워짐)</summary>

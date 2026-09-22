@@ -13,8 +13,8 @@ public static class WorldManager
     private static LocationId returnLocation = new LocationId(LocationType.Overworld);
     private static string returnAnchorId = "DungeonExit";
 
-    // 다음 씬에서 걸어 나올 포탈. 그 포탈이 Start에서 가져가며, 아무도 가져가지 않으면 경고합니다.
-    private static string pendingArrivalPortalId;
+    // 다음 씬에서 걸어 나올 도착 지점. 그 지점이 Start에서 가져가며, 아무도 가져가지 않으면 경고합니다.
+    private static string pendingArrivalId;
 
     private static readonly LocationRegionProvider regionProvider = new LocationRegionProvider();
 
@@ -50,69 +50,74 @@ public static class WorldManager
 
     // ── 이동 ────────────────────────────────────────────────
 
-    public static void Travel(LocationId destination, string arrivalAnchorId, bool revive = false)
+    public static bool Travel(LocationId destination, string arrivalAnchorId, bool revive = false)
     {
         if (Table == null || !Table.TryGetScene(destination, out string sceneName))
         {
             Debug.LogError($"[WorldManager] LocationTable에 {destination}이(가) 등록되어 있지 않습니다.");
-            return;
+            return false;
         }
 
         // 같은 씬 안의 지역이면 씬을 다시 로드하지 않고 앵커로만 옮긴다.
         if (sceneName == SceneManager.GetActiveScene().name && !string.IsNullOrEmpty(arrivalAnchorId))
         {
-            if (PlayerManager.Instance != null && PlayerManager.Instance.PlaceAtAnchor(arrivalAnchorId))
-            {
-                Current = destination;
-                ApplyRegion(destination);
-            }
-            return;
+            if (PlayerManager.Instance == null || !PlayerManager.Instance.PlaceAtAnchor(arrivalAnchorId))
+                return false;
+
+            Current = destination;
+            ApplyRegion(destination);
+            return true;
         }
 
-        SceneTransition.Go(sceneName, arrivalAnchorId, revive);
+        return SceneTransition.Go(sceneName, arrivalAnchorId, revive);
     }
 
     /// <summary>
-    /// 도착 지역의 특정 포탈로 걸어 나오며 이동합니다. 플레이어 배치와 도착 연출은 그 포탈이 맡습니다.
+    /// 도착 지역의 특정 지점(포탈 / 던전 입구)으로 걸어 나오며 이동합니다.
+    /// 플레이어 배치와 도착 연출은 그 지점이 맡습니다.
     /// </summary>
-    public static void TravelToPortal(LocationId destination, string arrivalPortalId)
+    public static bool TravelToArrival(LocationId destination, string arrivalId)
     {
-        if (string.IsNullOrEmpty(arrivalPortalId))
+        if (string.IsNullOrEmpty(arrivalId))
         {
-            Debug.LogError($"[WorldManager] {destination}으로 갈 도착 포탈 id가 비어 있습니다.");
-            return;
+            Debug.LogError($"[WorldManager] {destination}으로 갈 도착 지점 id가 비어 있습니다.");
+            return false;
         }
 
-        // 같은 씬이면 씬을 다시 로드하지 않고 그 포탈에서 바로 나온다.
+        // 같은 씬이면 씬을 다시 로드하지 않고 그 지점에서 바로 나온다.
         if (Table != null && Table.TryGetScene(destination, out string sceneName)
             && sceneName == SceneManager.GetActiveScene().name)
         {
-            LocationPortal portal = LocationPortal.Find(arrivalPortalId);
-            if (portal == null)
+            TransitionArrivalPoint point = TransitionArrivalPoint.Find(arrivalId);
+            if (point == null)
             {
-                Debug.LogError($"[WorldManager] 현재 씬에서 포탈 '{arrivalPortalId}'을(를) 찾지 못했습니다.");
-                return;
+                Debug.LogError($"[WorldManager] 현재 씬에서 도착 지점 '{arrivalId}'을(를) 찾지 못했습니다.");
+                return false;
             }
 
             Current = destination;
             ApplyRegion(destination);
-            portal.StartCoroutine(portal.ArriveRoutine());
-            return;
+            point.StartCoroutine(point.ArriveRoutine());
+            return true;
         }
 
-        pendingArrivalPortalId = arrivalPortalId;
-        Travel(destination, null);
+        pendingArrivalId = arrivalId;
+        if (Travel(destination, null)) return true;
+
+        pendingArrivalId = null;
+        return false;
     }
 
     /// <summary>
-    /// 이 포탈이 이번 도착의 주인인지 확인하고, 맞으면 요청을 소비합니다. (LocationPortal.Start에서 호출)
+    /// 이 지점이 이번 도착의 주인인지 확인하고, 맞으면 요청을 소비합니다.
+    /// (TransitionArrivalPoint.Start에서 호출)
     /// </summary>
-    public static bool TryConsumeArrival(string portalId)
+    public static bool TryConsumeArrival(string arrivalId)
     {
-        if (string.IsNullOrEmpty(pendingArrivalPortalId)) return false;
-        if (pendingArrivalPortalId != portalId) return false;
+        if (string.IsNullOrEmpty(pendingArrivalId)) return false;
+        if (pendingArrivalId != arrivalId) return false;
 
-        pendingArrivalPortalId = null;
+        pendingArrivalId = null;
         return true;
     }
 
@@ -123,9 +128,18 @@ public static class WorldManager
         if (!string.IsNullOrEmpty(anchorId)) returnAnchorId = anchorId;
     }
 
-    public static void TravelBack(bool revive = false)
+    public static bool TravelBack(bool revive = false)
     {
-        Travel(returnLocation, returnAnchorId, revive);
+        return Travel(returnLocation, returnAnchorId, revive);
+    }
+
+    /// <summary>
+    /// 기억해둔 입구로 걸어 나오며 복귀합니다. 그 입구를 찾지 못하면 false를 돌려주므로,
+    /// 호출한 쪽이 앵커 복귀(TravelBack)로 물러설 수 있습니다.
+    /// </summary>
+    public static bool TravelBackThroughEntrance()
+    {
+        return TravelToArrival(returnLocation, returnAnchorId);
     }
 
     // ── 씬 도착 처리 ───────────────────────────────────────
@@ -146,23 +160,27 @@ public static class WorldManager
         }
 
         ShowSceneUIAsync(scene).Forget();
-        WarnIfArrivalPortalMissingAsync(scene).Forget();
+        WarnIfArrivalMissingAsync(scene).Forget();
     }
 
-    // 포탈 id가 틀리면 아무도 플레이어를 배치하지 않아 화면이 까만 채로 멈춥니다. 그 경우를 잡아 알립니다.
-    private static async UniTaskVoid WarnIfArrivalPortalMissingAsync(Scene scene)
+    // 도착 지점 id가 틀리면 아무도 플레이어를 배치하지 않아 화면이 까만 채로 멈춥니다. 그 경우를 잡아 알립니다.
+    private static async UniTaskVoid WarnIfArrivalMissingAsync(Scene scene)
     {
-        if (string.IsNullOrEmpty(pendingArrivalPortalId)) return;
+        if (string.IsNullOrEmpty(pendingArrivalId)) return;
 
-        string requested = pendingArrivalPortalId;
+        string requested = pendingArrivalId;
         await UniTask.Yield();   // 모든 오브젝트의 Start가 끝난 뒤 판정
         await UniTask.Yield();
 
-        if (pendingArrivalPortalId != requested) return;   // 포탈이 정상적으로 가져갔다
-        pendingArrivalPortalId = null;
+        if (pendingArrivalId != requested) return;   // 도착 지점이 정상적으로 가져갔다
+        pendingArrivalId = null;
 
-        Debug.LogError($"[WorldManager] '{scene.name}' 씬에 도착 포탈 '{requested}'이(가) 없습니다. " +
-                       "포탈의 Portal Id와 상대 포탈의 Arrival Portal Id가 같은지 확인하세요.");
+        Debug.LogError($"[WorldManager] '{scene.name}' 씬에 도착 지점 '{requested}'이(가) 없습니다. " +
+                       "포탈의 Portal Id / 던전 입구의 Return Anchor Id가 상대편이 지목한 id와 같은지 확인하세요.");
+
+        // 플레이어가 꺼진 채로 남아 있으면 화면만 밝아지고 아무것도 조작할 수 없습니다.
+        if (PlayerManager.Instance != null && !PlayerManager.Instance.PlaceAtAnchor(requested))
+            Debug.LogError($"[WorldManager] 예비로 쓸 SpawnAnchor '{requested}'도 없습니다.");
 
         ScreenFader.Instance.StartCoroutine(ScreenFader.Instance.FadeTo(0f, 0.4f));
     }

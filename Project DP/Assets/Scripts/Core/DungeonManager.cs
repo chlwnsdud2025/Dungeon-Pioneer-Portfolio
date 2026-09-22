@@ -135,8 +135,15 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     {
         isTransitioning = true;
         yield return DepartFromStair(source);
+
+        // 씬이 언로드되면 층 인스턴스가 전부 파괴되므로, 나가기 직전에 상호작용 기록을 챙긴다.
+        CaptureAllMapStates();
+
+        // 들어올 때 쓴 던전 입구로 걸어 나옵니다. 그 입구를 찾지 못하면 앵커 복귀로 물러섭니다.
+        if (WorldManager.TravelBackThroughEntrance()) yield break;
+
         ScreenFader.Instance.RevealAfterNextSceneLoad(source != null ? source.Path.fadeDuration : 0.4f);
-        LoadOverworldScene(revive: false);
+        WorldManager.TravelBack(revive: false);
     }
 
     private IEnumerator DepartFromStair(StairTile stair)
