@@ -25,10 +25,6 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     [Tooltip("플레이어 사망 후 사망 모션을 보여주고 오버월드로 돌아가기까지의 대기 시간(초).")]
     public float deathReturnDelay = 3f;
 
-    [Header("계단 전환")]
-    [Min(0f), SerializeField] private float stairFadeDuration = 0.4f;
-    [Min(0.01f), SerializeField] private float stairMoveSpeed = 4f;
-
     [Header("Player Graves")]
     [Tooltip("사망 위치에 랜덤으로 설치할 묘비 프리팹.")]
     public GameObject gravePrefabA;
@@ -139,48 +135,20 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
     {
         isTransitioning = true;
         yield return DepartFromStair(source);
-        ScreenFader.Instance.RevealAfterNextSceneLoad(stairFadeDuration);
+        ScreenFader.Instance.RevealAfterNextSceneLoad(source != null ? source.Path.fadeDuration : 0.4f);
         LoadOverworldScene(revive: false);
     }
 
     private IEnumerator DepartFromStair(StairTile stair)
     {
-        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
-        if (player == null || stair == null)
-        {
-            yield return ScreenFader.Instance.FadeTo(1f, stairFadeDuration);
-            yield break;
-        }
-
-        StairTransitionState_Player motion = player.StairTransitionState;
-        motion.Begin(new[] { stair.FootPoint, stair.HiddenPoint }, stairMoveSpeed);
-        yield return new WaitUntil(() => motion.ReachedFoot || motion.IsFinished);
-        StartCoroutine(ScreenFader.Instance.FadeTo(1f, stairFadeDuration));
-        yield return new WaitUntil(() => motion.IsFinished && ScreenFader.Instance.IsOpaque);
+        yield return TransitionMotion.Depart(stair != null ? stair.Path : null);
     }
 
     private IEnumerator ArriveAtStair(StairTile stair)
     {
-        PlayerController player = PlayerManager.Instance != null ? PlayerManager.Instance.Controller : null;
-        if (player != null && stair != null)
-        {
-            blockedArrivalStair = stair;
-            StairTransitionState_Player motion = player.StairTransitionState;
-            motion.Begin(new[] { stair.FootPoint, stair.FrontPoint }, stairMoveSpeed);
-            yield return new WaitUntil(() => motion.ReachedFoot || motion.IsFinished);
-            CameraFollow follow = Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
-            if (follow != null) follow.SnapToTarget();
-            StartCoroutine(ScreenFader.Instance.FadeTo(0f, stairFadeDuration));
-            yield return new WaitUntil(() => motion.IsFinished && ScreenFader.Instance.IsClear);
-            player.stateMachine.ChangeState<IdleState_Player>();
-        }
-        else
-        {
-            yield return null;
-            yield return ScreenFader.Instance.FadeTo(0f, stairFadeDuration);
-            if (player != null && player.stateMachine.CurrentState is StairTransitionState_Player)
-                player.stateMachine.ChangeState<IdleState_Player>();
-        }
+        if (stair != null) blockedArrivalStair = stair;
+
+        yield return TransitionMotion.Arrive(stair != null ? stair.Path : null);
         isTransitioning = false;
     }
 
@@ -602,7 +570,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
                 stair = null;
                 spawnPosition = GetFallbackSpawn(root, spawnPoint.position);
             }
-            else spawnPosition = arriveInside ? stair.HiddenPoint : stair.FrontPoint;
+            else spawnPosition = arriveInside ? stair.Path.InsidePosition : stair.Path.OutsidePosition;
         }
         else
         {
