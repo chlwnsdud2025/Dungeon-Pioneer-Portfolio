@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>인벤토리를 uGUI로 그리는 뷰. Inventory.OnChanged를 구독해 바뀔 때마다 다시 그린다.</summary>
 public class InventoryGridView : MonoBehaviour
 {
     [Header("참조")]

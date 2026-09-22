@@ -1,13 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 적 머리 위에 떠서 체력을 표시하는 바.
-/// 적 프리팹의 자식(월드 스페이스 Canvas)으로 두고, localPosition을 머리 위 높이만큼 올려둡니다.
-/// 카메라 정렬은 같은 오브젝트의 Billboard가 담당하고, 이 스크립트는 체력만 반영합니다.
-///
-/// 체력은 EnemyController에서 매 프레임 폴링합니다. (별도 이벤트 없이도 즉시 반영)
-/// </summary>
 public class EnemyHealthBar : MonoBehaviour
 {
     [Tooltip("비우면 부모 계층에서 EnemyController를 자동으로 찾습니다.")]

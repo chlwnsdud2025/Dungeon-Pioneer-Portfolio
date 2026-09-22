@@ -1,18 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 무기 프리팹에 붙는 타격 판정 콜라이더.
-/// 평소에는 꺼져 있고, 공격 모션의 타격 구간에만 켜집니다(AttackState_Player가 Begin/End 호출).
-///
-/// ★ Rigidbody가 필요한 이유: 트리거 이벤트는 두 콜라이더 중 최소 하나에 Rigidbody가 있어야 발생합니다.
-///   히트박스는 플레이어의 자식이라 Rigidbody가 없으면 PhysX가 '정적 콜라이더'로 취급하고,
-///   정적 트리거가 가만히 서 있는 적을 지나갈 때는 enter 이벤트가 안정적으로 발생하지 않습니다
-///   (= 검을 휘둘러도 안 맞는 증상). isKinematic이라 플레이어 이동에는 영향이 없습니다.
-///
-/// 데미지와 대상 레이어는 휘두르는 쪽이 넘겨주므로 무기 프리팹에는 따로 설정할 값이 없습니다.
-/// 그래서 검 여러 자루에 같은 수치를 맞춰둘 필요가 없고, 나중에 적이 무기를 들어도 그대로 재사용됩니다.
-/// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class WeaponHitbox : MonoBehaviour
 {

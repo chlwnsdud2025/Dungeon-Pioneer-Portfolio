@@ -3,15 +3,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// 퀵슬롯 한 칸. 등록된 소모품의 아이콘과 '인벤토리 재고' 개수를 표시합니다.
-///  · 인벤토리 아이템을 이 칸에 드롭 → 등록 (소모품만)
-///  · 이 칸을 인벤토리로 끌어다 놓기 → 등록 해제
-///  · 좌클릭 → 사용, 우클릭 → 등록 해제
-///
-/// 아이콘은 그리드용 icon이 아니라 1칸용 ItemData.SlotIcon을 씁니다.
-/// (icon은 gridSize에 맞춰 그린 그림이라 정사각형 칸에서는 비율이 맞지 않습니다)
-/// </summary>
 public class UIQuickSlotView : MonoBehaviour,
     IDropHandler, IPointerClickHandler,
     IBeginDragHandler, IDragHandler, IEndDragHandler, ISlotDragSource

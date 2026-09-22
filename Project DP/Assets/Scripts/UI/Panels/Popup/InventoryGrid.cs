@@ -2,12 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 그리드 인벤토리의 '데이터/규칙'만 담당하는 순수 로직 클래스 (UI 없음).
-/// - cells[,] : 각 칸을 어떤 아이템이 점유했는지 (빠른 조회/판정용)
-/// - items    : 배치된 아이템 목록 (순회용)
-/// 바뀔 때마다 OnChanged를 쏴서, UI(View)가 알아서 다시 그리게 함.
-/// </summary>
 public class InventoryGrid
 {
     public int Width { get; }

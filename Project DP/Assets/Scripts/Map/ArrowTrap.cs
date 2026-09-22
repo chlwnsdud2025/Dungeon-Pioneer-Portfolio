@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// '화살 발사 함정'. PressurePlate(발판)가 밟히면 Fire()가 호출되어,
-// 오브젝트 풀에서 화살을 꺼내 이 오브젝트의 정면(z축 앞쪽, transform.forward)으로 직선 발사합니다.
-// 발사 방향은 맵 제작 시 이 오브젝트를 회전시켜 조절합니다.
-// (RollingRockTrap과 동일한 풀 구조이며, 타이머 대신 발판 신호로 발사한다는 점만 다릅니다.)
 public class ArrowTrap : MonoBehaviour
 {
     [Header("Arrow")]

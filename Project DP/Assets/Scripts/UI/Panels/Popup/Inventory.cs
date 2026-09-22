@@ -1,10 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// 인벤토리의 '외부 창구'(MonoBehaviour). 순수 모델(InventoryGrid)을 소유하고,
-/// 게임플레이가 쓰기 좋은 API(획득/사용/이동/조회)와 상위 이벤트를 제공한다.
-/// </summary>
 public class Inventory : MonoBehaviour
 {
     [Header("그리드 크기 (칸)")]

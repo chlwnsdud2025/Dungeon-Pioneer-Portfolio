@@ -1,25 +1,6 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// 오버월드 씬에 두는 "던전 입구" 트리거.
-/// 플레이어가 이 콜라이더에 닿으면 던전 씬을 로드합니다.
-///
-/// 던전 씬은 로드되는 순간 DungeonManager.Start() → StartRun()이 돌면서 1층을 새로 생성하므로,
-/// 오버월드에서 들어올 때마다 항상 새 런(초기화된 던전)으로 시작됩니다.
-/// (플레이어의 체력·장비·인벤토리는 PlayerManager가 전역으로 유지하므로 그대로 이어집니다)
-///
-/// 나올 때는 returnAnchorId에 적힌 SpawnAnchor 위치로 되돌아옵니다. 들어가기 직전에 그 id를
-/// SceneTransition에 기록해두므로, 나중에 던전 입구가 여러 개가 되어도 들어간 문 앞으로 정확히 나옵니다.
-///
-/// ★ 사용법:
-///   DungeonEntrance (루트, 비주얼)
-///   ├── EntranceTrigger  ← 이 스크립트 + BoxCollider(IsTrigger)
-///   └── Blocker          ← DungeonEntranceBlocker (Open Side / Opening Size를 입구 면에 맞출 것)
-///   플레이어 오브젝트의 Tag는 "Player"여야 합니다.
-///   dungeonSceneName에 적은 씬은 File > Build Settings의 Scenes In Build에 등록돼 있어야 합니다.
-///   returnAnchorId와 같은 id의 SpawnAnchor를 입구 앞(트리거 바깥)에 하나 배치해주세요.
-/// </summary>
 [RequireComponent(typeof(BoxCollider))]
 public class DungeonEntrance : MonoBehaviour
 {

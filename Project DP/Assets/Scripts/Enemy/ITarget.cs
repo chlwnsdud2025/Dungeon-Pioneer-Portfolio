@@ -1,12 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 적이 "쫓아가서 때릴 수 있는 것"(플레이어, 횃불 …)의 공통 인터페이스.
-///
-/// 적의 상태 머신은 '무엇을 하는가'(추격/공격)만 알고 '누구를'은 이 인터페이스로 받습니다.
-/// 그래서 대상이 늘어도 Chase/Attack 상태를 복제하지 않고, 각 대상이 자기가 어디에 있고
-/// 어떻게 접근해야 하는지를 스스로 알려줍니다. 때릴 수 있어야 하므로 IDamageable을 포함합니다.
-/// </summary>
 public interface ITarget : IDamageable
 {
     Transform Transform { get; }

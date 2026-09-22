@@ -2,11 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 플레이어의 장비 슬롯(Helmet, Armor, Weapon, Shield)을 관리하는 모델.
-/// 장착/해제 시 PlayerStat의 보너스 스탯을 재계산한다.
-/// Inventory는 UI 프리팹에 있으므로 Init()으로 런타임 바인딩한다.
-/// </summary>
 public class EquipmentHolder : MonoBehaviour
 {
     [SerializeField] private PlayerStat stat;   // 같은 Player 오브젝트 — 인스펙터 연결

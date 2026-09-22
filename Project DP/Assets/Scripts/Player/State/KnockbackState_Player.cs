@@ -1,13 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// RollingRock 등에 부딪혔을 때 진입하는 넉백(넘어짐) 상태.
-///  - 넘어지는 애니메이션("Knockback")을 재생하고
-///  - 부딪힌 반대 방향으로 정해진 '거리'(player.knockbackDistance)만큼 감속하며 밀려나고
-///  - 정해진 '시간'(player.knockbackTime = 넘어져 있는 시간) 동안 무적이며, 그 시간이 지나면 일어나 Idle로 복귀합니다.
-///
-/// 진입은 PlayerController.ApplyKnockback()을 통해서만 이뤄지며, 밀림 방향은 player.knockbackDirection로 전달됩니다.
-/// </summary>
 public class KnockbackState_Player : PlayerBaseState
 {
     private readonly int knockbackAnimHash = Animator.StringToHash("Knockback"); // 넘어지는 애니메이션

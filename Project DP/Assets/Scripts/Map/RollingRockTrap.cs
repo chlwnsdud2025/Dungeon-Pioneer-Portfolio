@@ -1,9 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// '돌 굴리는 함정' 타일. 일정 간격(spawnInterval)으로 오브젝트 풀에서 돌을 꺼내
-// 이 타일의 정면(z축 앞쪽, transform.forward)으로 직선으로 굴립니다.
-// 굴러가는 방향은 맵 제작 시 이 타일을 회전시켜 조절합니다.
 public class RollingRockTrap : MonoBehaviour
 {
     [Header("Rock")]

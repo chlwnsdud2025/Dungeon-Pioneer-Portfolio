@@ -2,12 +2,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// 장비 패널의 슬롯 하나. 장착된 아이템 아이콘을 표시하고 아래 세 가지 조작을 받는다.
-///  · 인벤토리 아이템을 여기에 드롭 → 장착 (아이템의 Slot이 이 칸과 일치할 때만)
-///  · 이 칸을 인벤토리로 끌어다 놓기 → 해제
-///  · 우클릭 → 해제
-/// </summary>
 public class UIEquipSlotView : MonoBehaviour,
     IPointerClickHandler, IDropHandler,
     IBeginDragHandler, IDragHandler, IEndDragHandler, ISlotDragSource

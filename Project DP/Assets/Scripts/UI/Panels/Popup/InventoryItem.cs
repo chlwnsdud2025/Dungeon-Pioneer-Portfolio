@@ -1,11 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 인벤토리에 실제로 배치된 아이템 한 덩어리(스택).
-/// ItemData(정의) + 개수 + 위치를 들고 있는 '런타임 인스턴스'.
-/// MonoBehaviour/SO가 아니라 순수 클래스 → 가볍고 테스트하기 쉬움.
-/// </summary>
 public class InventoryItem
 {
     public ItemData Data { get; }         // 어떤 아이템인지 (정의)

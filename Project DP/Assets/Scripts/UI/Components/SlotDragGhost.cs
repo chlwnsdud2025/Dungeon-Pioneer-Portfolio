@@ -1,14 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 장비칸·퀵슬롯을 끌 때 커서를 따라다니는 아이콘.
-///
-/// 인벤토리 아이템은 실제 아이콘 오브젝트를 DragLayer로 옮겨서 끌지만(InventoryItemView),
-/// 슬롯은 제자리에 남아 있어야 하므로 별도의 표시가 필요합니다. 동시에 두 칸을 끌 수는 없어
-/// 루트 Canvas 아래에 Image 하나를 만들어 재사용합니다.
-/// (InventoryGridView가 하이라이트 사각형을 풀링해 쓰는 것과 같은 방식)
-/// </summary>
 public static class SlotDragGhost
 {
     private static Image _image;

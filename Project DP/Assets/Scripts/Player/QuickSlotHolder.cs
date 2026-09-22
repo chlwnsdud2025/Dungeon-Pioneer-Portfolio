@@ -1,19 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// 플레이어의 퀵슬롯(단축키 1~4)을 관리하는 모델. Player 오브젝트에 부착한다.
-///
-/// ★ 슬롯은 아이템 스택을 '소유'하지 않고 ItemData 참조만 기억합니다(재고 공유 방식).
-///   사용하면 인벤토리 재고에서 1개가 빠지므로,
-///    - 등록해도 인벤토리에서 물약이 사라지지 않고
-///    - 나중에 주운 물약이 자동으로 개수에 합산되며
-///    - 스택을 옮기거나 버려도 참조가 깨지지 않습니다.
-///   (장비는 EquipmentHolder가 '소유' 방식입니다. 착용 중인 검은 인벤토리에 없어야 하니까요)
-///
-/// Inventory는 UI 프리팹에 있으므로 EquipmentHolder처럼 Init()으로 런타임 바인딩합니다.
-/// 바인딩은 항상 살아 있는 UIInGameHUD가 담당합니다 — 인벤토리를 한 번도 열지 않아도 단축키가 동작해야 하므로.
-/// </summary>
 public class QuickSlotHolder : MonoBehaviour
 {
     /// <summary>퀵슬롯 개수. 단축키 1~4와 1:1 대응됩니다.</summary>

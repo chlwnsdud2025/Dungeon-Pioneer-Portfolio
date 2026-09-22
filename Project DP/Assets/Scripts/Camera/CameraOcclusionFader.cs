@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 카메라와 플레이어 사이를 가리는 벽을 찾아, 디더로 부드럽게 뚫어 보이게 한다.
-/// 벽마다 FadeableWall을 붙여 _DitherFade를 0(불투명)↔occludedFade(뚫림)로 보간시킨다.
-/// </summary>
 [RequireComponent(typeof(Camera))]
 public class CameraOcclusionFader : MonoBehaviour
 {

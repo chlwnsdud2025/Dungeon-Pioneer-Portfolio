@@ -1,12 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 장비 장착/해제 시 3D 모델을 교체하는 비주얼 컴포넌트.
-///  · 무기/방패 → handslot에 프리팹 Instantiate/Destroy
-///  · 헬멧     → Head SkinnedMeshRenderer 메시+머티리얼 교체, 악세사리 on/off
-///  · 갑옷     → Body/Arm/Leg SkinnedMeshRenderer 메시+머티리얼 교체
-/// Player 오브젝트에 부착한다.
-/// </summary>
 public class EquipmentVisualizer : MonoBehaviour
 {
     // ── 무기/방패 (Instantiate 방식) ──

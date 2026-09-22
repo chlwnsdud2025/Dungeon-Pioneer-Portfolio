@@ -1,14 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// 플레이어의 돈(골드)만 관리하는 컴포넌트.
-/// PlayerStat이 체력을 들고 있듯, 지갑도 전역 상주(DontDestroyOnLoad)인 Player 오브젝트의
-/// 컴포넌트 상태로 존재해 씬을 넘어도 잔액이 유지된다.
-///
-/// 돈이 오가는 경로(상자 보상, 상점 결제 등)는 전부 AddGold/TrySpendGold로 모은다.
-/// gold 필드를 직접 건드리는 코드가 없어야 OnGoldChanged가 항상 정확히 발화한다.
-/// </summary>
 public class PlayerWallet : MonoBehaviour
 {
     [Header("골드")]

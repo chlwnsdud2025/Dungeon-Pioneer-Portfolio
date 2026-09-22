@@ -1,11 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 공격 모션을 한 번 재생하고, 타격 시점에 전방 히트박스 안의 IDamageable을 때립니다.
-/// 무엇을 맞힐지는 EnemyController.AttackTargetMask(플레이어 + 횃불)가 정하고, 맞은 쪽이 피해를
-/// 어떻게 해석할지(체력/남은 시간)는 각자의 TakeDamage가 정합니다.
-/// </summary>
 public class EnemyAttackState : EnemyBaseState
 {
     private readonly int attackAnimHash = Animator.StringToHash("Attack");

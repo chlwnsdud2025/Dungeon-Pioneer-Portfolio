@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 장비 패널 뷰. 4개의 UIEquipSlotView를 관리하고,
-/// EquipmentHolder.OnEquipmentChanged를 구독해 자동 갱신한다.
-/// </summary>
 public class UIEquipPanel : MonoBehaviour
 {
     [SerializeField] private UIEquipSlotView helmetSlot;

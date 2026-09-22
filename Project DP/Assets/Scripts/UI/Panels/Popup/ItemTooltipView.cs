@@ -2,11 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// 아이템 호버 시 이름/설명/스탯을 보여주는 툴팁.
-/// 인벤토리 프리팹 안에 하나만 두고, static Instance로 접근한다.
-/// InventoryItemView의 IPointerEnter/Exit/MoveHandler가 호출한다.
-/// </summary>
 public class ItemTooltipView : MonoBehaviour
 {
     [Header("아이콘")]

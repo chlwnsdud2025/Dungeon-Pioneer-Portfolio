@@ -1,11 +1,5 @@
 using UnityEngine;
 
-// 벽 타일에 부착하는 전용 함정. (WallObject와 같은 GameObject에 함께 부착)
-// 플레이어가 이 벽에 '횃불 설치' 상호작용을 하면 PlaceTorchState_Player.SpawnTorchOnWall()에서
-// Activate()가 호출되어, 재활용한 가시(Spike) 오브젝트가 바닥 함정(TrapTile)과 똑같이
-// Y축으로 빠르게 올라왔다가(0) 천천히 내려갑니다(-1.7).
-// 데미지는 지정한 트리거 콜라이더(damageTrigger)를 가시가 올라와 있는 동안에만 켜서 판정합니다.
-// 이때 횃불은 소모되지만(개수 차감) 벽에는 설치되지 않습니다.
 public class WallTrap : MonoBehaviour
 {
     [Header("Spike (재활용하는 가시 오브젝트)")]

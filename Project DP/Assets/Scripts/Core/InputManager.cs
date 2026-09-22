@@ -2,13 +2,6 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// 프로젝트 전역 입력 소유자. PlayerInputActions 인스턴스를 '단 하나' 만들어 들고,
-/// 다른 스크립트는 각자 new 하지 않고 이걸 가져다 씁니다.
-///  - Player : 이동/공격 등 게임플레이 (PlayerControll 맵)
-///  - UI     : 인벤토리 토글 등 (UIControll 맵)
-/// 전역 상주(MonoSingleton)라 씬을 넘어도 유지됩니다.
-/// </summary>
 public class InputManager : MonoSingleton<InputManager>
 {
     public PlayerInputActions Actions { get; private set; }

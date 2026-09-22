@@ -1,7 +1,5 @@
 using UnityEngine;
 
-// 밟으면 연결된 ArrowTrap(들)을 발사시키는 발판.
-// 발판과 발사기를 분리했으므로 "발판은 바닥, 화살은 맞은편 벽에서" 같은 배치가 가능합니다.
 [RequireComponent(typeof(Collider))]
 public class PressurePlate : MonoBehaviour
 {

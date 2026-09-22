@@ -1,13 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// 씬 경계를 넘어 "어느 씬으로, 어느 도착 지점에, 부활한 채로 갈지"를 전달하는 전역 요청 상자.
-/// RegionState와 같은 결의 정적 상태 홀더입니다.
-///
-/// 씬 이동은 SceneManager.LoadScene을 직접 부르지 말고 항상 Go()를 통해 하세요.
-/// 전환 직전에 플레이어를 잠시 꺼두는 처리(낙하/트리거 오발동 방지)가 여기에 묶여 있습니다.
-/// </summary>
 public static class SceneTransition
 {
     private static string pendingAnchorId;

@@ -1,6 +1,5 @@
 using UnityEngine;
 
-/// <summary>입력을 받지 않고 Walk_Player를 재생하며 계단 경로를 따라 이동합니다.</summary>
 public class StairTransitionState_Player : PlayerBaseState
 {
     private static readonly int WalkHash = Animator.StringToHash("Walk_Player");

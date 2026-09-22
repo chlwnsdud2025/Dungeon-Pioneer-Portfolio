@@ -1,24 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 게임 전체(던전 맵, 이후 필드 맵 등)에서 공통으로 사용되는 "단 하나의" 타일 그리드 규칙을 정의하는 ScriptableObject.
-///
-/// ★ 기존 문제: MapGenerator(Unity Grid 컴포넌트), MapBuilder/MapBuilderEditor(public float tileSize),
-///   MinimapManager(public float tileSize)가 각자 따로 타일 크기를 들고 있어서
-///   한쪽 값만 바꾸면 나머지가 다 어긋났습니다.
-/// ★ 개선: 이제부터는 이 GridSystem 애셋 하나만 수정하면
-///   맵 생성 / 에디터 배치 / 미니맵 / 상호작용 판정이 전부 동기화됩니다.
-///
-/// ── 사용법 ──
-/// 1. 프로젝트에 "Resources" 라는 이름의 폴더를 만드세요. (예: Assets/Resources)
-/// 2. 유니티 메뉴 [Assets > Create > Dungeon > Grid System] 으로 애셋을 하나 생성하고,
-///    반드시 파일명을 "GridSystem" 으로 하여 Resources 폴더 안에 저장하세요.
-///    (예: Assets/Resources/GridSystem.asset)
-/// 3. 이후에는 코드 어디서든 GridSystem.Instance.TileSize 처럼 접근하면 됩니다.
-///    (씬에 오브젝트로 배치할 필요 없음, 인스펙터 참조 연결도 필요 없음)
-/// 4. 나중에 타일 크기를 3x3에서 다른 크기로 바꾸고 싶다면,
-///    이 애셋의 Tile Size 값 하나만 바꾸면 던전/에디터/미니맵이 전부 같이 바뀝니다.
-/// </summary>
 [CreateAssetMenu(fileName = "GridSystem", menuName = "Dungeon/Grid System", order = 0)]
 public class GridSystem : ScriptableObject
 {

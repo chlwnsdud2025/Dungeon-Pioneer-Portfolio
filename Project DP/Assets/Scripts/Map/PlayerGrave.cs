@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 플레이어 사망 시 설치되는 묘비. F키 상호작용으로 제거할 수 있습니다.
-/// DungeonManager가 런타임에 생성·복원하며, MapSnapshot.graves에 기록됩니다.
-/// </summary>
 public class PlayerGrave : MonoBehaviour, IInteractable
 {
     public enum Variant

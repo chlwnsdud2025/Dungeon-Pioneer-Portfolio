@@ -8,10 +8,6 @@ public enum DungeonEntranceOpenSide
     Left
 }
 
-/// <summary>
-/// 던전 입구 Blocker 자식에 붙입니다. 개구부가 있는 면을 제외한 5면을 BoxCollider로 막습니다.
-/// 인스펙터 값을 바꾸면 OnValidate()에서 벽 콜라이더가 자동 갱신됩니다.
-/// </summary>
 public class DungeonEntranceBlocker : MonoBehaviour
 {
     private const float MinWallSize = 0.001f;

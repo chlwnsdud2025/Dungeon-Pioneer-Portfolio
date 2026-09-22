@@ -2,17 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// 씬 안의 "도착 지점" 표식. 씬 경계를 넘어온 플레이어를 어디에 놓을지 id로 지정합니다.
-///
-/// 던전 '내부'의 층 간 이동은 기존대로 LocationRoot의 스폰 포인트(Entrance/Exit)를 사용하고,
-/// 이 컴포넌트는 '씬과 씬 사이' 이동에만 쓰입니다.
-///
-/// ★ 사용법: 씬에 빈 오브젝트를 만들고 이 컴포넌트를 붙인 뒤 id를 지정하세요.
-///   플레이어는 이 오브젝트의 position/rotation 그대로 배치되므로,
-///     - 트리거 콜라이더(던전 입구 등) '바깥'에 두고
-///     - 정면(파란 화살표)이 플레이어가 바라볼 방향이 되도록 회전을 맞춰주세요.
-/// </summary>
 public class SpawnAnchor : MonoBehaviour
 {
     [Tooltip("이 앵커를 찾을 때 쓰는 이름. 한 씬 안에서 겹치지 않게 지정하세요. (예: Start, DungeonExit)")]

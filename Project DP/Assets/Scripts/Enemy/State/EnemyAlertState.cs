@@ -1,8 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// FOV 밖에서 플레이어가 달려 접근했을 때, 플레이어 방향으로 회전하며 이동합니다.
-/// </summary>
 public class EnemyAlertState : EnemyBaseState
 {
     private readonly int chaseAnimHash = Animator.StringToHash("Chase");

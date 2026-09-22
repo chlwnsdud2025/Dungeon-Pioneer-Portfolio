@@ -1,10 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// GridSystem이 정의한 격자를 Scene 뷰에 기즈모로 그려주는 헬퍼.
-/// GridSystem은 ScriptableObject라 씬에 존재하지 않으므로, 격자를 '보려면' 이런 씬 오브젝트가 하나 필요합니다.
-/// 빈 GameObject에 붙이고 width/height만 맞춰주세요.
-/// </summary>
 public class GridVisualizer : MonoBehaviour
 {
     [Header("표시할 격자 범위 (칸 수)")]

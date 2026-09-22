@@ -2,19 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 미니맵 전체를 오브젝트 "하나"(RawImage + 단일 Texture2D)로 그리는 매니저.
-///
-/// ★ 장소(던전 층/마을/오버월드)별로 미니맵 상태를 분리 보관합니다 ★
-/// - WorldManager는 한 번 생성된 장소를 파괴하지 않고 SetActive로만 전환합니다. 그래서 미니맵도
-///   장소마다 별도의 텍스처/방문기록/엔티티 목록(LocationMinimapState)을 갖고 있다가, 그 장소로
-///   돌아오면 저장해둔 상태를 그대로 복원합니다 (탐색 흔적, 설치된 횃불, 적/상자 위치 전부 유지).
-/// - 좌표계: 프로젝트 공통 GridSystem을 그대로 사용 (던전 맵과 100% 동일한 격자 기준).
-/// - 안개(Fog) 규칙:
-///     1) 플레이어가 "밟고 지나간" 타일 → 이후 계속 회색(방문 흔적)으로 남음
-///     2) 실시간으로 밝혀지는 범위는 플레이어 중심의 "원형" 범위
-///     3) 횃불을 설치하면 미니맵에 아주 작은 점으로 표시되고, 횃불 주변도 원형으로 "영구히" 밝게 유지됨
-/// </summary>
 public class MinimapManager : MonoBehaviour
 {
     public static MinimapManager Instance;

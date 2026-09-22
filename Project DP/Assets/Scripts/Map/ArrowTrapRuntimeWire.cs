@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 맵이 인스턴스화된 뒤 PressurePlate와 ArrowTrap을 거리 기반으로 짝지어 연결합니다.
-/// (프리팹 간 수동 참조가 런타임에서 끊기는 문제를 방지)
-/// </summary>
 public static class ArrowTrapRuntimeWire
 {
     private const float MaxPairDistanceXZ = 16f;

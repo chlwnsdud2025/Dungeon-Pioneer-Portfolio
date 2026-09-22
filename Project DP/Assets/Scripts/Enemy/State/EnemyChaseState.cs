@@ -1,17 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 대상(ITarget)에게 다가가 공격 사거리에 들면 Attack으로 넘깁니다. 대상이 플레이어인지 횃불인지는
-/// 구분하지 않고, 대상이 알려주는 ApproachCell/IsMobile로만 이동 방식을 정합니다.
-///
-/// ■ 플레이어 우선
-/// 고정 대상(횃불)을 쫓는 중에도 매 프레임 플레이어 탐지를 돌려, 보이면 상태 전환 없이 target만
-/// 플레이어로 바꾸고 목적지를 다시 잡습니다. (플레이어에게 맞았을 때는 TakeDamage가 target을 바꿔둠)
-///
-/// ■ 포기 규칙
-///  · 이동 대상: 탐지 반경×1.5를 벗어나면 놓친다 (기존 규칙)
-///  · 고정 대상: 경로가 없거나, 다 왔는데도 사거리에 못 든 채 torchGiveUpSeconds가 지나면 잠시 무시 목록에 넣고 순찰로
-/// </summary>
 public class EnemyChaseState : EnemyBaseState
 {
     private readonly int chaseAnimHash = Animator.StringToHash("Chase");

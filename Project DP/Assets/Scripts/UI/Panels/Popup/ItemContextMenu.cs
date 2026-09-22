@@ -2,11 +2,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 아이템 우클릭 시 나타나는 컨텍스트 메뉴.
-/// 사용(소모품) / 장착(장비) / 버리기 버튼을 아이템 타입에 따라 표시한다.
-/// UIInventoryPopup이 static Instance를 설정하고, InventoryItemView가 호출한다.
-/// </summary>
 public class ItemContextMenu : MonoBehaviour
 {
     [Header("버튼")]

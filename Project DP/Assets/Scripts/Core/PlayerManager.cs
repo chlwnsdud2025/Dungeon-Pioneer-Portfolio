@@ -1,28 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// ■ 플레이어 오브젝트의 유일한 소유자.
-///
-/// Player를 앱 전체에서 딱 하나만 만들어 DontDestroyOnLoad로 유지하고, 씬을 넘을 때마다
-///  - 도착 지점 배치 (SpawnAnchor / 던전은 DungeonManager가 좌표를 계산해 넘겨줌)
-///  - 이전 씬에서 남은 상태 정리 (PlayerController.PrepareForSceneArrival)
-///  - 카메라 재연결 (씬마다 있는 Main Camera의 CameraFollow.target)
-/// 을 책임집니다.
-///
-/// 이렇게 하는 이유: 체력(PlayerStat) · 장비(EquipmentHolder) · 장비 비주얼(EquipmentVisualizer)이
-/// 전부 Player 오브젝트의 컴포넌트 상태로 존재합니다. 씬마다 Player를 새로 만들면 이 값들이 통째로
-/// 사라지는데, 인벤토리는 UI 프리팹(UIManager 산하, 전역 상주)에 있어 살아남기 때문에
-/// "장착한 아이템만 영구 소실"되는 비대칭이 생겼습니다. UIManager/InputManager와 수명을 맞춰
-/// 그 비대칭을 없앱니다.
-///
-/// 대신 지금까지 '씬 전환 = Player 재생성'이 공짜로 해주던 초기화(체력 리필, 상태머신 리셋,
-/// CharacterController 복구)는 이제 명시적으로 해줘야 합니다. PlaceAt()이 그 지점입니다.
-///
-/// ★ 배치: Overworld 씬에 빈 오브젝트를 만들어 이 컴포넌트를 붙이고 playerPrefab을 연결하세요.
-///   Dungeon 씬에도 똑같이 하나 두면 던전 씬 단독 실행 테스트가 가능합니다.
-///   (MonoSingleton이 중복 인스턴스를 알아서 정리합니다)
-/// </summary>
 public class PlayerManager : MonoSingleton<PlayerManager>
 {
     [Header("Player")]

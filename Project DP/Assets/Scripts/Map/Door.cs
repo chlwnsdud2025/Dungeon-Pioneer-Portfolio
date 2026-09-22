@@ -1,19 +1,6 @@
 using DG.Tweening;
 using UnityEngine;
 
-/// <summary>
-/// F키 상호작용으로 여는 문 (열기 전용 — 한 번 열리면 닫을 수 없습니다).
-/// 경첩(hinge)을 DOTween으로 로컬 Y축 openAngle만큼 회전시켜 엽니다.
-///
-/// ★ 프리팹 구성:
-///   Door (루트, 이 스크립트 + 문틀 비주얼)
-///   └── Hinge     ← 문짝의 회전축이 될 모서리에 배치한 빈 오브젝트 (hinge로 연결)
-///       └── DoorLeaf ← 문짝 메시 + BoxCollider(solid), 레이어 Interactable (blockingCollider로 연결)
-///   콜라이더가 자식에 있어도 PlayerController.UpdateFocus()가
-///   GetComponentInParent&lt;IInteractable&gt;()로 이 컴포넌트를 찾아 포커스를 잡습니다.
-///
-/// 열림 상태는 IFloorPersistent로 층 스냅샷에 기록되어, 층을 나갔다 돌아와도 유지됩니다.
-/// </summary>
 public class Door : MonoBehaviour, IInteractable, IFloorPersistent
 {
     [Header("Open Motion")]

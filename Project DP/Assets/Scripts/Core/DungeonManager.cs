@@ -2,31 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// ■ 던전 씬 하나를 통째로 책임지는 단일 매니저.
-///
-/// 던전과 관련된 모든 것을 여기서 처리합니다:
-///  - 층 진행 규칙: 지금 몇 층인지(currentFloor), 몇 층에서 클리어인지(maxFloor)
-///  - 층 로딩/전환: 층을 처음 방문하면 DungeonGenerator로 생성하고, 재방문이면 SetActive로 켜서 상태 복원
-///  - 플레이어 스폰/이동, 미니맵 전환
-///  - 씬 경계 이동: 던전 1층 입구로 나가거나(탈출) 최종 클리어/사망 시 → 오버월드 씬 로드
-///
-/// 층은 파괴하지 않고 SetActive로만 껐다 켭니다. 비활성 동안 적/애니메이션이 멈추고 HP·위치·열린 상자
-/// 값이 그대로 남아, 층을 오갈 때 탐색 상태가 별도 저장 로직 없이 보존됩니다. (예외: 설치한 횃불은 마감
-/// 시각 기준이라 비활성 층에서도 계속 타들어가며, 층이 다시 켜질 때 다 탄 것은 스스로 사라집니다 —
-/// TorchInstance 참고) 던전을 완전히 나가면 던전 씬이 통째로 언로드되어 이 캐시도 사라집니다(= 던전 리셋).
-/// 그래서 DontDestroyOnLoad를 일부러 켜지 않습니다: 다시 들어오면 새 인스턴스로 생겨 새 런이 시작됩니다.
-///
-/// ★ 플레이어는 이 매니저의 소유가 아닙니다. Player는 PlayerManager가 전역으로 하나만 들고 있고
-///   (DontDestroyOnLoad), 던전이 리셋돼도 체력·장비·인벤토리는 그대로 유지됩니다.
-///   여기서는 "어느 좌표에 놓을지"만 계산해 PlayerManager.PlaceAt()에 넘깁니다.
-///
-/// 외부(트리거/플레이어)는 아래 3개의 의도 함수만 호출하면 됩니다:
-///   GoToNextFloor()      — 출구를 밟았을 때 (ExitPoint)
-///   GoToPreviousFloor()  — 2층 이상에서 입구를 밟았을 때 (EntrancePoint)
-///   ReturnToOverworld()  — 1층 입구로 나갈 때 (EntrancePoint)
-/// 오버월드 → 던전 '진입'은 오버월드 씬의 DungeonEntrance가 담당합니다(이 스크립트를 거치지 않음).
-/// </summary>
 public class DungeonManager : MonoBehaviour, IRegionProvider
 {
     public static DungeonManager Instance { get; private set; }

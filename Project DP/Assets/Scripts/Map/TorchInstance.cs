@@ -1,29 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 플레이어가 설치한 횃불 본체. 횃불 프리팹에 붙어 있으며, 설치(PlaceTorchState_Player)와
-/// 복원(DungeonManager.RestoreTorches) 직후 Initialize로 시작합니다.
-///
-/// ■ 수명
-/// 설치한 순간부터 lifetimeSeconds 동안 타다가 사라집니다. 남은 시간은 누적 타이머가 아니라
-/// '마감 시각(expiresAt, Time.time 기준)'에서 파생시킵니다. 그래서 층이 비활성(SetActive(false))이라
-/// Update가 멈춰 있어도 시간은 계속 흐르고, 층이 다시 켜지는 순간 OnEnable에서 만료를 바로 판정합니다.
-/// 던전을 나가 씬이 내려가는 동안만 Time.time으로 이어지지 않으므로, TorchRecord에 남은 초와
-/// 기록 시각을 담아 복원 시 오버월드에서 보낸 시간을 뺍니다.
-/// (Time.time은 timeScale의 영향을 받으므로, 나중에 일시정지가 생기면 횃불도 같이 멈춥니다)
-///
-/// ■ 벽 면 기록
-/// 어느 벽의 어느 면에 붙었는지를 기억하는 이유: 던전을 나갔다 들어왔을 때 위치·회전만 되돌리면
-/// WallObject 쪽 '이 면에 이미 설치됨' 기록이 비어 있어서, 복원된 횃불이 붙은 면에 하나 더
-/// 설치할 수 있게 됩니다. 소멸할 때는 같은 면의 표시를 지워 다시 설치할 수 있게 합니다.
-///
-/// ■ 적의 표적 (ITarget)
-/// 순찰 중인 적은 시야에 들어온 횃불을 찾아가 때립니다. 피해는 체력이 아니라 '남은 시간'을 깎는 것으로
-/// 해석하되, 피해량 크기와 무관하게 한 대에 secondsPerHit만큼만 깎습니다 — 적 공격력을 조정해도
-/// "몇 방에 꺼지는가"가 흔들리지 않게 하기 위함입니다. 다 깎이면 자연 소멸과 같은 경로로 사라집니다.
-/// 적이 서야 할 자리는 횃불이 바라보는 바닥 셀, 시야선의 끝점은 벽에서 살짝 띄운 점입니다(자기 벽에 막히지 않게).
-/// </summary>
 public class TorchInstance : MonoBehaviour, ITarget
 {
     [Header("Lifetime")]

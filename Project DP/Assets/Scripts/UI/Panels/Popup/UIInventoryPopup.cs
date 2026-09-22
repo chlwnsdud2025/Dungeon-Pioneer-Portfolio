@@ -1,12 +1,6 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-/// <summary>
-/// 인벤토리 + 장비창을 하나로 묶는 UIPopup.
-/// UIManager.ShowPopup&lt;UIInventoryPopup&gt;() 으로 열고,
-/// UIManager.HidePopup() 또는 dimmed 클릭으로 닫는다.
-/// 커서 표시/숨김, 게임플레이 입력 잠금을 여기서 관리한다.
-/// </summary>
 public class UIInventoryPopup : UIPopup
 {
     [Header("하위 패널")]

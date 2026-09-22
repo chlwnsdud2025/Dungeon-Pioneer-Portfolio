@@ -1,12 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// 던전 층 프리팹을 만들어내는 생성기. DungeonManager가 소유하며 다음 3가지를 제공합니다:
-///  - PrepareNewRun: 런 시작 시 맵 프리팹 순서를 한 번 섞어 층마다 다른 맵이 배정되게 함
-///  - CreateLocation: 해당 층 프리팹을 인스턴스화 + 좌표 정규화 + 스폰 지점 등록 + LocationGrid 빌드
-/// "어떻게 던전을 만들지"만 알고, "지금 어느 층인지/플레이어를 어디로 옮길지"는 DungeonManager가 담당합니다.
-/// </summary>
 public class DungeonGenerator : MonoBehaviour
 {
     [Header("Dungeon Prefabs")]

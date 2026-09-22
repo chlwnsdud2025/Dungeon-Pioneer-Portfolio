@@ -1,13 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 맵 프리팹 '루트'에 붙여, 개척을 마친 맵에만 나타나는 장식 묶음을 관리합니다.
-///
-/// 개척 완료 판정과 호출 시점은 DungeonManager.LoadFloor()가 담당합니다. 이 컴포넌트가 스스로
-/// MinimapManager를 보지 않는 이유: 맵 인스턴스의 Awake/OnEnable은 CreateLocation() 시점에 도는데,
-/// 그때 MinimapManager.current는 아직 '이전 층'을 가리킵니다. 층 전환이 끝난 뒤에 외부에서
-/// 한 번 알려주는 편이 정확합니다.
-/// </summary>
 public class MapDecoration : MonoBehaviour
 {
     [Tooltip("개척 완료 시 켤 장식 묶음. 프리팹에서는 켜둔 채 편집하세요 — Awake에서 자동으로 꺼집니다.")]

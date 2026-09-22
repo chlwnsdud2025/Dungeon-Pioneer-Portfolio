@@ -1,6 +1,5 @@
 using UnityEngine;
 
-/// <summary>Entrance/Exit 타일 루트의 계단 이동 경로.</summary>
 public class StairTile : MonoBehaviour
 {
     public enum StairKind { Entrance, Exit }

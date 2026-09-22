@@ -1,16 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 횃불 위에 떠서 남은 수명을 가로 게이지로 보여줍니다.
-/// 횃불 프리팹의 자식(월드 스페이스 Canvas)으로 두고, localPosition으로 불꽃 위쪽에 띄워둡니다.
-/// 카메라 정렬은 같은 오브젝트의 Billboard가 담당하고, 이 스크립트는 fill 비율만 반영합니다.
-/// (EnemyHealthBar와 같은 구조. Billboard가 매 프레임 회전을 덮어쓰므로 가로/세로는 회전이 아니라
-/// 캔버스 크기와 Fill Method로 정해야 합니다.)
-///
-/// 남은 시간은 TorchInstance.RemainingRatio를 매 프레임 폴링합니다. 마감 시각에서 파생된 값이라
-/// 층을 나갔다 오거나 던전을 나갔다 와도 별도 동기화 없이 바로 맞는 값이 나옵니다.
-/// </summary>
 public class TorchGauge : MonoBehaviour
 {
     [Tooltip("비우면 부모 계층에서 TorchInstance를 자동으로 찾습니다.")]

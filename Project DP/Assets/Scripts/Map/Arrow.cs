@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// ArrowTrap이 오브젝트 풀에서 꺼내 발사하는 화살 하나.
-// Launch()로 방향/속도를 받아 직선으로 날아가며, 벽(wallLayer)에 닿으면 풀로 반환됩니다.
-// 이동/충돌은 캐스트(SphereCast/OverlapSphere)로 처리하므로 Rigidbody/Collider가 필요 없습니다.
-// (RollingRock과 구조가 동일하되, 구르는 회전 연출이 없고 대상을 맞히면 사라지는 점만 다릅니다.)
 public class Arrow : MonoBehaviour
 {
     [Header("Collision")]

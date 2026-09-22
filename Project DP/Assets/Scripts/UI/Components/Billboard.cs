@@ -1,12 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// 이 오브젝트가 항상 카메라를 향하도록(빌보드) 회전시킵니다.
-/// 월드 스페이스 UI(적 머리 위 체력바 등)에 붙여서 사용합니다.
-///
-/// - yAxisOnly = false: 카메라 평면과 완전히 평행하게 정렬 → 화면에 정면으로 보임(쿼터뷰에 자연스러움)
-/// - yAxisOnly = true : 수평(Y축) 회전만 → 바가 기울지 않고 항상 수직으로 서 있음
-/// </summary>
 public class Billboard : MonoBehaviour
 {
     [Tooltip("비우면 Camera.main을 자동으로 사용합니다.")]

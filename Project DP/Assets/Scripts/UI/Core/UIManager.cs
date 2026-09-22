@@ -4,16 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-/// <summary>
-/// 전역 UI 총괄 싱글턴. 앱 전체에서 하나만 유지(MonoSingleton = DontDestroyOnLoad)되며,
-/// Registry에 등록된 모든 패널을 시작 시 미리 로드해 Dictionary에 보관하고 SetActive로 껐다 켭니다.
-///
-///  - Scene UI: 한 번에 하나만 활성 (ShowScene&lt;T&gt;)
-///  - Popup UI: 스택으로 쌓임 (ShowPopup&lt;T&gt; / HidePopup / HideAllPopups)
-///
-/// 씬(Overworld ↔ Dungeon)이 바뀌어도 이 UI 시스템과 Canvas는 그대로 유지됩니다.
-/// (그래서 UIManager는 두 씬 중 '먼저 로드되는 씬'에 하나만 배치하면 됩니다. 중복 배치 시 MonoSingleton이 정리)
-/// </summary>
 public class UIManager : MonoSingleton<UIManager>
 {
     [Header("Roots (Canvas 하위의 부모 Transform)")]

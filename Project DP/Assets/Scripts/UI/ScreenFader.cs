@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-/// <summary>씬을 넘어 유지되는 검은 화면. 던전 도착 연출이 직접 열 때까지 화면을 유지할 수 있습니다.</summary>
 public class ScreenFader : MonoBehaviour
 {
     private static ScreenFader instance;

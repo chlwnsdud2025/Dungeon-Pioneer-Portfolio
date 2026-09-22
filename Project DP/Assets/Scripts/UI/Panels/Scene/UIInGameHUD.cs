@@ -3,16 +3,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 항상 떠 있는 인게임 HUD. 세 가지를 한 화면에 묶습니다:
-///  1) 미니맵     — 표시 위젯(RawImage+AspectRatioFitter)을 이 HUD가 소유하고, MinimapManager에 연결(Bind).
-///                  던전에서만 보이고, 오버월드/마을에서는 숨깁니다.
-///  2) 체력 바    — PlayerStat.currentHealth / maxHealth 를 매 프레임 폴링
-///  3) 지역 표시  — RegionState.Region 기준: 던전이면 "n층", 오버월드/마을이면 각각의 라벨
-///
-/// 이 HUD는 전역 UIManager가 로드해 상시 표시되며 씬을 넘어도 유지됩니다.
-/// MinimapManager는 던전 씬마다 새로 생기므로, 인스턴스가 바뀌면 자동으로 다시 연결합니다.
-/// </summary>
 public class UIInGameHUD : UIScene
 {
     [Header("Minimap (이 HUD가 소유 → MinimapManager에 연결. 던전에서만 표시)")]

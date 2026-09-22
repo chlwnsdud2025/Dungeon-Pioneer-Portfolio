@@ -1,14 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// RollingRockTrap이 오브젝트 풀에서 꺼내 굴리는 돌 하나.
-// Launch()로 방향/속도를 받아 직선으로 굴러갑니다.
-//
-// [하이브리드 충돌 처리]
-//  - 벽(wallLayer) 감지: SphereCast로 '예측' 감지 → 벽에 닿기 직전에 깔끔하게 사라짐(파고들지 않음).
-//  - 피격 판정: 트리거 콜라이더 + OnTriggerEnter로 처리.
-//    ★ 이 프리팹에는 [Collider(IsTrigger=true)] + [Kinematic Rigidbody]가 필요합니다.
-//      (돌은 transform으로 이동하므로 Rigidbody는 반드시 Kinematic이어야 하며, Awake에서 강제로 맞춰줍니다.)
 public class RollingRock : MonoBehaviour
 {
     [Header("Roll Visual")]

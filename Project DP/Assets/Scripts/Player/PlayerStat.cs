@@ -1,11 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// 플레이어의 수치(체력, 공격력, 방어력 등)만 관리하는 컴포넌트.
-/// PlayerController는 이 컴포넌트를 참조해서 스탯을 읽고,
-/// EquipmentHolder는 장비 변경 시 보너스를 기록한다.
-/// </summary>
 public class PlayerStat : MonoBehaviour
 {
     // ── 기본 스탯 (인스펙터에서 설정) ──
