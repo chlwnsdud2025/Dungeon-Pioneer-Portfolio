@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -16,8 +17,14 @@ using UnityEngine;
 /// 어느 벽의 어느 면에 붙었는지를 기억하는 이유: 던전을 나갔다 들어왔을 때 위치·회전만 되돌리면
 /// WallObject 쪽 '이 면에 이미 설치됨' 기록이 비어 있어서, 복원된 횃불이 붙은 면에 하나 더
 /// 설치할 수 있게 됩니다. 소멸할 때는 같은 면의 표시를 지워 다시 설치할 수 있게 합니다.
+///
+/// ■ 적의 표적 (ITarget)
+/// 순찰 중인 적은 시야에 들어온 횃불을 찾아가 때립니다. 피해는 체력이 아니라 '남은 시간'을 깎는 것으로
+/// 해석하되, 피해량 크기와 무관하게 한 대에 secondsPerHit만큼만 깎습니다 — 적 공격력을 조정해도
+/// "몇 방에 꺼지는가"가 흔들리지 않게 하기 위함입니다. 다 깎이면 자연 소멸과 같은 경로로 사라집니다.
+/// 적이 서야 할 자리는 횃불이 바라보는 바닥 셀, 시야선의 끝점은 벽에서 살짝 띄운 점입니다(자기 벽에 막히지 않게).
 /// </summary>
-public class TorchInstance : MonoBehaviour
+public class TorchInstance : MonoBehaviour, ITarget
 {
     [Header("Lifetime")]
     [Tooltip("설치 후 완전히 사라지기까지의 시간(초).")]
@@ -26,6 +33,10 @@ public class TorchInstance : MonoBehaviour
     [Min(0f), SerializeField] private float fadeOutSeconds = 10f;
     [Tooltip("페이드가 끝나도 빛 범위는 원래의 이 비율 밑으로 줄이지 않습니다. (불씨가 남은 느낌)")]
     [Range(0f, 1f), SerializeField] private float minRangeRatio = 0.3f;
+
+    [Header("Damage")]
+    [Tooltip("한 대 맞을 때마다 깎이는 남은 시간(초). 피해량과 무관합니다. 수명 180초에 60이면 세 방에 꺼집니다.")]
+    [Min(0f), SerializeField] private float secondsPerHit = 60f;
 
     private WallObject wall;
     private Vector2Int wallCell;
@@ -39,6 +50,11 @@ public class TorchInstance : MonoBehaviour
     private float baseIntensity;
     private float baseRange;
 
+    // 적이 횃불을 찾을 때 씁니다. 콜라이더 검색 대신 켜져 있는 횃불만 모아두므로 비활성 층은 자동 제외됩니다.
+    private static readonly HashSet<TorchInstance> ActiveTorches = new HashSet<TorchInstance>();
+
+    public static IEnumerable<TorchInstance> EnumerateActiveTorches() => ActiveTorches;
+
     /// <summary>처음 설치될 때의 수명(초). 게이지가 남은 비율을 구할 때 씁니다.</summary>
     public float Lifetime => lifetimeSeconds;
 
@@ -50,6 +66,31 @@ public class TorchInstance : MonoBehaviour
 
     public bool IsExpired => initialized && Remaining <= 0f;
 
+    /// <summary>붙어 있는 면의 바깥 방향 (6방향 중 하나).</summary>
+    public Vector3 FaceNormal => faceKey;
+
+    // ── ITarget ────────────────────────────────────────────────
+
+    // 'this != null'은 파괴된 오브젝트 검사입니다. 적은 이 횃불을 ITarget으로 들고 있어 Unity의 null 판정이
+    // 안 걸리므로, 파괴 뒤에도 IsAlive가 확실히 false를 돌려줘야 Transform 접근 전에 걸러집니다.
+    public bool IsAlive => this != null && initialized && !expired && Remaining > 0f;
+    public Transform Transform => transform;
+    public Vector3 AimPoint => transform.position + FaceNormal * 0.3f;
+    public Vector2Int ApproachCell => wallCell + new Vector2Int(faceKey.x, faceKey.z);
+    public bool IsMobile => false;
+
+    /// <summary>
+    /// 한 대에 secondsPerHit만큼 남은 시간을 깎습니다. 다 깎이면 다음 Update에서 소멸합니다.
+    /// 피해량은 '맞았는지'만 판단하는 데 씁니다(0 이하는 무시).
+    /// </summary>
+    public void TakeDamage(float damage, Transform attacker)
+    {
+        if (!IsAlive || damage <= 0f) return;
+
+        expiresAt -= secondsPerHit;
+        ApplyFade();   // 게이지·밝기에 바로 반영
+    }
+
     private void Awake()
     {
         torchLight = GetComponentInChildren<Light>(true);
@@ -59,6 +100,8 @@ public class TorchInstance : MonoBehaviour
             baseRange = torchLight.range;
         }
     }
+
+    private void OnDisable() => ActiveTorches.Remove(this);
 
     /// <summary>
     /// 설치·복원 직후 1회 호출. 남은 시간을 받아 마감 시각을 정합니다.
@@ -77,6 +120,8 @@ public class TorchInstance : MonoBehaviour
 
     private void OnEnable()
     {
+        ActiveTorches.Add(this);
+
         // 비활성 층에 있는 동안 Update가 멈춰 있었으므로, 층이 다시 켜지는 순간 만료를 바로 판정한다.
         if (!initialized) return;
         if (Remaining <= 0f) Expire();
