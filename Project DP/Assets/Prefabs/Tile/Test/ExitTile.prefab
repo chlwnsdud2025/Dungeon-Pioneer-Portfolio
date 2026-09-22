@@ -66,7 +66,7 @@ MonoBehaviour:
   pivotPoint: {fileID: 7600000000000000004}
   insidePoint: {fileID: 7600000000000000006}
   moveSpeed: 4
-  fadeDuration: 0.4
+  fadeDuration: 0.25
 --- !u!1 &7463623692547338842
 GameObject:
   m_ObjectHideFlags: 0
@@ -240,7 +240,7 @@ Transform:
   m_GameObject: {fileID: 7600000000000000001}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.632, z: -2.8571}
+  m_LocalPosition: {x: 0, y: 1.01, z: -3.23}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -271,7 +271,7 @@ Transform:
   m_GameObject: {fileID: 7600000000000000003}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.61, z: -1.09}
+  m_LocalPosition: {x: 0, y: 0.98, z: -1.09}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -302,7 +302,7 @@ Transform:
   m_GameObject: {fileID: 7600000000000000005}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1.1194, z: 2.3143}
+  m_LocalPosition: {x: 0, y: -1.5014, z: 1.83}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
