@@ -53,16 +53,23 @@ public struct GraveRecord
     public Quaternion rotation;
 }
 
-/// <summary>설치된 횃불 하나의 기록.</summary>
+/// <summary>
+/// 설치된 횃불 하나의 기록.
+/// 다른 저장 대상과 마찬가지로 월드 좌표가 아니라 '어느 벽(셀)의 어느 면'으로 식별합니다.
+/// 복원 시 그 벽을 셀로 다시 찾아 TorchInstance.GetMountPose로 위치·회전을 재계산하므로,
+/// 맵 정규화 오프셋이나 좌표 규칙이 바뀌어도 횃불이 벽에서 떨어져 나오지 않습니다.
+/// </summary>
 public struct TorchRecord
 {
-    public Vector3 position;
-    public Quaternion rotation;
-
-    // 위치·회전만으로도 다시 세울 수 있지만, WallObject.torchFaces까지 복원해야
-    // 복원된 횃불이 붙은 면에 또 설치되는 걸 막을 수 있습니다.
     public Vector2Int wallCell;
     public Vector3Int faceKey;
+
+    // 횃불은 던전 밖에 있는 동안에도 계속 탑니다. 기록 시각(Time.time)을 함께 담아두면 복원할 때
+    // '기록 후 흐른 시간'을 빼서 남은 시간을 이어갈 수 있습니다.
+    // 마감 시각을 그대로 넣지 않는 이유: Time.time은 앱을 켤 때마다 0부터라, 나중에 디스크 저장을
+    // 얹을 때 capturedAt만 무시하면 남은 초를 그대로 쓸 수 있게 하기 위함입니다.
+    public float remainingSeconds;
+    public float capturedAt;
 }
 
 /// <summary>맵 하나(프리팹 하나)의 상호작용 스냅샷. 순수 데이터라 나중에 직렬화해 디스크에 얹기 쉽습니다.</summary>

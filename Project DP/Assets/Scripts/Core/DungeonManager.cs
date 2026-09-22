@@ -11,10 +11,11 @@ using UnityEngine;
 ///  - 플레이어 스폰/이동, 미니맵 전환
 ///  - 씬 경계 이동: 던전 1층 입구로 나가거나(탈출) 최종 클리어/사망 시 → 오버월드 씬 로드
 ///
-/// 층은 파괴하지 않고 SetActive로만 껐다 켭니다. 비활성 동안 적/애니메이션이 멈추고 HP·위치·열린 상자·
-/// 설치한 횃불 값이 그대로 남아, 층을 오갈 때 탐색 상태가 별도 저장 로직 없이 보존됩니다. 던전을 완전히
-/// 나가면 던전 씬이 통째로 언로드되어 이 캐시도 사라집니다(= 던전 리셋). 그래서 DontDestroyOnLoad를
-/// 일부러 켜지 않습니다: 다시 들어오면 새 인스턴스로 생겨 새 런이 시작됩니다.
+/// 층은 파괴하지 않고 SetActive로만 껐다 켭니다. 비활성 동안 적/애니메이션이 멈추고 HP·위치·열린 상자
+/// 값이 그대로 남아, 층을 오갈 때 탐색 상태가 별도 저장 로직 없이 보존됩니다. (예외: 설치한 횃불은 마감
+/// 시각 기준이라 비활성 층에서도 계속 타들어가며, 층이 다시 켜질 때 다 탄 것은 스스로 사라집니다 —
+/// TorchInstance 참고) 던전을 완전히 나가면 던전 씬이 통째로 언로드되어 이 캐시도 사라집니다(= 던전 리셋).
+/// 그래서 DontDestroyOnLoad를 일부러 켜지 않습니다: 다시 들어오면 새 인스턴스로 생겨 새 런이 시작됩니다.
 ///
 /// ★ 플레이어는 이 매니저의 소유가 아닙니다. Player는 PlayerManager가 전역으로 하나만 들고 있고
 ///   (DontDestroyOnLoad), 던전이 리셋돼도 체력·장비·인벤토리는 그대로 유지됩니다.
@@ -373,8 +374,10 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             }
 
             // 2. 플레이어가 설치한 횃불 (원래 맵에 없던 오브젝트라 따로 기록)
+            //    비활성 층에서는 Update가 돌지 않아 다 탄 횃불이 아직 파괴되지 않은 채 남아 있을 수 있다.
             foreach (TorchInstance torch in instance.GetComponentsInChildren<TorchInstance>(true))
             {
+                if (torch.IsExpired) continue;
                 snapshot.torches.Add(torch.ToRecord());
             }
 
@@ -431,7 +434,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             return;
         }
 
-        // 벽을 셀로 찾아두어야 '그 면에 이미 설치됨' 표시까지 되돌릴 수 있다.
+        // 횃불은 월드 좌표가 아니라 '어느 벽(셀)의 어느 면'으로 기록되므로, 벽을 셀로 다시 찾아
+        // 그 벽 콜라이더 기준으로 위치·회전을 재계산한다. (설치 때와 같은 GetMountPose 규칙)
         Dictionary<Vector2Int, WallObject> wallsByCell = new Dictionary<Vector2Int, WallObject>();
         foreach (WallObject wall in instance.GetComponentsInChildren<WallObject>(true))
         {
@@ -441,15 +445,36 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
         foreach (TorchRecord record in snapshot.torches)
         {
-            GameObject torch = Instantiate(torchPrefab, record.position, record.rotation, instance.transform);
+            // 횃불은 던전 밖에 있는 동안에도 계속 탄다. 기록 후 흐른 시간을 빼서 이미 다 탔으면
+            // 세우지 않고, 벽의 '설치됨' 표시도 남기지 않는다 (그 면에 새로 설치할 수 있어야 하므로).
+            float remaining = record.remainingSeconds - (Time.time - record.capturedAt);
+            if (remaining <= 0f) continue;
+
+            // 벽을 못 찾으면 붙일 곳이 없다. 엉뚱한 자리에 세우느니 건너뛰고 원인을 남긴다.
+            if (!wallsByCell.TryGetValue(record.wallCell, out WallObject wall))
+            {
+                Debug.LogWarning($"[DungeonManager] 횃불 복원 실패: 셀 {record.wallCell}에 WallObject가 없습니다. " +
+                                 $"(맵 {GetMapId(instance)}, 면 {record.faceKey})");
+                continue;
+            }
+
+            Collider wallCollider = wall.GetComponent<Collider>();
+            if (wallCollider == null) wallCollider = wall.GetComponentInChildren<Collider>(true);
+            if (wallCollider == null)
+            {
+                Debug.LogWarning($"[DungeonManager] 횃불 복원 실패: 셀 {record.wallCell}의 벽에 콜라이더가 없습니다.");
+                continue;
+            }
+
+            TorchInstance.GetMountPose(wallCollider, record.faceKey, out Vector3 position, out Quaternion rotation);
+            GameObject torch = Instantiate(torchPrefab, position, rotation, instance.transform);
 
             TorchInstance marker = torch.GetComponent<TorchInstance>();
             if (marker == null) marker = torch.AddComponent<TorchInstance>();
-            marker.Initialize(record.wallCell, record.faceKey);
+            marker.Initialize(wall, record.wallCell, record.faceKey, remaining);
 
             // 이 면에 다시 설치되지 않도록 벽에 표시를 되돌린다.
-            if (wallsByCell.TryGetValue(record.wallCell, out WallObject wall))
-                wall.MarkTorchPlaced(record.faceKey);
+            wall.MarkTorchPlaced(record.faceKey);
         }
     }
 

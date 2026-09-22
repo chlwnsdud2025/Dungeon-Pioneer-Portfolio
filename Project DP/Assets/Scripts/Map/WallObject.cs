@@ -23,6 +23,9 @@ public class WallObject : MonoBehaviour, IInteractable
     /// <summary>이 노멀 방향의 '면'에 횃불이 설치됐다고 표시.</summary>
     public void MarkTorchPlaced(Vector3 faceNormal) => torchFaces.Add(ToFaceKey(faceNormal));
 
+    /// <summary>횃불이 다 타서 사라졌을 때 그 면의 표시를 지워 다시 설치할 수 있게 한다. (TorchInstance.Expire)</summary>
+    public void ClearTorchFace(Vector3Int faceKey) => torchFaces.Remove(faceKey);
+
     /// <summary>
     /// 표면 노멀을 6방향(±X/±Y/±Z) 중 하나로 스냅해 '면'을 식별하는 키로 만든다.
     /// (약간 비스듬히 맞은 노멀도 가장 가까운 축 방향의 면으로 처리)

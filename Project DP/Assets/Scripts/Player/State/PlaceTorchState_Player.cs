@@ -86,21 +86,12 @@ public class PlaceTorchState_Player : PlayerBaseState
             return;
         }
 
-        Vector3 wallCenter = wallCollider.bounds.center;
-        Vector3 wallExtents = wallCollider.bounds.extents;
-
-        Vector3 surfaceOffset = new Vector3(
-            hitNormal.x * wallExtents.x,
-            hitNormal.y * wallExtents.y,
-            hitNormal.z * wallExtents.z
-        );
-
-        // 벽면에서 살짝 띄우기 (0.2f)
-        Vector3 spawnPosition = wallCenter + surfaceOffset + (hitNormal * 0.2f);
-
-        // 벽면을 향하게 한 뒤 비스듬하게 꺾기
-        Quaternion baseRotation = Quaternion.LookRotation(hitNormal);
-        Quaternion spawnRotation = baseRotation * Quaternion.Euler(30f, 0f, 0f);
+        // ★ 위치·회전은 '면 키'(6방향으로 스냅한 노멀) 기준으로 TorchInstance.GetMountPose가 정한다.
+        //   복원(DungeonManager.RestoreTorches)도 같은 함수를 쓰므로, 던전을 나갔다 와도 정확히 같은
+        //   자리에 다시 선다. 벽면에 밀착·직립 (예전 손횃불 모델의 0.2f 띄우기/30° 기울임은 제거).
+        //   그래도 거치대와 벽 사이에 틈이 보이면 여기가 아니라 프리팹 쪽 메시 위치로 맞추는 게 맞다.
+        Vector3Int faceKey = WallObject.ToFaceKey(hitNormal);
+        TorchInstance.GetMountPose(wallCollider, faceKey, out Vector3 spawnPosition, out Quaternion spawnRotation);
 
         // ★ 현재 활성화된 장소(층)의 자식으로 부모를 지정합니다. 그래야 이 장소를 나갈 때
         //   DungeonManager가 SetActive(false)로 비활성화하면 횃불도 함께 꺼지고, 다시 돌아오면
@@ -110,11 +101,13 @@ public class PlaceTorchState_Player : PlayerBaseState
             : null;
         GameObject spawnedTorch = Object.Instantiate(player.torchPrefab, spawnPosition, spawnRotation, parentLocation);
 
-        // ★ 던전을 나갔다 들어와도 복원할 수 있도록 어느 벽의 어느 면인지 기록해둔다.
+        // ★ 수명을 시작하고, 던전을 나갔다 들어와도 복원할 수 있도록 어느 벽의 어느 면인지 기록해둔다.
+        //   TorchInstance는 프리팹에 붙어 있는 게 정상이지만, 없는 프리팹을 연결해도 동작하도록 폴백을 둔다.
         Transform wallTransform = wall != null ? wall.transform : wallCollider.transform;
         Vector3Int wallCell = GridSystem.Instance.WorldToCell(wallTransform.position);
-        spawnedTorch.AddComponent<TorchInstance>()
-                    .Initialize(new Vector2Int(wallCell.x, wallCell.z), WallObject.ToFaceKey(hitNormal));
+        TorchInstance torchInstance = spawnedTorch.GetComponent<TorchInstance>();
+        if (torchInstance == null) torchInstance = spawnedTorch.AddComponent<TorchInstance>();
+        torchInstance.Initialize(wall, new Vector2Int(wallCell.x, wallCell.z), faceKey, torchInstance.Lifetime);
 
         // ★ 이 면에 횃불이 설치됨 → 다음부터 '이 면'에는 중복 설치 방지 (다른 면엔 여전히 설치 가능)
         if (wall != null) wall.MarkTorchPlaced(hitNormal);
