@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviour, ITarget
 {
     // [핵심] 상태 머신
     public PlayerStateMachine stateMachine { get; private set; }
@@ -205,6 +205,16 @@ public class PlayerController : MonoBehaviour
         motion.y = verticalVelocity * Time.deltaTime;
         characterController.Move(motion);
     }
+
+    // ── 적의 추격·공격 대상 (ITarget) ─────────────────────────
+    // 적은 플레이어를 이 인터페이스로만 봅니다. 시야선은 눈높이(1.5)를 겨누고, 접근 셀은 지금 서 있는 셀,
+    // 움직이는 대상이라 적은 따라가며 경로를 다시 찾고 구덩이도 밟고 지나옵니다.
+
+    public bool IsAlive => stateMachine == null || !(stateMachine.CurrentState is DeadState_Player);
+    public Transform Transform => transform;
+    public Vector3 AimPoint => transform.position + Vector3.up * 1.5f;
+    public Vector2Int ApproachCell => LocationGrid.WorldToCell(transform.position);
+    public bool IsMobile => true;
 
     public void TakeDamage(float damage, Transform attacker)
     {

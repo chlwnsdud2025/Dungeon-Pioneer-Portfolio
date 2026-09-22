@@ -19,7 +19,7 @@ public class WeaponHitbox : MonoBehaviour
     private Collider hitCollider;
 
     // 한 번 휘두르는 동안 같은 대상을 여러 번 때리지 않도록 기억한다.
-    private readonly HashSet<EnemyController> hitThisSwing = new HashSet<EnemyController>();
+    private readonly HashSet<IDamageable> hitThisSwing = new HashSet<IDamageable>();
 
     private float damage;
     private LayerMask targetLayers;
@@ -83,12 +83,13 @@ public class WeaponHitbox : MonoBehaviour
         if ((targetLayers.value & (1 << other.gameObject.layer)) == 0) return;
 
         // 콜라이더가 자식에 달려 있어도 본체를 찾도록 부모까지 훑는다.
-        EnemyController enemy = other.GetComponentInParent<EnemyController>();
-        if (enemy == null) return;
+        // 적/횃불/그 밖의 부술 수 있는 것 모두 IDamageable로만 다룬다. 무엇을 맞힐지는 targetLayers가 정한다.
+        IDamageable damageable = other.GetComponentInParent<IDamageable>();
+        if (damageable == null || !damageable.IsAlive) return;
 
-        if (!hitThisSwing.Add(enemy)) return;   // 이번 스윙에 이미 맞은 대상
+        if (!hitThisSwing.Add(damageable)) return;   // 이번 스윙에 이미 맞은 대상
 
         Transform attacker = GetComponentInParent<PlayerController>()?.transform;
-        enemy.TakeDamage(damage, attacker);
+        damageable.TakeDamage(damage, attacker);
     }
 }

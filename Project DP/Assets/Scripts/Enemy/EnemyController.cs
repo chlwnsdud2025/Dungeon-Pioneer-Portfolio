@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class EnemyController : MonoBehaviour
+public class EnemyController : MonoBehaviour, IDamageable
 {
     // [핵심] 상태 머신
     public EnemyStateMachine stateMachine { get; private set; }
@@ -319,7 +319,10 @@ public class EnemyController : MonoBehaviour
         return distance <= detectionRadius * 1.5f;
     }
 
-    // 데미지 처리
+    // ── 피격 (IDamageable) ───────────────────────────────────
+
+    public bool IsAlive => stateMachine == null || !(stateMachine.CurrentState is EnemyDeadState);
+
     public void TakeDamage(float damage)
     {
         TakeDamage(damage, null);
@@ -327,7 +330,7 @@ public class EnemyController : MonoBehaviour
 
     public void TakeDamage(float damage, Transform attacker)
     {
-        if (stateMachine.CurrentState is EnemyDeadState) return;
+        if (!IsAlive) return;
 
         float finalDamage = damage;
         if (attacker != null)
