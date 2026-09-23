@@ -11,7 +11,7 @@ using UnityEngine;
 /// GridMover가 모든 경로에서 null을 방어하므로 그때는 그냥 움직이지 않습니다.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
-public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMember, ITarget
+public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMember, ITarget, IInteractable
 {
     private const float GravityAcceleration = -9.81f;
     private const float GravityMultiplier = 2f;
@@ -38,6 +38,7 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
     private bool downed;
     private float verticalVelocity;
     private NpcBrain brain;
+    private NpcInteractionModule[] modules;
 
     public GridMover Mover { get; private set; }
     public Perception Perception { get; private set; }
@@ -58,6 +59,7 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
         Perception = new Perception(this);
         Overrides = GetComponent<FactionOverride>();
         brain = GetComponent<NpcBrain>();
+        modules = GetComponents<NpcInteractionModule>();
 
         // definition이 없어도 기본값으로 버팁니다. 프리팹 배선을 하나 잊었다고
         // 씬 전체가 멈추는 것보다 로그 한 줄이 낫습니다.
@@ -217,3 +219,29 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
         Mover.Stop();
         brain?.OnDowned();
     }
+
+    // ── IInteractable ────────────────────────────────────────────────
+    // 플레이어가 상대하는 창구는 NpcActor 하나입니다. 실제 동작은 지금 사용 가능한 모듈 중
+    // 우선순위가 가장 높은 것이 맡습니다. 모듈이 하나도 없으면 말을 걸 수 없는 일반 NPC입니다.
+
+    public bool CanInteract(PlayerController player) => FindModule(player) != null;
+
+    public void Interact(PlayerController player) => FindModule(player)?.Interact(player);
+
+    private NpcInteractionModule FindModule(PlayerController player)
+    {
+        if (modules == null || downed) return null;   // 전투불능 NPC에게는 말을 걸 수 없습니다
+
+        NpcInteractionModule best = null;
+        foreach (NpcInteractionModule module in modules)
+        {
+            if (module == null || !module.enabled) continue;
+            if (!module.CanInteract(player)) continue;
+            if (best != null && module.Priority <= best.Priority) continue;
+
+            best = module;
+        }
+
+        return best;
+    }
+}
