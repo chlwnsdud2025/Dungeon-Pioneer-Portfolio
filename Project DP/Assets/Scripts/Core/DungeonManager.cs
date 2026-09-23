@@ -208,7 +208,7 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         currentLocationId = destination;
         hasCurrentLocation = true;
 
-        NotifyEnemiesLocationReady(instance);
+        NotifyActorsLocationReady(instance);
 
         StairTile arrival = PlacePlayer(instance, arrivalSpawnPointId, arriveInside);
 
@@ -253,12 +253,19 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
         decoration.SetRevealed(MinimapManager.Instance.IsCurrentExplored);
     }
 
-    private static void NotifyEnemiesLocationReady(GameObject locationInstance)
+    /// <summary>
+    /// 층에 배치된 액터들에게 그리드가 준비됐음을 알립니다.
+    /// 적과 NPC가 같은 시점에 깨어나야 서로를 인지할 때 한쪽만 준비된 상황이 생기지 않습니다.
+    /// </summary>
+    private static void NotifyActorsLocationReady(GameObject locationInstance)
     {
         if (locationInstance == null) return;
 
         foreach (EnemyController enemy in locationInstance.GetComponentsInChildren<EnemyController>(true))
             enemy.NotifyLocationReady();
+
+        foreach (NpcActor npc in locationInstance.GetComponentsInChildren<NpcActor>(true))
+            npc.NotifyLocationReady();
     }
 
     /// <summary>
