@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class EnemyController : MonoBehaviour, IDamageable
+public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPerceptionAgent
 {
     // [핵심] 상태 머신
     public EnemyStateMachine stateMachine { get; private set; }
@@ -72,6 +72,9 @@ public class EnemyController : MonoBehaviour, IDamageable
     [Range(0, 360)]
     public float viewAngle = 120f;
 
+    [Tooltip("시야선(Raycast)을 쏘는 눈높이. 기존에 하드코딩돼 있던 값이 1.5였습니다.")]
+    public float eyeHeight = 1.5f;
+
     [Header("Backstab")]
     [Tooltip("시야(FOV) 밖에서 맞았을 때 받는 피해 배율")]
     public float backstabDamageMultiplier = 1.5f;
@@ -88,8 +91,41 @@ public class EnemyController : MonoBehaviour, IDamageable
     public float pitClimbDuration = 0.6f;
 
     public LocationGrid Grid { get; private set; }
-    public EnemyGridMover Mover { get; private set; }
+    public GridMover Mover { get; private set; }
     public Vector2Int CurrentCell => LocationGrid.WorldToCell(transform.position);
+
+    /// <summary>시야·시야선 계산. 누구를 쫓을지(정책)는 아래 TryDetect~들이 정하고, 이쪽은 보이는지만 답합니다.</summary>
+    public Perception Perception { get; private set; }
+
+    // ── IGridAgent / IPerceptionAgent 구현 ───────────────────────────
+    // 대부분 기존 필드를 이름만 바꿔 노출하는 껍데기라 값도 로직도 그대로입니다.
+    // 명시적 구현(IGridAgent.XXX)을 쓴 이유: trapPathCost 같은 기존 public 필드와 이름만 다른
+    // public 프로퍼티가 나란히 생기면 어느 쪽이 진짜인지 헷갈립니다. 명시적 구현은
+    // GridMover/Perception에게만 보이고, EnemyController의 공개 API는 지금 그대로 유지됩니다.
+
+    /// <summary>IGridAgent와 IPerceptionAgent가 함께 씁니다. 그래서 이것만 암시적 구현입니다.</summary>
+    public Transform Transform => transform;
+
+    CharacterController IGridAgent.Controller => characterController;
+    float IGridAgent.PathTrapCost => trapPathCost;
+    float IGridAgent.PitClimbDuration => pitClimbDuration;
+
+    float IGridAgent.VerticalVelocity
+    {
+        get => verticalVelocity;
+        set => verticalVelocity = value;
+    }
+
+    /// <summary>구덩이 탈출 지점의 바닥을 잴 때 자기 자신과 플레이어는 바닥으로 치지 않습니다.</summary>
+    int IGridAgent.GroundProbeMask => ~((1 << gameObject.layer) | playerLayer.value);
+
+    /// <summary>기존 MoveEnemy로 그대로 넘깁니다. 상태 클래스들은 계속 MoveEnemy를 부르면 됩니다.</summary>
+    void IGridAgent.Move(Vector3 motion) => MoveEnemy(motion);
+
+    float IPerceptionAgent.ViewAngle => viewAngle;
+    float IPerceptionAgent.DetectionRadius => detectionRadius;
+    LayerMask IPerceptionAgent.ObstacleLayer => obstacleLayer;
+    float IPerceptionAgent.EyeHeight => eyeHeight;
 
     private static readonly HashSet<EnemyController> ActiveEnemies = new HashSet<EnemyController>();
 
@@ -100,7 +136,8 @@ public class EnemyController : MonoBehaviour, IDamageable
         stateMachine = new EnemyStateMachine();
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
-        Mover = new EnemyGridMover(this);
+        Mover = new GridMover(this);
+        Perception = new Perception(this);
 
         currentHealth = maxHealth;
 
@@ -208,69 +245,28 @@ public class EnemyController : MonoBehaviour, IDamageable
         characterController.Move(motion);
     }
 
-    /// <summary>월드 위치가 전방 FOV 각도 안에 있는지 (장애물 무시).</summary>
-    public bool IsInFieldOfView(Vector3 worldPosition)
-    {
-        Vector3 dirToTarget = worldPosition - transform.position;
-        dirToTarget.y = 0f;
-        if (dirToTarget.sqrMagnitude < 0.0001f) return true;
+    // ── 지각·회전 (구현은 Perception / ActorMath에 있고 여기서는 위임만 합니다) ──
+    // 상태 클래스들이 계속 enemy.IsInFieldOfView(...) 식으로 부를 수 있게 이름을 유지합니다.
 
-        return Vector3.Angle(transform.forward, dirToTarget.normalized) <= viewAngle * 0.5f;
-    }
+    /// <summary>월드 위치가 전방 FOV 각도 안에 있는지 (장애물 무시).</summary>
+    public bool IsInFieldOfView(Vector3 worldPosition) => Perception.IsInFieldOfView(worldPosition);
 
     /// <summary>
     /// 대상이 FOV 안에 있고 벽으로 시야가 막히지 않았는지.
     /// 레이의 끝점은 대상이 알려주는 AimPoint입니다 — 플레이어는 눈높이, 벽에 붙은 횃불은 벽에서
     /// 살짝 띄운 점이라 자기 벽에 막혀 '안 보임'으로 오판하지 않습니다.
     /// </summary>
-    public bool CanSeeTarget(ITarget target)
-    {
-        if (target == null || target.Transform == null) return false;
-        if (!IsInFieldOfView(target.Transform.position)) return false;
-
-        Vector3 eyePosition = transform.position + Vector3.up * 1.5f;
-        Vector3 targetPos = target.AimPoint;
-        Vector3 rayDir = (targetPos - eyePosition).normalized;
-        float distanceToTarget = Vector3.Distance(eyePosition, targetPos);
-
-        if (!Physics.Raycast(eyePosition, rayDir, out RaycastHit hit, distanceToTarget, obstacleLayer,
-                QueryTriggerInteraction.Ignore))
-            return true;
-
-        // Pushable/Chest 등 Interactable은 시야를 가리지 않고, Wall만 가립니다.
-        return !(hit.collider.CompareTag("Wall") || hit.collider.GetComponentInParent<WallObject>() != null);
-    }
+    public bool CanSeeTarget(ITarget target) => Perception.CanSee(target);
 
     /// <summary>수평면에서 특정 위치를 바라보도록 즉시 회전합니다.</summary>
-    public void FaceToward(Vector3 worldPosition)
-    {
-        Vector3 dir = worldPosition - transform.position;
-        dir.y = 0f;
-        if (dir.sqrMagnitude > 0.0001f)
-            transform.rotation = Quaternion.LookRotation(dir.normalized);
-    }
+    public void FaceToward(Vector3 worldPosition) => ActorMath.FaceToward(transform, worldPosition);
 
-    public void RotateToward(Vector3 direction)
-    {
-        direction.y = 0f;
-        if (direction.sqrMagnitude < 0.0001f) return;
-
-        Quaternion desired = Quaternion.LookRotation(direction.normalized);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, desired, turnSpeed * Time.deltaTime);
-    }
+    public void RotateToward(Vector3 direction) => ActorMath.RotateToward(transform, direction, turnSpeed);
 
     /// <summary>위치가 FOV 안이면 전체 탐지 반경, 밖이면 1/3 반경을 사용합니다.</summary>
-    public float GetDetectionRangeForPosition(Vector3 worldPosition)
-    {
-        return IsInFieldOfView(worldPosition) ? detectionRadius : detectionRadius / 3f;
-    }
+    public float GetDetectionRangeForPosition(Vector3 worldPosition) => Perception.GetDetectionRangeFor(worldPosition);
 
-    public float GetHorizontalDistanceTo(Vector3 worldPosition)
-    {
-        Vector3 delta = worldPosition - transform.position;
-        delta.y = 0f;
-        return delta.magnitude;
-    }
+    public float GetHorizontalDistanceTo(Vector3 worldPosition) => Perception.HorizontalDistanceTo(worldPosition);
 
     private PlayerController FindNearestPlayerInRange(float maxRange)
     {
