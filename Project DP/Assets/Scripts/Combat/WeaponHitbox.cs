@@ -12,6 +12,9 @@ public class WeaponHitbox : MonoBehaviour
     private float damage;
     private LayerMask targetLayers;
 
+    // 이 무기를 휘두르는 액터. 진영 판정과 TakeDamage의 '공격자' 인자에 함께 씁니다.
+    private IFactionMember owner;
+
     /// <summary>지금 타격 판정이 열려 있는지.</summary>
     public bool IsActive => hitCollider != null && hitCollider.enabled;
 
@@ -48,6 +51,14 @@ public class WeaponHitbox : MonoBehaviour
         if (hitCollider.enabled) return;   // 이미 이번 스윙이 진행 중
 
         hitThisSwing.Clear();
+
+        // Awake가 아니라 여기서 찾는 이유: 무기는 Instantiate 후 손 소켓에 붙는 물건이라
+        // Awake 시점의 부모가 최종 부모가 아닐 수 있습니다. 스윙 시작 시점에는 계층이 확정돼 있습니다.
+        // 캐시해 두지 않고 스윙마다 다시 찾는 이유: 인터페이스로 들고 있는 참조는 대상이 파괴돼도
+        // C# null이 되지 않아(Unity의 == 오버로드를 타지 않음) 낡은 참조를 붙들게 됩니다.
+        // 스윙당 한 번이라 비용은 무시할 수준입니다.
+        owner = GetComponentInParent<IFactionMember>();
+
         hitCollider.enabled = true;
     }
 
@@ -75,9 +86,15 @@ public class WeaponHitbox : MonoBehaviour
         IDamageable damageable = other.GetComponentInParent<IDamageable>();
         if (damageable == null || !damageable.IsAlive) return;
 
+        // 진영 검사는 '진영을 가진 액터'에게만 적용한다. 횃불·부술 수 있는 오브젝트처럼
+        // 진영이 없는 대상은 예전처럼 targetLayers만으로 판정한다.
+        // owner가 null인 무기(소유자 없는 함정 칼날 등)도 검사를 건너뛴다.
+        if (owner != null && damageable is IFactionMember targetMember
+            && !FactionTable.IsHostile(owner, targetMember))
+            return;
+
         if (!hitThisSwing.Add(damageable)) return;   // 이번 스윙에 이미 맞은 대상
 
-        Transform attacker = GetComponentInParent<PlayerController>()?.transform;
-        damageable.TakeDamage(damage, attacker);
+        damageable.TakeDamage(damage, owner?.Transform);
     }
 }

@@ -70,6 +70,11 @@ public class EnemyAttackState : EnemyBaseState
             IDamageable damageable = col.GetComponentInParent<IDamageable>();
             if (damageable == null || !damageable.IsAlive) continue;
             if (damageable == (IDamageable)enemy) continue;             // 자기 자신 제외
+
+            // 진영 검사. 횃불처럼 진영이 없는 대상은 예전처럼 AttackTargetMask만으로 판정합니다.
+            if (damageable is IFactionMember targetMember && !FactionTable.IsHostile(enemy, targetMember))
+                continue;
+
             if (!enemy.IsInFieldOfView(col.bounds.center)) continue;
             if (!hitThisSwing.Add(damageable)) continue;
 

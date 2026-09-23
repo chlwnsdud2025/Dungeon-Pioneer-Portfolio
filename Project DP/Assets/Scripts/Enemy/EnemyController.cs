@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPerceptionAgent
+public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPerceptionAgent, IFactionMember
 {
     // [핵심] 상태 머신
     public EnemyStateMachine stateMachine { get; private set; }
@@ -23,6 +23,9 @@ public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPercepti
     public float attackDamage = 5f;      // 공격 데미지
     public LayerMask playerLayer;        // 플레이어 레이어
     public LayerMask obstacleLayer;      // 벽 등 시야를 가리는 장애물 레이어
+
+    [Tooltip("이 적이 속한 진영. 기본은 Monster이며, 아군이 되는 특수 몬스터 등에만 바꿉니다.")]
+    public FactionId faction = FactionId.Monster;
 
     [Header("Torch Hunting")]
     [Tooltip("순찰 중 시야에 들어온 횃불을 찾아가 꺼뜨릴지. 플레이어가 보이면 언제나 플레이어가 우선입니다.")]
@@ -127,6 +130,10 @@ public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPercepti
     LayerMask IPerceptionAgent.ObstacleLayer => obstacleLayer;
     float IPerceptionAgent.EyeHeight => eyeHeight;
 
+    // ── 진영 (IFactionMember) ─────────────────────────────────
+    public FactionId Faction => faction;
+    public FactionOverride Overrides { get; private set; }
+
     private static readonly HashSet<EnemyController> ActiveEnemies = new HashSet<EnemyController>();
 
     public static IEnumerable<EnemyController> EnumerateActiveEnemies() => ActiveEnemies;
@@ -138,6 +145,7 @@ public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPercepti
         animator = GetComponent<Animator>();
         Mover = new GridMover(this);
         Perception = new Perception(this);
+        Overrides = GetComponent<FactionOverride>();
 
         currentHealth = maxHealth;
 

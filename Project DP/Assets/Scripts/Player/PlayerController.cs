@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour, ITarget
+public class PlayerController : MonoBehaviour, ITarget, IFactionMember
 {
     // [핵심] 상태 머신
     public PlayerStateMachine stateMachine { get; private set; }
@@ -112,6 +112,7 @@ public class PlayerController : MonoBehaviour, ITarget
         animator = GetComponent<Animator>();
         equipmentVisualizer = GetComponent<EquipmentVisualizer>();
         equipmentHolder = GetComponent<EquipmentHolder>();
+        Overrides = GetComponent<FactionOverride>();
 
         stateMachine.AddState(new IdleState_Player(this, stateMachine));
         stateMachine.AddState(new WalkState_Player(this, stateMachine));
@@ -212,6 +213,12 @@ public class PlayerController : MonoBehaviour, ITarget
 
     public bool IsAlive => stateMachine == null || !(stateMachine.CurrentState is DeadState_Player);
     public Transform Transform => transform;
+
+    // ── 진영 (IFactionMember) ─────────────────────────────────
+    // 플레이어는 언제나 Player 진영이라 필드로 두지 않습니다.
+    public FactionId Faction => FactionId.Player;
+    public FactionOverride Overrides { get; private set; }
+
     public Vector3 AimPoint => transform.position + Vector3.up * 1.5f;
     public Vector2Int ApproachCell => LocationGrid.WorldToCell(transform.position);
     public bool IsMobile => true;
