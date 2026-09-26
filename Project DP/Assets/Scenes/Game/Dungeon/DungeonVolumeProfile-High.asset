@@ -182,7 +182,7 @@ MonoBehaviour:
     m_Value: {x: 0.5, y: 0.5}
   intensity:
     m_OverrideState: 1
-    m_Value: 0.223
+    m_Value: 0.43
   smoothness:
     m_OverrideState: 0
     m_Value: 0.2
@@ -609,7 +609,7 @@ MonoBehaviour:
     m_Value: 0
   radius:
     m_OverrideState: 1
-    m_Value: 1.36
+    m_Value: 1.67
   maxRadiusPixels:
     m_OverrideState: 0
     m_Value: 128
@@ -618,7 +618,7 @@ MonoBehaviour:
     m_Value: 0.05
   intensity:
     m_OverrideState: 1
-    m_Value: 1.32
+    m_Value: 0.44
   useMultiBounce:
     m_OverrideState: 0
     m_Value: 0

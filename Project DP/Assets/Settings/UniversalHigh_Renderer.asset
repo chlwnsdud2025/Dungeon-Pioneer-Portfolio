@@ -104,7 +104,8 @@ MonoBehaviour:
   - {fileID: 2761444702012691672}
   - {fileID: -3047537937008517463}
   - {fileID: 1943614522847019618}
-  m_RendererFeatureMap: f49d6839517b00d641a1d08ff0ae372e51e61c68afcd1ea4d8d45962539f5226a99e149164f8b4d56242965e1c1bf91a
+  - {fileID: 4099265816131859526}
+  m_RendererFeatureMap: f49d6839517b00d641a1d08ff0ae372e51e61c68afcd1ea4d8d45962539f5226a99e149164f8b4d56242965e1c1bf91a46f4707a8a84e338
   m_UseNativeRenderPass: 0
   xrSystemData: {fileID: 0}
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
@@ -176,3 +177,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: HBAO.Universal.Runtime::HorizonBasedAmbientOcclusion.Universal.HBAORendererFeature
   m_Active: 1
   shader: {fileID: 4800000, guid: bf610497676b34e4dbe0f14fe3fe311c, type: 3}
+--- !u!114 &4099265816131859526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 163d34cee9b7a428d9899ab92abd7e0d, type: 3}
+  m_Name: UmbraRenderFeature
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::Umbra.UmbraRenderFeature
+  m_Active: 1
+  m_Shader: {fileID: 0}
+  camerasLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
