@@ -1115,6 +1115,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: OverworldMap
       objectReference: {fileID: 0}
+    - target: {fileID: 214371697484952447, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1850909407837209897, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
