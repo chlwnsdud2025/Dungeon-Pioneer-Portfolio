@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using System.Collections;
-using System.Collections.Generic;
+using UnityEngine.Rendering.Universal;
 
 public class VFXManagerOverworld : MonoBehaviour
 {
@@ -9,6 +9,8 @@ public class VFXManagerOverworld : MonoBehaviour
     private Light _directionalLight;
     [SerializeField]
     private Volume _nightOverrideVolume;
+    [SerializeField]
+    private DecalProjector _cloudDecalProjector;
 
     [SerializeField]
     private float _lightingUpdateInterval = 0.05f;
@@ -55,6 +57,7 @@ public class VFXManagerOverworld : MonoBehaviour
             evolution = elapsedTime / _lightingDayLength;
 
             _nightOverrideVolume.weight = _volumeOverrideCurve.Evaluate(evolution);
+            _cloudDecalProjector.fadeFactor = 1f - _nightOverrideVolume.weight;
             RenderSettings.ambientLight = _staticLightGradient.Evaluate(evolution);
 
             _directionalLight.intensity = _directionalLightIntensityCurve.Evaluate(evolution);

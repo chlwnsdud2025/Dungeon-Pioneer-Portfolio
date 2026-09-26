@@ -1117,6 +1117,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VFXManagerOverworld
   _directionalLight: {fileID: 1207724865}
   _nightOverrideVolume: {fileID: 1348422576}
+  _cloudDecalProjector: {fileID: 1208663139}
   _lightingUpdateInterval: 0.02
   _lightingDayLength: 20
   _directionalEulerStart: {x: 3.9999995, y: 55.599987, z: 0}
@@ -2475,7 +2476,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0777d029ed3dffa4692f417d4aba19ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DecalProjector
-  m_Material: {fileID: -876546973899608171, guid: 77c3b61e7fe79954e9991f693927233d, type: 3}
+  m_Material: {fileID: 2100000, guid: c28ec3843510ba346862e9333f53c5c5, type: 2}
   m_DrawDistance: 1000
   m_FadeScale: 0.9
   m_StartAngleFade: 180
