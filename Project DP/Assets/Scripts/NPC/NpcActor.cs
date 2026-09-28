@@ -6,8 +6,8 @@ using UnityEngine;
 /// 적(EnemyController)과 같은 인터페이스를 구현하므로 GridMover·Perception·FactionTable을
 /// 그대로 재사용합니다 — 이동과 시야 코드를 한 줄도 다시 쓰지 않습니다.
 ///
-/// Grid가 null인 상태는 정상입니다. 마을·오버월드에는 LocationGrid가 아예 없고
-/// (던전 맵을 Instantiate할 때만 만들어집니다), 던전에서도 층 전환 중에는 잠시 null입니다.
+/// 그리드는 던전에서는 DungeonGenerator가, 오버월드·마을에서는 SceneLocation이 만듭니다.
+/// Grid가 null인 상태도 정상입니다 — 씬에 SceneLocation이 없거나 던전 층 전환 중일 때입니다.
 /// GridMover가 모든 경로에서 null을 방어하므로 그때는 그냥 움직이지 않습니다.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
@@ -103,7 +103,8 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
         locationReady = true;
 
         LocationRoot root = GetComponentInParent<LocationRoot>();
-        Grid = root != null ? root.Grid : null;   // 마을·오버월드에는 없으므로 null
+        if (root == null) root = SceneLocation.FindInScene(gameObject.scene);   // 씬 맵 밖에 놓인 NPC
+        Grid = root != null ? root.Grid : null;
 
         if (!spawnCaptured)
         {

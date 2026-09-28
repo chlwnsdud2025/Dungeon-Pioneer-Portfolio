@@ -165,6 +165,7 @@ public class EnemyController : MonoBehaviour, IDamageable, IGridAgent, IPercepti
     public void NotifyLocationReady()
     {
         LocationRoot root = GetComponentInParent<LocationRoot>();
+        if (root == null) root = SceneLocation.FindInScene(gameObject.scene);   // 씬 맵 밖에 놓인 적
         Grid = root != null ? root.Grid : null;
 
         if (!spawnCaptured)

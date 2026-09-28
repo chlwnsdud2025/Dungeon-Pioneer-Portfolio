@@ -12,13 +12,21 @@
 |---|---|
 | 맵빌더 버그 원인 분석 | ✅ 완료 (§1) |
 | **M0** 맵빌더 긴급 복구 | ✅ 커밋·push `a2b17923f` |
-| 오버월드 바닥 `Floor` 태그 | ✅ 작업함 · **미커밋** (`Prefabs/Tile/Overworld/Plane.prefab` 1줄) |
-| 마을 바닥 태그 | ⬜ 대상 없음 — 마을 바닥이 타일이 아님 (§4 N4-B) |
+| 오버월드 바닥 `Floor` 태그 | ✅ 커밋·push `fd16ae9b8` |
+| 마을 바닥 태그 | ⬜ 마을을 새 맵빌더로 만들 때 함께 (§4 N4-B) |
 | **이동 방식 결정** | ✅ **어디서든 A\*** (던전 밖 NavMesh 안 쓰기로 함) |
-| N4-A ~ N4-D (NPC 이동 통일) | ⬜ 다음 작업 |
-| M1 ~ M4 (맵빌더 본 개편) | ⏸ 보류 — NPC 작업 뒤 |
+| **작업 순서 결정** (2026-09-28) | ✅ 오버월드로 NPC 이동 먼저 → 맵빌더 개편 → 새 빌더로 마을 (§4) |
+| **N4-A** 씬 장소 그리드 | 🔨 진행 중 |
+| N4-C, N4-D | ⬜ |
+| M1 ~ M3 (맵빌더 본 개편) | ⬜ N4-D 다음 |
+| N4-B 마을 | ⬜ 새 맵빌더로 |
 
-**결정 대기 3건 → §6**
+**결정 대기 1건 → §6**
+
+### 이전 세션에서 잃은 것
+다른 PC와 브랜치가 갈라져 로컬을 `fd16ae9b8`로 리셋했다. 그때 로컬에만 있던 두 커밋이 빠졌다.
+- `8b558841b` `ResetToSpawn`의 체력 리셋 분리 → **N5.9로 다시 한다** (§4)
+- `8bba0d3ad` 마을·오버월드 NavMesh 베이크 → A\* 통일로 **불필요**
 
 ---
 
@@ -92,6 +100,9 @@ NPC·적은 `NotifyLocationReady()`에서 `GetComponentInParent<LocationRoot>()`
 - 던전: `DungeonGenerator.CreateLocation`이 `LocationRoot`를 붙이고 `DungeonManager.NotifyActorsLocationReady`가 깨워줌 ✅
 - 오버월드·마을: **씬에 놓인 맵에 `LocationRoot`를 만들어주는 주체가 없음**
 - `Overworld.unity`의 `NPC_Test`는 맵의 **자식이 아님** → 부모 탐색으로 못 찾음
+- 오버월드의 언덕·나무·울타리도 맵의 자식이 아니라 씬 최상단에 있음 → `GridBlocker`는 맵이 아니라 **씬 전체**에서 모아야 함
+- 던전은 `DungeonGenerator.NormalizeMapOrigin`이 맵을 원점으로 **옮겨주지만**, 씬 맵은 옮기면 안 됨 (맵 밖 포탈·스폰 앵커·NPC와 어긋남) → **검사만** 하고 어기면 에러 로그
+- 씬 맵 폴백 조회는 `LocationRoot`가 아니라 `SceneLocation`에 둔다. 던전에는 `SceneLocation`이 없으므로 던전 무변화가 구조적으로 보장됨
 
 ### 조사해 둔 현재 씬 상태
 - **Overworld**: `OverworldMap` 인스턴스(원점, 오버라이드 없음) + Hill/Tree/Grass/fence/arch 등 자유 배치 + `Wall_Top/Bottom/Left/Right/Back` + `rigionMarker` + `NPC_Test` + `Test_Potal`
@@ -103,19 +114,31 @@ NPC·적은 `NotifyLocationReady()`에서 `GetComponentInParent<LocationRoot>()`
 
 ## 4. 로드맵
 
-### 🅝 NPC 트랙 — 지금 진행
+### 진행 순서 (2026-09-28 결정)
+```
+N4-A 씬 그리드 → N4-C 이동 브레인(오버월드) → N4-D 던전 재확인
+  → M1~M3 맵빌더 개편 → N4-B 마을을 새 빌더로 → N5 이후
+```
+마을은 새 맵빌더로 만들 것이므로, 옛 도구로 N4-B를 먼저 하면 버려지는 작업이 된다.
+오버월드는 이미 타일 맵이라 NPC 이동을 지금 바로 검증할 수 있다.
+
+### 🅝 NPC 트랙
 
 | 단계 | 내용 | 완료 조건 |
 |---|---|---|
-| **N4-A** 씬 장소 그리드 | ① `SceneLocation` 컴포넌트: 씬에 놓인 맵 루트에 붙어 Awake/Start에 `LocationRoot` 추가 + `LocationGridBuilder.Build` + 씬 안 액터들 `NotifyLocationReady` ② 맵 자식이 아닌 액터용 폴백: `LocationRoot`를 씬 단위로 조회 (예: `LocationRoot.FindInScene(scene)`) — `NpcActor`·`EnemyController`의 `NotifyLocationReady` 1줄씩 ③ `GridBlocker` 컴포넌트 + `LocationGridBuilder`에 추가 패스 ④ 그리드/막힌 칸 디버그 기즈모 | **던전 동작 무변화** + 오버월드에서 그리드·막힌 칸이 보임 |
-| **N4-B** 마을 바닥 | 기본 Plane 제거 → 타일 바닥(태그 `Floor`)으로 교체, 원점 (0,0) 규칙 준수. 건물·소품에 `GridBlocker` | 마을에서 그리드 생성 |
-| **N4-C** 이동 브레인 | `GridSearch` 추출 (`EnemyPatrolState`의 BFS를 정적 헬퍼로, 적·NPC 공용), `WanderBrain`, `RouteBrain`, `NpcWaypointRoute` | 오버월드·마을 NPC가 A\*로 돌아다님 + **적 순찰 회귀 없음** |
-| **N4-D** 던전 NPC 검증 | 이전 계획서 §8 미검증 항목: Demomap1의 NPC가 `Grid` 획득 → 층 전환 `ResetToSpawn` | 던전에서도 같은 브레인 동작 |
+| **N4-A** 씬 장소 그리드 | ① `SceneLocation` (`[DefaultExecutionOrder(-100)]`): 맵 루트에 붙어 **Awake**에 `LocationRoot` + 그리드 생성, **Start**에 씬 안 액터 `NotifyLocationReady`. Awake에서 그리드를 만들어야 `NpcActor.Start`의 자가 준비보다 앞선다 ② 원점 검사 (옮기지 않음) ③ 폴백 `SceneLocation.FindInScene(scene)` — `NpcActor`·`EnemyController` 1줄씩 ④ `GridBlocker` + `LocationGridBuilder.ApplyBlockers` (씬 전체에서 수집) ⑤ 선택 시 그리드 기즈모 (에디터에서는 미리보기) | **던전 동작 무변화** + 오버월드에서 그리드·막힌 칸이 보임 |
+| **N4-C** 이동 브레인 | ① 중력 적용을 브레인 → `NpcActor.Update`로 (목적지 없을 때만 `Move(zero)`, 프레임당 1회 유지) ② `Grid`가 있으면 스폰 위치를 셀 중앙에 스냅 ③ `GridSearch` 추출 (`EnemyPatrolState`의 BFS, **따로 커밋**) ④ `WanderBrain`, `RouteBrain`, `NpcWaypointRoute` | 오버월드 NPC가 A\*로 돌아다님 + **적 순찰 회귀 없음** |
+| **N4-D** 던전 재확인 | Step 1(`3c490823f`)에서 이미 확인함. M0 변환 뒤에도 `Demomap1`에 NPC가 남아 있음. 브레인만 바꿔 층 왕복 | 던전에서도 같은 브레인 동작 |
+| *(M1~M3)* | 맵빌더 개편 — 아래 🅜 | |
+| **N4-B** 마을 | 새 맵빌더로 타일 바닥. 원점 (0,0). 건물·소품은 `Blocker` 카테고리 → `GridBlocker` 자동 부착 | 마을에서 그리드 생성 |
 | N5 | 어포던스 (`IAffordance` + Chest/Stair/Torch 어댑터) | 이전 계획서 그대로 |
 | N5.5 | 함정 `IDamageable` 일반화 (전제: 백스탭은 공격자가 `IFactionMember`일 때만) | 이전 계획서 그대로 |
+| **N5.9** | `ResetToSpawn`의 체력 리셋 분리 재적용 (`NotifyLocationReady(bool restoreStats = true)`). 파티 스폰 때 주입한 체력이 만피로 덮이는 문제. **N6 착수 전 필수** | 동작 변화 0 |
 | N6 ~ N8 | `DelverBrain` / 파티 (Utility + FSM) / 추상 시뮬 & AI LOD | 이전 계획서 그대로 |
 
-### 🅜 맵빌더 트랙 — 보류 (재개 시점 §6-2)
+N5·N5.5는 검증할 NPC가 있어야 하므로 **N6 최소판(혼자 계단 내려가기) 뒤로** 두는 것을 추천.
+
+### 🅜 맵빌더 트랙 — N4-D 다음
 
 | 단계 | 내용 |
 |---|---|
@@ -145,6 +168,8 @@ MapProfile (SO)          맵 종류별 규칙
 
 MapRoot (MonoBehaviour)  맵 프리팹 루트. profile, size. 원점 (0,0) 규칙 강제
 ```
+- `MapProfile`(오버월드·마을)은 루트에 **`SceneLocation` 자동 부착**
+- M3 검증 패널의 "원점 ≠ (0,0)" 검사는 N4-A의 `LocationGridBuilder.TryGetFloorMinCell`을 **그대로 재사용** — 에디터와 런타임 판정을 하나로
 - **함정 해결**: 함정도 `category = Trap`인 정의 하나. 새 함정 = SO 만들어 팔레트에 추가, 코드 수정 0
 - 함정 수치(데미지·쿨다운)는 지금처럼 **프리팹 컴포넌트에** 둔다. 수치만 다른 버전은 Prefab Variant + 정의 하나 더. SO에 수치를 옮기는 `TrapDefinition`은 밸런싱 요구가 생기면
 - `Blocker` 카테고리 배치 시 `GridBlocker` 자동 부착 (N4-A와 연결)
@@ -170,6 +195,7 @@ Demomap1 (MapRoot)       일반 프리팹. Variant 금지
 - SO 애셋 위치 통일 (`Assets/Scripts/SO/NPC/` vs `Assets/SO/`)
 - `NPC_Test`의 모델 자식(`Barbarian`) 레이어 0 → NPC(11)
 - Firstmap1~5, TestMap: 현재 미사용. **그대로 둔다** (사용자 결정)
+- 옛 병합 충돌 표시(`<<<<<<<<`)가 남아 guid가 깨진 `.meta` 2개: `Prefabs/Tile/Test/BoxTile.prefab.meta`, `Prefabs/Tile/Test/New Tile Palette.prefab.meta` (오래전 `84c12fe9e` 병합 흔적) → M4 정리 때
 
 ---
 
@@ -196,19 +222,18 @@ Demomap1 (MapRoot)       일반 프리팹. Variant 금지
 
 ## 6. ⚠️ 결정 대기
 
-1. **마을 바닥 타일** — 오버월드 `Plane`(풀밭) / 던전 `Road` / 마을 전용 타일 새로 만들기
-2. **맵빌더(M1~) 재개 시점** — 추천: **N4 이후, N5 전.** N4-B에서 마을을 타일로 깔 때 임시 수단(구 빌더·스크립트)의 한계가 드러나고, N5 이후 NPC 작업은 맵 콘텐츠 없이 검증이 어려움. 대안: NPC 전체(N8) 완료 후
-3. **`Plane.prefab` 태그 변경 커밋** — 바로 커밋 / N4-A와 함께. Unity에서 OverworldMap 타일들이 `Floor`로 보이는지 확인 필요
+1. **마을 바닥 타일** — 오버월드 `Plane`(풀밭) / 던전 `Road` / 마을 전용 타일 새로 만들기. N4-B 전까지만 정하면 됨
+
+해결됨: 맵빌더 재개 시점 → N4-D 다음 (2026-09-28) / `Plane.prefab` 태그 → `fd16ae9b8`에 커밋됨
 
 ---
 
 ## 7. 작업 재개 체크리스트
 
-1. `git pull` → `git log --oneline -3`에 `a2b17923f 맵빌더 0단계 복구`가 있는지 확인
-2. 이 문서가 커밋돼 있는지, `Plane.prefab` 태그 변경이 들어왔는지 확인 (`git show HEAD --stat`)
+1. **pull 전에 `git status -sb`로 로컬 미푸시 커밋 확인.** 두 PC에서 따로 커밋하면 브랜치가 갈라져 병합 충돌이 난다 (2026-09-28 사고)
+2. `git pull` → 이 문서 §0 상태표와 `git log --oneline -5` 비교
 3. Unity 열고 컴파일 에러 0 확인
-4. `Overworld.unity`에서 OverworldMap 타일 하나 선택 → Tag가 `Floor`인지 확인
-5. §6 결정 → **N4-A 착수**
+4. §0에서 🔨 표시된 단계부터 이어서
 
 ### Unity 없이 컴파일만 검증하는 법
 Unity가 열려 있으면 포커스를 줄 때까지 컴파일이 안 되므로, Roslyn을 직접 호출한다:

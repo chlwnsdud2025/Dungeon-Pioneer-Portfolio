@@ -81,9 +81,65 @@ public static class LocationGridBuilder
         {
             foreach (PushableObject pushable in locationInstance.GetComponentsInChildren<PushableObject>(true))
                 grid.AddPushable(pushable);
+
+            ApplyBlockers(grid, locationInstance.GetComponentsInChildren<GridBlocker>());
         }
 
         return grid;
+    }
+
+    /// <summary>
+    /// 자유 배치 소품(언덕·나무·울타리)이 덮는 칸을 지나갈 수 없게 표시합니다.
+    /// 타일 태그만으로는 A*가 이런 소품을 모르기 때문에 필요합니다. 던전 맵에는 GridBlocker가 없어 영향이 없습니다.
+    /// </summary>
+    public static void ApplyBlockers(LocationGrid grid, IEnumerable<GridBlocker> blockers)
+    {
+        if (grid == null || blockers == null) return;
+
+        List<Vector2Int> cells = new List<Vector2Int>();
+        foreach (GridBlocker blocker in blockers)
+        {
+            if (blocker == null) continue;
+
+            cells.Clear();
+            blocker.CollectCoveredCells(cells);
+
+            foreach (Vector2Int cell in cells)
+            {
+                if (grid.InBounds(cell))
+                    grid.StaticBlockers[cell.x, cell.y] = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 바닥 계열 타일 중 가장 작은 칸. 장소 맵은 이 값이 (0,0)이어야 합니다 —
+    /// LocationGrid에는 원점 오프셋이 없어 음수 칸은 그리드에서 조용히 빠집니다.
+    /// 원점 판정은 DungeonGenerator.NormalizeMapOrigin과 같은 기준(벽 제외)을 씁니다.
+    /// </summary>
+    public static bool TryGetFloorMinCell(GameObject locationInstance, out Vector2Int minCell)
+    {
+        minCell = Vector2Int.zero;
+        bool found = false;
+
+        foreach (Transform root in CollectTileRoots(locationInstance))
+        {
+            if (!(root.CompareTag("Floor") || root.CompareTag("Entrance") ||
+                  root.CompareTag("Exit") || root.CompareTag("Trap")))
+                continue;
+
+            Vector2Int cell = LocationGrid.WorldToCell(root.position);
+            if (!found)
+            {
+                minCell = cell;
+                found = true;
+                continue;
+            }
+
+            minCell = Vector2Int.Min(minCell, cell);
+        }
+
+        return found;
     }
 
     private static List<Transform> CollectTileRoots(GameObject locationInstance)
