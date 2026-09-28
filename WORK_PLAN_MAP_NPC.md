@@ -1,6 +1,6 @@
 # 맵빌더 개편 + NPC 이동 통일 — 작업 기록과 계획
 
-> 최종 갱신: 2026-09-28 / 브랜치 `JunYeoung_Branch`
+> 최종 갱신: 2026-09-29 / 브랜치 `JunYeoung_Branch`
 > 이 문서는 인수인계용입니다. 계획이 바뀌면 이 문서도 같이 고치고, 낡으면 지웁니다.
 > 이전 NPC 계획서 원문은 커밋 `842b58c5b`의 `NPC_SYSTEM.md`에 있습니다 (`git show 842b58c5b:NPC_SYSTEM.md`).
 
@@ -16,10 +16,14 @@
 | 마을 바닥 태그 | ⬜ 마을을 새 맵빌더로 만들 때 함께 (§4 N4-B) |
 | **이동 방식 결정** | ✅ **어디서든 A\*** (던전 밖 NavMesh 안 쓰기로 함) |
 | **작업 순서 결정** (2026-09-28) | ✅ 오버월드로 NPC 이동 먼저 → 맵빌더 개편 → 새 빌더로 마을 (§4) |
-| **N4-A** 씬 장소 그리드 | 🔨 진행 중 |
-| N4-C, N4-D | ⬜ |
-| M1 ~ M3 (맵빌더 본 개편) | ⬜ N4-D 다음 |
-| N4-B 마을 | ⬜ 새 맵빌더로 |
+| **N4-A** 씬 장소 그리드 | ✅ `5bf53c6c9` + 오버월드 배치 `e33c091aa` |
+| **N4-C** 이동 브레인 | ✅ `3696810f3` 몸 / `d92e93421` GridSearch / `08a8f9114` 배회·순찰 |
+| N4-D 던전 재확인 | ⬜ 에디터 작업만 (§4) |
+| **맵빌더 방향 변경** (2026-09-29) | ✅ 새 도구를 만들지 않고 **옛 `MapBuilder`를 단계별로 진화** (§4 🅜) |
+| ~~B1 팔레트 SO~~ | ❌ 취소 (2026-09-29) — 기존 프리팹 연결 방식 유지 |
+| ~~B2~B6~~ | ❌ 재정리 (2026-09-29) — 굽기(덮어쓰기) 방식 유지로 결정. 아래 C1~C4로 대체 |
+| **C1~C4** 빌더 개선 | 🔨 구현·컴파일 완료, 에디터 테스트 대기 (§4 🅜) |
+| N4-B 마을 | ⬜ B4 이후, 개선된 빌더로 |
 
 **결정 대기 1건 → §6**
 
@@ -117,7 +121,7 @@ NPC·적은 `NotifyLocationReady()`에서 `GetComponentInParent<LocationRoot>()`
 ### 진행 순서 (2026-09-28 결정)
 ```
 N4-A 씬 그리드 → N4-C 이동 브레인(오버월드) → N4-D 던전 재확인
-  → M1~M3 맵빌더 개편 → N4-B 마을을 새 빌더로 → N5 이후
+  → B1~B5 맵빌더 개선 → N4-B 마을을 개선된 빌더로 → N5 이후
 ```
 마을은 새 맵빌더로 만들 것이므로, 옛 도구로 N4-B를 먼저 하면 버려지는 작업이 된다.
 오버월드는 이미 타일 맵이라 NPC 이동을 지금 바로 검증할 수 있다.
@@ -129,8 +133,8 @@ N4-A 씬 그리드 → N4-C 이동 브레인(오버월드) → N4-D 던전 재�
 | **N4-A** 씬 장소 그리드 | ① `SceneLocation` (`[DefaultExecutionOrder(-100)]`): 맵 루트에 붙어 **Awake**에 `LocationRoot` + 그리드 생성, **Start**에 씬 안 액터 `NotifyLocationReady`. Awake에서 그리드를 만들어야 `NpcActor.Start`의 자가 준비보다 앞선다 ② 원점 검사 (옮기지 않음) ③ 폴백 `SceneLocation.FindInScene(scene)` — `NpcActor`·`EnemyController` 1줄씩 ④ `GridBlocker` + `LocationGridBuilder.ApplyBlockers` (씬 전체에서 수집) ⑤ 선택 시 그리드 기즈모 (에디터에서는 미리보기) | **던전 동작 무변화** + 오버월드에서 그리드·막힌 칸이 보임 |
 | **N4-C** 이동 브레인 | ① 중력 적용을 브레인 → `NpcActor.Update`로 (목적지 없을 때만 `Move(zero)`, 프레임당 1회 유지) ② `Grid`가 있으면 스폰 위치를 셀 중앙에 스냅 ③ `GridSearch` 추출 (`EnemyPatrolState`의 BFS, **따로 커밋**) ④ `WanderBrain`, `RouteBrain`, `NpcWaypointRoute` | 오버월드 NPC가 A\*로 돌아다님 + **적 순찰 회귀 없음** |
 | **N4-D** 던전 재확인 | Step 1(`3c490823f`)에서 이미 확인함. M0 변환 뒤에도 `Demomap1`에 NPC가 남아 있음. 브레인만 바꿔 층 왕복 | 던전에서도 같은 브레인 동작 |
-| *(M1~M3)* | 맵빌더 개편 — 아래 🅜 | |
-| **N4-B** 마을 | 새 맵빌더로 타일 바닥. 원점 (0,0). 건물·소품은 `Blocker` 카테고리 → `GridBlocker` 자동 부착 | 마을에서 그리드 생성 |
+| *(B1~B5)* | 맵빌더 개선 — 아래 🅜 | |
+| **N4-B** 마을 | 개선된 맵빌더로 타일 바닥. 원점 (0,0). 건물·소품은 `Blocker` 카테고리 → `GridBlocker` 자동 부착 | 마을에서 그리드 생성 |
 | N5 | 어포던스 (`IAffordance` + Chest/Stair/Torch 어댑터) | 이전 계획서 그대로 |
 | N5.5 | 함정 `IDamageable` 일반화 (전제: 백스탭은 공격자가 `IFactionMember`일 때만) | 이전 계획서 그대로 |
 | **N5.9** | `ResetToSpawn`의 체력 리셋 분리 재적용 (`NotifyLocationReady(bool restoreStats = true)`). 파티 스폰 때 주입한 체력이 만피로 덮이는 문제. **N6 착수 전 필수** | 동작 변화 0 |
@@ -138,17 +142,45 @@ N4-A 씬 그리드 → N4-C 이동 브레인(오버월드) → N4-D 던전 재�
 
 N5·N5.5는 검증할 NPC가 있어야 하므로 **N6 최소판(혼자 계단 내려가기) 뒤로** 두는 것을 추천.
 
-### 🅜 맵빌더 트랙 — N4-D 다음
+### 🅜 맵빌더 트랙 — 최종 방향 (2026-09-29 재결정)
+
+**굽기(덮어쓰기)는 유지한다.** 맵은 기획자가 빌더로만 만들고 작업 전에 불러오기를 하므로 문제없다.
+덮어쓰기 위험의 원인은 "빌더로 못 놓는 것이 있어 프리팹을 직접 열게 되는 것"이라, 빌더에 자유 배치를 넣어 원인을 줄인다.
+**높이·층 구조는 도구가 정하지 않는다** (슬롯별 높이 기억, 벽 N단 자동 쌓기 등 제안 거절됨 — 층고는 제작자 몫).
+
+| 단계 | 내용 |
+|---|---|
+| **C1** 종류별 컨테이너 | 굽는 맵 구조: `Floor`/`Wall`/`Entrance`/`Exit`/`Chest`/`Trap`/`Enemy`/`Pushable`(슬롯과 1:1) + `FreeObjects` + `DecorationRoot`. 칸 등록은 타일 묶음만. 옛 평평한 맵은 불러올 때 자동 정리(슬롯 원본 → 태그 → 나머지는 FreeObjects) |
+| **C2** MapDecoration 자동 | 굽기 직전 DecorationRoot에 자식이 있으면 루트에 `MapDecoration` 부착·연결, 없으면 제거. **예전 굽기는 원본 루트의 MapDecoration을 잃어 장식이 처음부터 보이는 버그가 있었음** |
+| **C3** 자유 배치 2종 | [자유 배치] → FreeObjects(항상 보임) / [개척 장식] → DecorationRoot. Shift+클릭 하나 배치(드래그 연속 배치 없음), Shift+우클릭 마우스 아래 오브젝트 삭제(현재 모드 묶음만), **Ctrl+휠 = 높이**(간격 기본 0.25m), 자유 배치용 프리팹 목록은 인스펙터에 끌어다 놓아 추가 |
+| **C4** 인스펙터·씬 뷰 개편 | 헤더(작업 중 맵·크기) / 모드 탭 / 썸네일 팔레트 / 배치 / 단축키 요약 / 맵 파일(불러오기·굽기) / 접힘(맵 설정·슬롯 설정) / 가이드·전체 지우기. 씬 뷰 왼쪽 위 안내판, 자유 배치 시 바닥까지 세로선 |
+| 나중에 | 모드별(던전/필드/마을) 슬롯 목록 + 필드·마을 굽기 시 `SceneLocation` 자동 부착 → N4-B 직전 |
+
+**주의:** 묶음 오브젝트는 Untagged여야 하고(태그가 있으면 그 아래 타일이 그리드에서 빠짐), 이름이 "Bonus"로 시작하면 안 된다(미니맵이 이름으로 보너스를 찾음).
+
+### (이전 안) 옛 빌더를 단계별로 진화 — 기록용
+
+처음 계획(M1~M4)은 EditorWindow를 새로 만드는 것이었다. 코드를 다시 보니 문제 대부분이 기존
+`MapBuilder`/`MapBuilderEditor` 안에서 고쳐지고, 특히 사고의 근본 원인인 "씬에서 만들고 굽기"는
+**`MapBuilder`를 맵 프리팹 루트에 붙여 Prefab Mode에서 그대로 칠하게** 하면 사라진다.
+팀원이 익숙한 UI·단축키와 M0의 Undo·안전장치도 유지된다.
+새 창이 꼭 필요한 이유는 "빌더 오브젝트를 선택하고 있을 때만 칠해진다" 하나뿐이라, 써보고 불편하면 그때 만든다.
+
+**모든 단계의 완료 조건: 기존 MapBuildScene 방식으로도 여전히 맵을 만들 수 있을 것.**
 
 | 단계 | 내용 |
 |---|---|
 | M0 | ✅ 완료 |
-| **M1** 데이터 계층 (SO) | 아래 설계 참고 |
-| **M2** 새 에디터 | `Tools/Map Builder` EditorWindow + SceneView 오버레이. **Prefab Mode에서 맵 프리팹을 직접 편집** (씬 작업공간·"굽기" 폐지 → Undo/저장은 Unity 기본 동작, Variant·이중보관 원천 차단). 도구: 칠하기/지우기/사각 채우기/스포이드/회전(Shift+R)/브러시 크기/층/레이어 필터. "새 맵 만들기(프로필 선택)" |
-| **M3** 검증·연결 | 검증 패널(태그-카테고리 불일치, Entrance/Exit 개수, 격자 이탈, 중복 칸, Missing prefab, 원점 ≠ (0,0), 연결 안 된 발판) + 함정 연결 도구(발판 선택 → 화살 함정 클릭, `ArrowTrapAutoWire` 로직 재사용) |
-| **M4** 정리 | 구 `MapBuilder`/`MapBuilderEditor` 삭제, MapBuildScene 폐기(또는 조명 미리보기용 빈 씬), 사용법 문서 |
+| ~~B1 팔레트 SO~~ | **취소.** 구현까지 했다가 되돌림. 팔레트는 지금처럼 `MapBuilder`의 프리팹 슬롯(`floorPrefab` 등)으로 간다. 슬롯이 부족하면 SO 대신 **프리팹 목록 필드를 추가**하는 쪽으로 (필드 추가는 안전, 원칙 ①) |
+| **B2** 로컬 좌표 + 레이어 점유 | `SyncPlacedTiles`를 루트 기준 좌표로, 점유 키를 `(칸, Ground/Object)`로. 같은 칸에 바닥과 상자 공존. 레이어는 SO 없이 **프리팹 태그로 판정** (Floor·Entrance·Exit·바닥 함정 → Ground, 나머지 → Object) |
+| **B3** Prefab Mode 지원 | `MapBuilder`가 맵 프리팹 루트에 있으면 컨테이너 = 루트. Prefab Mode에서는 굽기·불러오기 숨김, 저장은 Unity 기본. MapBuildScene 방식도 그대로 동작 |
+| **B4** 맵 종류별 프로필 | Dungeon/Overworld/Town 팔레트·검증 규칙. Town/Overworld 루트에 `SceneLocation` 자동 부착, `Blocker` 카테고리는 `GridBlocker` 자동 부착 |
+| **B5** 검증 + 함정 연결 | "맵 검사" 버튼 (아래 검사 목록). 함정 연결은 `ArrowTrapAutoWire` 로직 재사용 |
+| B6 정리 | 팀이 Prefab Mode 방식으로 옮겨오면 MapBuildScene 굽기 경로 제거 |
 
-#### M1 설계
+**팀 규칙:** 한 맵 프리팹은 한 사람이 작업한다. Prefab Mode로 덮어쓰기 문제는 사라져도, 같은 프리팹을 동시에 고치면 YAML 병합 충돌은 여전히 난다.
+
+#### 데이터 설계 (참고용 — B1 취소로 SO 계층은 보류. B4의 맵 종류별 설정은 `MapBuilder` 필드로 대신한다)
 ```
 MapTileDefinition (SO)   팔레트 항목 하나
  ├ id, 표시 이름, 아이콘
@@ -166,16 +198,17 @@ MapProfile (SO)          맵 종류별 규칙
  ├ 루트에 붙일 컴포넌트 (RegionMarker, SceneLocation 등)
  └ 검증 규칙 (던전: Entrance/Exit 각 1개 필수)
 
-MapRoot (MonoBehaviour)  맵 프리팹 루트. profile, size. 원점 (0,0) 규칙 강제
+MapRoot                  → 따로 만들지 않고 MapBuilder가 맵 루트 역할을 겸한다 (B3)
 ```
+- 정의 필드는 필요한 단계에서 추가한다. SO에 필드를 *추가*하는 건 기존 애셋에 안전하다
 - `MapProfile`(오버월드·마을)은 루트에 **`SceneLocation` 자동 부착**
-- M3 검증 패널의 "원점 ≠ (0,0)" 검사는 N4-A의 `LocationGridBuilder.TryGetFloorMinCell`을 **그대로 재사용** — 에디터와 런타임 판정을 하나로
+- B5 맵 검사의 "원점 ≠ (0,0)" 검사는 N4-A의 `LocationGridBuilder.TryGetFloorMinCell`을 **그대로 재사용** — 에디터와 런타임 판정을 하나로
 - **함정 해결**: 함정도 `category = Trap`인 정의 하나. 새 함정 = SO 만들어 팔레트에 추가, 코드 수정 0
 - 함정 수치(데미지·쿨다운)는 지금처럼 **프리팹 컴포넌트에** 둔다. 수치만 다른 버전은 Prefab Variant + 정의 하나 더. SO에 수치를 옮기는 `TrapDefinition`은 밸런싱 요구가 생기면
 - `Blocker` 카테고리 배치 시 `GridBlocker` 자동 부착 (N4-A와 연결)
 - 현재 팔레트 밖에서 손으로 배치 중인 것도 등록: Xfloor, Bonus, torch_mounted, wall_doorway, NPC
 
-#### 맵 프리팹 표준 구조
+#### 맵 프리팹 표준 구조 (새로 놓는 오브젝트만. 기존 Demomap 자식은 옮기지 않음)
 ```
 Demomap1 (MapRoot)       일반 프리팹. Variant 금지
  ├ Ground      바닥/입구/출구/함정 바닥
@@ -187,8 +220,8 @@ Demomap1 (MapRoot)       일반 프리팹. Variant 금지
 그룹 오브젝트는 Untagged → `LocationGrid.IsTileRoot` 규칙 그대로 만족, 런타임 수정 불필요.
 점유 인덱스 `(cell, layer)`는 직렬화하지 않고 계층에서 재계산 (지금은 한 칸에 하나만 허용돼서 바닥 위 상자를 놓으면 바닥이 지워짐 → `currentHeight`로 우회 중).
 
-#### 구 맵빌더의 남은 잔버그 (M4에서 사라짐)
-월드 좌표 기준 `SyncPlacedTiles`, 가이드 Plane 머티리얼이 씬에 누수, 고스트가 `SkinnedMeshRenderer` 미지원, 팔레트 하드코딩.
+#### 옛 맵빌더의 남은 잔버그
+월드 좌표 기준 `SyncPlacedTiles`(B2), 팔레트 하드코딩(B1), 가이드 Plane 머티리얼이 씬에 누수, 고스트가 `SkinnedMeshRenderer` 미지원.
 
 ### 정리 항목
 - `Dungeon.unity`의 `NavMeshSurface`·`NavMeshModifier` 잔재 → A\* 통일했으니 N4 이후 제거

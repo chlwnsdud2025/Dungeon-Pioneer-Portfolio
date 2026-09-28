@@ -195,8 +195,9 @@ public static class MapPrefabMigration
     /// <summary>
     /// 새로 저장된 루트 GameObject의 fileID를 변환 전 값으로 되돌립니다.
     /// 씬에서 프리팹을 참조할 때는 {fileID: 루트, guid} 형태라 이 값이 바뀌면 참조가 끊어집니다.
+    /// 맵빌더의 굽기(덮어쓰기)도 같은 문제가 있어 함께 씁니다.
     /// </summary>
-    private static string RestoreRootFileId(string path, long oldRootId)
+    internal static string RestoreRootFileId(string path, long oldRootId)
     {
         GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
         if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out _, out long newRootId))
