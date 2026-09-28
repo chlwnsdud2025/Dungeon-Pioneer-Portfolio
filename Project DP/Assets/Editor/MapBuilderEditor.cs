@@ -25,7 +25,10 @@ public class MapBuilderEditor : Editor
     // ★ 팀원 피드백 반영: 각도 대신 직관적인 화살표(시선 방향)로 UI 텍스트 변경
     private readonly string[] rotationNames = { "↑ (앞/0°)", "→ (우/90°)", "↓ (뒤/180°)", "← (좌/270°)" };
 
-    private static readonly string[] TypeOptions = BuildTypeOptions();
+    private static readonly MapTileType[] AllTypes = (MapTileType[])System.Enum.GetValues(typeof(MapTileType));
+    private static readonly LocationType[] KindOrder = { LocationType.Dungeon, LocationType.Overworld, LocationType.Town };
+    private static readonly Dictionary<LocationType, List<MapTileType>> AllowedTypeCache = new Dictionary<LocationType, List<MapTileType>>();
+    private static readonly Dictionary<LocationType, string[]> TypeOptionCache = new Dictionary<LocationType, string[]>();
 
     private MapBuilder builder;
 
@@ -52,8 +55,21 @@ public class MapBuilderEditor : Editor
     // ── 현재 선택 ──────────────────────────────────────────────────────
     // 칠하기·고스트·선택 지우개·HUD가 모두 아래 값만 보게 해서, 무엇을 어떻게 놓는지가 한 곳에서 정해지게 합니다.
 
-    /// <summary>지금 보여줄 팔레트 목록. (지금은 던전만. 맵 종류 선택은 다음 단계)</summary>
-    private List<MapPalette> CurrentPalettes => builder.paletteLibrary != null ? builder.paletteLibrary.dungeon : null;
+    /// <summary>지금 만드는 맵 종류(던전·필드·마을)의 팔레트 목록.</summary>
+    private List<MapPalette> CurrentPalettes => PalettesOf(builder.mapKind);
+
+    private List<MapPalette> PalettesOf(LocationType kind)
+    {
+        MapPaletteLibrary library = builder.paletteLibrary;
+        if (library == null) return null;
+
+        switch (kind)
+        {
+            case LocationType.Overworld: return library.field;
+            case LocationType.Town: return library.town;
+            default: return library.dungeon;
+        }
+    }
 
     private MapPalette CurrentPalette
     {
@@ -65,12 +81,14 @@ public class MapBuilderEditor : Editor
         }
     }
 
+    /// <summary>지금 놓을 프리팹. 이 맵 종류에서 쓸 수 없는 타입의 팔레트를 골랐으면 아무것도 놓지 않습니다.</summary>
     private GameObject CurrentPrefab
     {
         get
         {
             MapPalette palette = CurrentPalette;
             if (palette == null || palette.prefabs.Count == 0) return null;
+            if (!MapBuilder.IsTypeAllowed(palette.type, builder.mapKind)) return null;
             return palette.prefabs[Mathf.Clamp(builder.selectedItemIndex, 0, palette.prefabs.Count - 1)];
         }
     }
@@ -104,16 +122,44 @@ public class MapBuilderEditor : Editor
         SceneView.RepaintAll();
     }
 
-    private static string[] BuildTypeOptions()
+    private static string KindLabel(LocationType kind)
     {
-        MapTileType[] values = (MapTileType[])System.Enum.GetValues(typeof(MapTileType));
-        string[] options = new string[values.Length];
-        for (int i = 0; i < values.Length; i++)
-            options[i] = $"{TypeLabel(values[i])} ({values[i]})";
+        switch (kind)
+        {
+            case LocationType.Overworld: return "필드";
+            case LocationType.Town: return "마을";
+            default: return "던전";
+        }
+    }
+
+    /// <summary>이 맵 종류에서 고를 수 있는 타입. 팔레트 타입 목록에는 이것만 보입니다.</summary>
+    private static List<MapTileType> AllowedTypes(LocationType kind)
+    {
+        if (AllowedTypeCache.TryGetValue(kind, out List<MapTileType> cached)) return cached;
+
+        List<MapTileType> allowed = new List<MapTileType>();
+        foreach (MapTileType type in AllTypes)
+            if (MapBuilder.IsTypeAllowed(type, kind)) allowed.Add(type);
+
+        AllowedTypeCache[kind] = allowed;
+        return allowed;
+    }
+
+    private static string[] TypeOptions(LocationType kind)
+    {
+        if (TypeOptionCache.TryGetValue(kind, out string[] cached)) return cached;
+
+        List<MapTileType> allowed = AllowedTypes(kind);
+        string[] options = new string[allowed.Count];
+        for (int i = 0; i < options.Length; i++)
+            options[i] = $"{TypeLabel(allowed[i], kind)} ({allowed[i]})";
+
+        TypeOptionCache[kind] = options;
         return options;
     }
 
-    private static string TypeLabel(MapTileType type)
+    /// <summary>자유 배치는 필드·마을에서 길을 막는 장애물이 되므로 이름도 '장애물'로 보여줍니다.</summary>
+    private static string TypeLabel(MapTileType type, LocationType kind)
     {
         switch (type)
         {
@@ -125,7 +171,7 @@ public class MapBuilderEditor : Editor
             case MapTileType.Trap: return "함정";
             case MapTileType.Enemy: return "적";
             case MapTileType.Pushable: return "밀기 블록";
-            case MapTileType.Free: return "자유 배치";
+            case MapTileType.Free: return kind == LocationType.Dungeon ? "자유 배치" : "장애물";
             case MapTileType.Decoration: return "개척 장식";
             default: return type.ToString();
         }
@@ -141,11 +187,11 @@ public class MapBuilderEditor : Editor
         }
     }
 
-    private static string PlacementLabel(MapTileType type)
+    private static string PlacementLabel(MapTileType type, LocationType kind)
     {
         switch (type)
         {
-            case MapTileType.Free: return "✦ 자유 배치";
+            case MapTileType.Free: return kind == LocationType.Dungeon ? "✦ 자유 배치" : "✦ 장애물";
             case MapTileType.Decoration: return "✧ 개척 장식";
             default: return "■ 격자";
         }
@@ -304,6 +350,7 @@ public class MapBuilderEditor : Editor
         EditorGUI.BeginChangeCheck();
 
         DrawHeaderBox();
+        DrawKindTabs();
         DrawPaletteBox();
         DrawPlacementBox();
         DrawShortcutBox();
@@ -333,13 +380,43 @@ public class MapBuilderEditor : Editor
         EditorGUILayout.EndVertical();
     }
 
+    /// <summary>
+    /// 지금 만드는 맵의 종류. 종류마다 팔레트 목록이 따로 있고, 굽기 결과도 달라집니다
+    /// (필드·마을은 SceneLocation과 장애물 GridBlocker가 붙음). 불러오기를 하면 자동으로 맞춰집니다.
+    /// </summary>
+    private void DrawKindTabs()
+    {
+        EditorGUILayout.Space(2);
+        EditorGUILayout.BeginHorizontal();
+        foreach (LocationType kind in KindOrder)
+        {
+            bool active = builder.mapKind == kind;
+            Color previous = GUI.backgroundColor;
+            if (active) GUI.backgroundColor = BakeColor;
+
+            bool clicked = GUILayout.Toggle(active, KindLabel(kind), "Button", GUILayout.Height(26));
+            GUI.backgroundColor = previous;
+
+            if (clicked && !active) SetKind(kind);
+        }
+        EditorGUILayout.EndHorizontal();
+    }
+
+    private void SetKind(LocationType kind)
+    {
+        Undo.RecordObject(builder, "Change Map Kind");
+        builder.mapKind = kind;
+        builder.selectedPaletteIndex = 0;
+        builder.selectedItemIndex = 0;
+    }
+
     private void DrawPaletteBox()
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
         bool editing = SessionState.GetBool(EditPalettesKey, false);
         EditorGUILayout.BeginHorizontal();
-        GUILayout.Label("팔레트  ·  던전", sectionStyle);
+        GUILayout.Label($"팔레트  ·  {KindLabel(builder.mapKind)}", sectionStyle);
         GUILayout.FlexibleSpace();
         bool nextEditing = GUILayout.Toggle(editing, "편집", EditorStyles.miniButton, GUILayout.Width(44));
         EditorGUILayout.EndHorizontal();
@@ -387,9 +464,11 @@ public class MapBuilderEditor : Editor
     private PaletteAction DrawPalette(List<MapPalette> palettes, int index, bool editing)
     {
         MapPalette palette = palettes[index];
+        LocationType kind = builder.mapKind;
         bool isCurrent = index == builder.selectedPaletteIndex;
         bool isGrid = MapBuilder.IsGridType(palette.type);
-        Color typeColor = TypeColor(palette.type);
+        bool allowed = MapBuilder.IsTypeAllowed(palette.type, kind);
+        Color typeColor = allowed ? TypeColor(palette.type) : DangerColor;
         PaletteAction action = PaletteAction.None;
 
         Color previous = GUI.backgroundColor;
@@ -419,7 +498,9 @@ public class MapBuilderEditor : Editor
         }
         else
         {
-            string tag = $"{TypeLabel(palette.type)} · {(isGrid ? "격자" : "자유")}";
+            string tag = allowed
+                ? $"{TypeLabel(palette.type, kind)} · {(isGrid ? "격자" : "자유")}"
+                : $"⚠ {TypeLabel(palette.type, kind)} — {KindLabel(kind)}에서 못 씀";
             float tagWidth = paletteTagStyle.CalcSize(new GUIContent(tag)).x;
             Rect tagRect = new Rect(right - tagWidth, header.y + 2f, tagWidth, 16f);
             right = tagRect.x - 6f;
@@ -431,7 +512,7 @@ public class MapBuilderEditor : Editor
         }
 
         // 유니티의 Foldout은 화살표를 영역 왼쪽 바깥에 그립니다. 그만큼 안으로 밀어 화살표가 칸 안에 오게 합니다.
-        string foldKey = FoldPaletteKeyPrefix + index;
+        string foldKey = FoldKey(index);
         bool open = SessionState.GetBool(foldKey, true);
         Rect foldRect = new Rect(header.x + 14f, header.y + 1f, Mathf.Max(20f, right - header.x - 14f), 18f);
         string title = $"{palette.name}  ({palette.prefabs.Count})";
@@ -441,18 +522,24 @@ public class MapBuilderEditor : Editor
         // ── 편집 칸 ──
         if (editing)
         {
+            // 타입 목록에는 이 맵 종류에서 쓸 수 있는 것만 보입니다. 지금 타입이 목록에 없으면 빈 칸으로 보입니다.
+            List<MapTileType> allowedTypes = AllowedTypes(kind);
             float previousLabelWidth = EditorGUIUtility.labelWidth;
             EditorGUIUtility.labelWidth = 36f;
             string name = EditorGUILayout.TextField("이름", palette.name);
-            int type = EditorGUILayout.Popup("타입", (int)palette.type, TypeOptions);
+            int picked = EditorGUILayout.Popup("타입", allowedTypes.IndexOf(palette.type), TypeOptions(kind));
             EditorGUIUtility.labelWidth = previousLabelWidth;
 
-            if (name != palette.name || type != (int)palette.type)
+            MapTileType type = picked >= 0 ? allowedTypes[picked] : palette.type;
+            if (name != palette.name || type != palette.type)
             {
                 RecordLibrary("Edit Palette");
                 palette.name = name;
-                palette.type = (MapTileType)type;
+                palette.type = type;
             }
+
+            if (!allowed)
+                EditorGUILayout.HelpBox($"{KindLabel(kind)} 맵에서는 쓸 수 없는 타입입니다. 타입을 바꾸거나 팔레트를 지우세요.", MessageType.Warning);
         }
 
         // ── 썸네일 ──
@@ -516,15 +603,18 @@ public class MapBuilderEditor : Editor
         (palettes[from], palettes[to]) = (palettes[to], palettes[from]);
 
         // 펼침 상태는 번호로 기억하므로 함께 바꿉니다.
-        bool fromOpen = SessionState.GetBool(FoldPaletteKeyPrefix + from, true);
-        bool toOpen = SessionState.GetBool(FoldPaletteKeyPrefix + to, true);
-        SessionState.SetBool(FoldPaletteKeyPrefix + from, toOpen);
-        SessionState.SetBool(FoldPaletteKeyPrefix + to, fromOpen);
+        bool fromOpen = SessionState.GetBool(FoldKey(from), true);
+        bool toOpen = SessionState.GetBool(FoldKey(to), true);
+        SessionState.SetBool(FoldKey(from), toOpen);
+        SessionState.SetBool(FoldKey(to), fromOpen);
 
         Undo.RecordObject(builder, "Move Palette");
         if (builder.selectedPaletteIndex == from) builder.selectedPaletteIndex = to;
         else if (builder.selectedPaletteIndex == to) builder.selectedPaletteIndex = from;
     }
+
+    // 펼침 상태는 맵 종류별로 따로 기억합니다. 번호만 쓰면 던전 0번과 필드 0번이 같은 상태를 공유합니다.
+    private string FoldKey(int index) => $"{FoldPaletteKeyPrefix}{builder.mapKind}.{index}";
 
     private void Select(int paletteIndex, int itemIndex)
     {
@@ -537,7 +627,7 @@ public class MapBuilderEditor : Editor
     {
         RecordLibrary("Add Palette");
         palettes.Add(new MapPalette());
-        SessionState.SetBool(FoldPaletteKeyPrefix + (palettes.Count - 1), true);
+        SessionState.SetBool(FoldKey(palettes.Count - 1), true);
         Select(palettes.Count - 1, 0);
     }
 
@@ -906,8 +996,10 @@ public class MapBuilderEditor : Editor
         MapPalette palette = CurrentPalette;
         GameObject prefab = CurrentPrefab;
         string color = ColorUtility.ToHtmlStringRGB(TypeColor(CurrentType));
-        string what = palette == null ? "(팔레트를 고르세요)"
-            : $"{palette.name} · {(prefab != null ? prefab.name : "(프리팹 없음)")}";
+        string what;
+        if (palette == null) what = "(팔레트를 고르세요)";
+        else if (!MapBuilder.IsTypeAllowed(palette.type, builder.mapKind)) what = $"{palette.name} · ⚠ {KindLabel(builder.mapKind)}에서 못 쓰는 타입";
+        else what = $"{palette.name} · {(prefab != null ? prefab.name : "(프리팹 없음)")}";
         string rotation = rotationNames[builder.currentRotation];
         string detail = IsGridPlacement
             ? $"높이 {builder.currentHeight}층 · 브러시 {builder.brushSize} · 회전 {rotation}"
@@ -915,7 +1007,7 @@ public class MapBuilderEditor : Editor
 
         Handles.BeginGUI();
         GUILayout.BeginArea(new Rect(10f, 10f, 320f, 60f));
-        GUILayout.Label($"<b><color=#{color}>{PlacementLabel(CurrentType)}</color></b> · {what}\n{detail}", hudStyle);
+        GUILayout.Label($"[{KindLabel(builder.mapKind)}] <b><color=#{color}>{PlacementLabel(CurrentType, builder.mapKind)}</color></b> · {what}\n{detail}", hudStyle);
         GUILayout.EndArea();
         Handles.EndGUI();
     }
@@ -1087,7 +1179,7 @@ public class MapBuilderEditor : Editor
         GameObject prefab = CurrentPrefab;
         if (prefab == null) return;
 
-        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.ContainerName(CurrentType));
+        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.ContainerName(CurrentType, builder.mapKind));
         GameObject placed = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         placed.transform.SetPositionAndRotation(position, rotation);
         Undo.RegisterCreatedObjectUndo(placed, "Place Free Object");
@@ -1096,7 +1188,7 @@ public class MapBuilderEditor : Editor
     /// <summary>마우스 아래 오브젝트 중 '지금 팔레트 타입의 묶음'에 속한 것 하나를 지웁니다. 타일이나 다른 묶음은 건드리지 않습니다.</summary>
     private void RemoveFreeUnderMouse(Vector2 mousePosition)
     {
-        Transform container = MapBuilderContainers.Find(builder.tileContainer, MapBuilder.ContainerName(CurrentType));
+        Transform container = MapBuilderContainers.Find(builder.tileContainer, MapBuilder.ContainerName(CurrentType, builder.mapKind));
         if (container == null) return;
 
         // 고스트가 마우스 바로 아래에 있어 그대로 두면 고스트가 집힙니다.
@@ -1147,7 +1239,7 @@ public class MapBuilderEditor : Editor
             builder.placedTiles.Remove(gridPos);
         }
 
-        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.ContainerName(CurrentType));
+        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.ContainerName(CurrentType, builder.mapKind));
         GameObject newTile = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         newTile.transform.position = new Vector3(x * builder.tileSize, spawnY, z * builder.tileSize);
         newTile.transform.rotation = Quaternion.Euler(0, builder.currentRotation * 90f, 0);
@@ -1248,7 +1340,8 @@ public class MapBuilderEditor : Editor
         Undo.RegisterCreatedObjectUndo(loadedMap, "Load Map Prefab");
         PrefabUtility.UnpackPrefabInstance(loadedMap, PrefabUnpackMode.OutermostRoot, InteractionMode.UserAction);
 
-        // 원본 루트는 곧 지워지므로, 그 전에 개척 장식 묶음이 무엇이었는지 읽어 둡니다.
+        // 원본 루트는 곧 지워지므로, 그 전에 맵 종류와 개척 장식 묶음이 무엇이었는지 읽어 둡니다.
+        LocationType kind = MapBuilderContainers.ReadKind(loadedMap);
         GameObject decorationRoot = MapBuilderContainers.ReadDecorationRoot(loadedMap);
 
         Transform[] children = new Transform[loadedMap.transform.childCount];
@@ -1265,7 +1358,9 @@ public class MapBuilderEditor : Editor
         Undo.RecordObject(builder.tileContainer.gameObject, "Load Map Prefab");
         builder.tileContainer.name = builder.mapPrefabName + "_Root";
 
-        int sorted = MapBuilderContainers.SortLoadedChildren(builder, CurrentPalettes, decorationRoot);
+        // 불러온 맵의 종류로 탭을 맞춥니다. 필드 맵을 던전 탭 그대로 구우면 SceneLocation이 떨어져 나갑니다.
+        if (builder.mapKind != kind) SetKind(kind);
+        int sorted = MapBuilderContainers.SortLoadedChildren(builder, PalettesOf(kind), kind, decorationRoot);
 
         Undo.CollapseUndoOperations(group);
         builder.SyncPlacedTiles();
@@ -1305,8 +1400,27 @@ public class MapBuilderEditor : Editor
             if (!proceed) return;
         }
 
+        // 필드·마을은 바닥이 (0,0) 칸에서 시작해야 합니다. 던전은 DungeonGenerator가 원점으로 옮겨주지만
+        // 씬에 놓는 맵은 그대로 쓰여서, 음수 칸의 바닥은 그리드에서 빠져 NPC가 가지 못합니다.
+        if (builder.mapKind != LocationType.Dungeon &&
+            LocationGridBuilder.TryGetFloorMinCell(builder.tileContainer.gameObject, out Vector2Int minCell) &&
+            minCell != Vector2Int.zero)
+        {
+            bool bakeAnyway = EditorUtility.DisplayDialog("바닥 시작 위치 확인",
+                $"바닥이 (0,0) 칸이 아니라 {minCell} 칸에서 시작합니다.\n\n" +
+                (minCell.x < 0 || minCell.y < 0
+                    ? "음수 칸의 바닥은 게임에서 그리드에 들어가지 않아 NPC가 그쪽으로 가지 못합니다."
+                    : "동작은 하지만 앞쪽 칸만큼 그리드가 낭비됩니다.") +
+                "\n\n그래도 굽을까요?",
+                "굽기", "취소");
+            if (!bakeAnyway) return;
+        }
+
         // 개척 장식이 있으면 루트에 MapDecoration을 붙이고 DecorationRoot를 연결합니다.
         MapBuilderContainers.ApplyDecoration(builder.tileContainer);
+
+        // 필드·마을은 루트에 SceneLocation, 장애물 묶음에 GridBlocker를 붙이고, 던전은 SceneLocation을 뗍니다.
+        MapBuilderContainers.ApplySceneSetup(builder.tileContainer, builder.mapKind);
 
         PrefabUtility.SaveAsPrefabAsset(builder.tileContainer.gameObject, fullPath, out bool success);
 

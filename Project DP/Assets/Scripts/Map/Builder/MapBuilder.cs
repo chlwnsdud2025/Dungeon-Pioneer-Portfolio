@@ -9,6 +9,7 @@ public class MapBuilder : MonoBehaviour
     public static readonly string[] TileContainerNames = { "Floor", "Wall", "Entrance", "Exit", "Chest", "Trap", "Enemy", "Pushable" };
     public const string FreeContainerName = "FreeObjects";
     public const string DecorationContainerName = "DecorationRoot";
+    public const string ObstacleContainerName = "Obstacles";   // 필드·마을의 자유 배치. 굽을 때 GridBlocker가 붙어 길을 막음
 
     [Header("Map Settings")]
     public int mapWidth = 17;
@@ -38,6 +39,9 @@ public class MapBuilder : MonoBehaviour
     [Tooltip("던전·필드·마을 팔레트가 담긴 파일. 비어 있으면 인스펙터를 열 때 자동으로 찾거나 만듭니다.")]
     public MapPaletteLibrary paletteLibrary;
 
+    // 지금 만드는 맵의 종류. 불러오기를 하면 맵 루트의 SceneLocation을 보고 자동으로 맞춰집니다.
+    [HideInInspector] public LocationType mapKind = LocationType.Dungeon;
+
     [HideInInspector] public int selectedPaletteIndex = 0;
     [HideInInspector] public int selectedItemIndex = 0;
 
@@ -65,12 +69,36 @@ public class MapBuilder : MonoBehaviour
     /// <summary>격자에 칠하는 타입인지. 자유 배치·개척 장식만 격자와 무관합니다.</summary>
     public static bool IsGridType(MapTileType type) => type != MapTileType.Free && type != MapTileType.Decoration;
 
-    /// <summary>이 타입의 오브젝트가 들어갈 묶음 이름.</summary>
-    public static string ContainerName(MapTileType type)
+    /// <summary>
+    /// 이 맵 종류에서 쓸 수 있는 타입인지. 입구·출구·함정·밀기 블록·개척 장식은 던전 전용입니다
+    /// (층 이동, 함정 발동, 개척도 같은 던전 규칙에 묶여 있음).
+    /// </summary>
+    public static bool IsTypeAllowed(MapTileType type, LocationType kind)
+    {
+        if (kind == LocationType.Dungeon) return true;
+
+        switch (type)
+        {
+            case MapTileType.Floor:
+            case MapTileType.Wall:
+            case MapTileType.Chest:
+            case MapTileType.Enemy:
+            case MapTileType.Free:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// 이 타입의 오브젝트가 들어갈 묶음 이름. 자유 배치는 던전에서는 길을 막지 않는 FreeObjects,
+    /// 필드·마을에서는 길을 막는 Obstacles로 들어갑니다.
+    /// </summary>
+    public static string ContainerName(MapTileType type, LocationType kind)
     {
         switch (type)
         {
-            case MapTileType.Free: return FreeContainerName;
+            case MapTileType.Free: return kind == LocationType.Dungeon ? FreeContainerName : ObstacleContainerName;
             case MapTileType.Decoration: return DecorationContainerName;
             default: return type.ToString();
         }
@@ -80,7 +108,8 @@ public class MapBuilder : MonoBehaviour
         => t.CompareTag("Untagged") && System.Array.IndexOf(TileContainerNames, t.name) >= 0;
 
     public static bool IsFreeContainer(Transform t)
-        => t.CompareTag("Untagged") && (t.name == FreeContainerName || t.name == DecorationContainerName);
+        => t.CompareTag("Untagged") &&
+           (t.name == FreeContainerName || t.name == DecorationContainerName || t.name == ObstacleContainerName);
 
     /// <summary>
     /// 칸 좌표 → 타일 사전을 계층에서 다시 만듭니다. 타일 묶음 안의 타일만 칸으로 등록하고,
