@@ -568,6 +568,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 305270959}
+  - component: {fileID: 305270960}
   m_Layer: 0
   m_Name: Background
   m_TagString: Untagged
@@ -594,6 +595,19 @@ Transform:
   - {fileID: 168698837}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &305270960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 305270958}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3e78d7a778e48a4ba2c7d993b91611e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GridBlocker
+  edgeTolerance: 0.2
 --- !u!1 &388668765
 GameObject:
   m_ObjectHideFlags: 0
@@ -1439,7 +1453,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 214371697484952447, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1042519554}
   m_SourcePrefab: {fileID: 100100000, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
 --- !u!1 &750668450
 GameObject:
@@ -2141,6 +2158,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1042519552 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 214371697484952447, guid: 7afb015e9cb22e3478f4a3d3159c44b5, type: 3}
+  m_PrefabInstance: {fileID: 721578808}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1042519554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1042519552}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84954f2a3596bae49bf1790617e3d9d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneLocation
+  type: 1
+  index: 0
+  drawGrid: 1
 --- !u!1 &1101654576
 GameObject:
   m_ObjectHideFlags: 0
