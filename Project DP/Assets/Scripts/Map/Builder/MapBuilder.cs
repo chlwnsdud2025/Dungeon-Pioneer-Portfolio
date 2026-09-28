@@ -3,18 +3,7 @@ using UnityEngine;
 
 public class MapBuilder : MonoBehaviour
 {
-    /// <summary>
-    /// 타일: 격자 칸에 칠하기. 자유 배치: 격자와 무관하게 하나씩 놓기(항상 보임).
-    /// 개척 장식: 자유 배치와 같지만 개척 완료 시에만 보이는 DecorationRoot 아래에 놓임.
-    /// </summary>
-    public enum BuildMode
-    {
-        Tile,
-        Free,
-        Decoration
-    }
-
-    // 맵 프리팹 안의 표준 묶음 이름. 타일 묶음은 팔레트 슬롯과 1:1이고 순서도 같습니다.
+    // 맵 프리팹 안의 표준 묶음 이름. 격자 타일 묶음 이름은 MapTileType 이름과 같습니다.
     // 묶음 오브젝트는 태그가 없어야 합니다 — 태그가 붙으면 그 아래 타일이 LocationGrid에서 빠집니다.
     // 이름이 "Bonus"로 시작하면 안 됩니다 — 미니맵이 이름으로 보너스 오브젝트를 찾습니다.
     public static readonly string[] TileContainerNames = { "Floor", "Wall", "Entrance", "Exit", "Chest", "Trap", "Enemy", "Pushable" };
@@ -45,34 +34,47 @@ public class MapBuilder : MonoBehaviour
     // ★ 추가됨: 에디터로 다시 불러와서 수정할 원본 프리팹
     public GameObject prefabToLoad;
 
-    [Header("Palette Prefabs")]
-    public GameObject floorPrefab;
-    public GameObject wallPrefab;
-    public GameObject entrancePrefab;
-    public GameObject exitPrefab;
-    public GameObject chestPrefab;
-    [Tooltip("여러 함정 프리팹을 등록해두고, 에디터 팔레트에서 'Trap' 선택 시 그 중 하나를 골라 칠합니다.")]
-    public List<GameObject> trapPrefabs = new List<GameObject>();
-    public GameObject enemyPrefab;
-    public GameObject pushablePrefab;
+    [Header("Palette")]
+    [Tooltip("던전·필드·마을 팔레트가 담긴 파일. 비어 있으면 인스펙터를 열 때 자동으로 찾거나 만듭니다.")]
+    public MapPaletteLibrary paletteLibrary;
+
+    [HideInInspector] public int selectedPaletteIndex = 0;
+    [HideInInspector] public int selectedItemIndex = 0;
 
     [Header("Free Placement")]
-    [Tooltip("자유 배치·개척 장식 모드에서 쓸 프리팹. 인스펙터 팔레트에 끌어다 놓아 추가합니다.")]
-    public List<GameObject> freePrefabs = new List<GameObject>();
-
     [Tooltip("자유 배치에서 Ctrl+휠 한 칸에 오르내리는 높이(m)")]
     [Min(0.01f)] public float freeHeightStep = 0.25f;
 
-    [HideInInspector] public BuildMode buildMode = BuildMode.Tile;
-    [HideInInspector] public int selectedFreeIndex = 0;
     [HideInInspector] public float freeHeight = 0f;
 
-    [HideInInspector]
-    public int selectedPrefabIndex = 0;
-    [HideInInspector]
-    public int selectedTrapIndex = 0; // 팔레트에서 'Trap' 선택 시, 어떤 함정 종류를 쓸지의 인덱스
+    // ── 옛 팔레트 슬롯 ──
+    // 팔레트 파일이 생기기 전의 방식입니다. 지금은 쓰지 않고, 팔레트 파일을 처음 만들 때
+    // 이 값들을 던전 팔레트로 옮기는 데만 씁니다. 지우면 MapBuildScene에 연결해 둔 값이 사라지므로 남겨 둡니다.
+    [HideInInspector] public GameObject floorPrefab;
+    [HideInInspector] public GameObject wallPrefab;
+    [HideInInspector] public GameObject entrancePrefab;
+    [HideInInspector] public GameObject exitPrefab;
+    [HideInInspector] public GameObject chestPrefab;
+    [HideInInspector] public List<GameObject> trapPrefabs = new List<GameObject>();
+    [HideInInspector] public GameObject enemyPrefab;
+    [HideInInspector] public GameObject pushablePrefab;
+    [HideInInspector] public List<GameObject> freePrefabs = new List<GameObject>();
 
     public Dictionary<Vector3Int, GameObject> placedTiles = new Dictionary<Vector3Int, GameObject>();
+
+    /// <summary>격자에 칠하는 타입인지. 자유 배치·개척 장식만 격자와 무관합니다.</summary>
+    public static bool IsGridType(MapTileType type) => type != MapTileType.Free && type != MapTileType.Decoration;
+
+    /// <summary>이 타입의 오브젝트가 들어갈 묶음 이름.</summary>
+    public static string ContainerName(MapTileType type)
+    {
+        switch (type)
+        {
+            case MapTileType.Free: return FreeContainerName;
+            case MapTileType.Decoration: return DecorationContainerName;
+            default: return type.ToString();
+        }
+    }
 
     public static bool IsTileContainer(Transform t)
         => t.CompareTag("Untagged") && System.Array.IndexOf(TileContainerNames, t.name) >= 0;

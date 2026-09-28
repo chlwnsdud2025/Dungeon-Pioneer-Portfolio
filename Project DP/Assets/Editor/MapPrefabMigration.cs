@@ -262,8 +262,9 @@ public static class MapPrefabMigration
         }
 
         string mapName = builder.prefabToLoad != null ? builder.prefabToLoad.name : builder.mapPrefabName;
+        // MapBuilder의 자식으로 두지 않습니다. MapBuilder를 선택하면 맵 전체가 선택된 것처럼 기즈모가 그려지기 때문입니다.
         GameObject newContainer = new GameObject(mapName + "_Root");
-        newContainer.transform.SetParent(builder.transform, false);
+        SceneManager.MoveGameObjectToScene(newContainer, scene);
         builder.tileContainer = newContainer.transform;
         builder.mapPrefabName = mapName;
         builder.SyncPlacedTiles();

@@ -5,16 +5,18 @@ using UnityEngine;
 [CustomEditor(typeof(MapBuilder))]
 public class MapBuilderEditor : Editor
 {
-    private const int TrapPaletteIndex = 5; // TileContainerNames에서 "Trap"의 위치
-    private const float TileThumbnailSize = 64f;
-    private const float TrapThumbnailSize = 52f;
-    private const float FreeThumbnailSize = 64f;
+    private const float ThumbnailSize = 58f;
+    private const string GuidePlaneName = "Editor_GuidePlane";
     private const float MaxFreeHeight = 40f;
 
     private const string FoldMapSettingsKey = "MapBuilderEditor.FoldMapSettings";
-    private const string FoldSlotSettingsKey = "MapBuilderEditor.FoldSlotSettings";
+    private const string FoldPaletteKeyPrefix = "MapBuilderEditor.FoldPalette.";
+    private const string EditPalettesKey = "MapBuilderEditor.EditPalettes";
 
-    private static readonly Color TileColor = new Color(0.40f, 0.68f, 1.00f);
+    // 목록을 그리는 도중에 순서를 바꾸거나 지우면 이번 프레임 레이아웃이 어긋나므로, 요청만 받아 두고 다 그린 뒤 처리합니다.
+    private enum PaletteAction { None, MoveUp, MoveDown, Delete }
+
+    private static readonly Color GridColor = new Color(0.40f, 0.68f, 1.00f);
     private static readonly Color FreeColor = new Color(0.45f, 0.85f, 0.50f);
     private static readonly Color DecorationColor = new Color(1.00f, 0.72f, 0.30f);
     private static readonly Color BakeColor = new Color(0.45f, 0.80f, 1.00f);
@@ -23,8 +25,9 @@ public class MapBuilderEditor : Editor
     // ★ 팀원 피드백 반영: 각도 대신 직관적인 화살표(시선 방향)로 UI 텍스트 변경
     private readonly string[] rotationNames = { "↑ (앞/0°)", "→ (우/90°)", "↓ (뒤/180°)", "← (좌/270°)" };
 
+    private static readonly string[] TypeOptions = BuildTypeOptions();
+
     private MapBuilder builder;
-    private GameObject[] palette;
 
     private GameObject ghostObject;
     private Material ghostMaterial;
@@ -34,35 +37,52 @@ public class MapBuilderEditor : Editor
     private int strokeUndoGroup = -1;
     private bool strokeBlocked;
 
-    private GUIStyle titleStyle;
-    private GUIStyle sectionStyle;
-    private GUIStyle paletteButtonStyle;
-    private GUIStyle dropStyle;
-    private GUIStyle hudStyle;
-    private GUIStyle shortcutStyle;
+    // 스크립트를 다시 컴파일하면 유니티가 에디터의 private 필드까지 보존했다가 되살립니다. 그러면 예전부터 있던
+    // 스타일은 살아 있고 새로 추가한 스타일만 비어, EnsureStyles가 "이미 준비됨"으로 보고 건너뛰어 NullReference가 납니다.
+    // 보존하지 않게 해서 컴파일 뒤에는 전부 비었다가 한꺼번에 다시 만들어지게 합니다.
+    [System.NonSerialized] private GUIStyle titleStyle;
+    [System.NonSerialized] private GUIStyle sectionStyle;
+    [System.NonSerialized] private GUIStyle paletteHeaderStyle;
+    [System.NonSerialized] private GUIStyle paletteTagStyle;
+    [System.NonSerialized] private GUIStyle paletteButtonStyle;
+    [System.NonSerialized] private GUIStyle dropStyle;
+    [System.NonSerialized] private GUIStyle hudStyle;
+    [System.NonSerialized] private GUIStyle shortcutStyle;
 
-    private bool IsTileMode => builder.buildMode == MapBuilder.BuildMode.Tile;
+    // ── 현재 선택 ──────────────────────────────────────────────────────
+    // 칠하기·고스트·선택 지우개·HUD가 모두 아래 값만 보게 해서, 무엇을 어떻게 놓는지가 한 곳에서 정해지게 합니다.
 
-    /// <summary>
-    /// 지금 놓을 프리팹. 타일 모드는 슬롯 8칸에서, 자유 배치·개척 장식은 자유 배치 목록에서 고릅니다.
-    /// 칠하기·고스트·선택 지우개가 모두 이 값 하나만 보게 해서 모드가 섞이지 않게 합니다.
-    /// </summary>
+    /// <summary>지금 보여줄 팔레트 목록. (지금은 던전만. 맵 종류 선택은 다음 단계)</summary>
+    private List<MapPalette> CurrentPalettes => builder.paletteLibrary != null ? builder.paletteLibrary.dungeon : null;
+
+    private MapPalette CurrentPalette
+    {
+        get
+        {
+            List<MapPalette> list = CurrentPalettes;
+            if (list == null || builder.selectedPaletteIndex < 0 || builder.selectedPaletteIndex >= list.Count) return null;
+            return list[builder.selectedPaletteIndex];
+        }
+    }
+
     private GameObject CurrentPrefab
     {
         get
         {
-            if (IsTileMode) return palette[builder.selectedPrefabIndex];
-
-            List<GameObject> list = builder.freePrefabs;
-            if (list == null || list.Count == 0) return null;
-            return list[Mathf.Clamp(builder.selectedFreeIndex, 0, list.Count - 1)];
+            MapPalette palette = CurrentPalette;
+            if (palette == null || palette.prefabs.Count == 0) return null;
+            return palette.prefabs[Mathf.Clamp(builder.selectedItemIndex, 0, palette.prefabs.Count - 1)];
         }
     }
+
+    private MapTileType CurrentType => CurrentPalette != null ? CurrentPalette.type : MapTileType.Floor;
+
+    /// <summary>팔레트 타입이 배치 방식을 정합니다. 격자 타입이면 칠하기, 자유 배치·개척 장식이면 하나씩 놓기.</summary>
+    private bool IsGridPlacement => MapBuilder.IsGridType(CurrentType);
 
     private void OnEnable()
     {
         builder = (MapBuilder)target;
-        UpdatePalette();
         builder.SyncPlacedTiles();
         CreateGhostMaterial();
         Undo.undoRedoPerformed += OnUndoRedo;
@@ -80,49 +100,56 @@ public class MapBuilderEditor : Editor
     {
         if (builder == null) return;
         builder.SyncPlacedTiles();
+        Repaint();
         SceneView.RepaintAll();
     }
 
-    private void UpdatePalette()
+    private static string[] BuildTypeOptions()
     {
-        palette = new GameObject[]
-        {
-            builder.floorPrefab, builder.wallPrefab, builder.entrancePrefab,
-            builder.exitPrefab, builder.chestPrefab, GetSelectedTrapPrefab(),
-            builder.enemyPrefab, builder.pushablePrefab
-        };
+        MapTileType[] values = (MapTileType[])System.Enum.GetValues(typeof(MapTileType));
+        string[] options = new string[values.Length];
+        for (int i = 0; i < values.Length; i++)
+            options[i] = $"{TypeLabel(values[i])} ({values[i]})";
+        return options;
     }
 
-    // 팔레트의 Trap 슬롯에 쓸, 현재 선택된 함정 프리팹을 반환합니다.
-    private GameObject GetSelectedTrapPrefab()
+    private static string TypeLabel(MapTileType type)
     {
-        if (builder.trapPrefabs == null || builder.trapPrefabs.Count == 0) return null;
-        int idx = Mathf.Clamp(builder.selectedTrapIndex, 0, builder.trapPrefabs.Count - 1);
-        return builder.trapPrefabs[idx];
-    }
-
-    private static Color ModeColor(MapBuilder.BuildMode mode)
-    {
-        switch (mode)
+        switch (type)
         {
-            case MapBuilder.BuildMode.Free: return FreeColor;
-            case MapBuilder.BuildMode.Decoration: return DecorationColor;
-            default: return TileColor;
+            case MapTileType.Floor: return "바닥";
+            case MapTileType.Wall: return "벽";
+            case MapTileType.Entrance: return "입구";
+            case MapTileType.Exit: return "출구";
+            case MapTileType.Chest: return "상자";
+            case MapTileType.Trap: return "함정";
+            case MapTileType.Enemy: return "적";
+            case MapTileType.Pushable: return "밀기 블록";
+            case MapTileType.Free: return "자유 배치";
+            case MapTileType.Decoration: return "개척 장식";
+            default: return type.ToString();
         }
     }
 
-    private static string ModeLabel(MapBuilder.BuildMode mode)
+    private static Color TypeColor(MapTileType type)
     {
-        switch (mode)
+        switch (type)
         {
-            case MapBuilder.BuildMode.Free: return "✦ 자유 배치";
-            case MapBuilder.BuildMode.Decoration: return "✧ 개척 장식";
-            default: return "■ 타일";
+            case MapTileType.Free: return FreeColor;
+            case MapTileType.Decoration: return DecorationColor;
+            default: return GridColor;
         }
     }
 
-    private string ModeContainerName
-        => builder.buildMode == MapBuilder.BuildMode.Decoration ? MapBuilder.DecorationContainerName : MapBuilder.FreeContainerName;
+    private static string PlacementLabel(MapTileType type)
+    {
+        switch (type)
+        {
+            case MapTileType.Free: return "✦ 자유 배치";
+            case MapTileType.Decoration: return "✧ 개척 장식";
+            default: return "■ 격자";
+        }
+    }
 
     private void EnsureStyles()
     {
@@ -130,6 +157,8 @@ public class MapBuilderEditor : Editor
 
         titleStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
         sectionStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 11 };
+        paletteHeaderStyle = new GUIStyle(EditorStyles.foldout) { fontStyle = FontStyle.Bold };
+        paletteTagStyle = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleRight };
         paletteButtonStyle = new GUIStyle(GUI.skin.button)
         {
             imagePosition = ImagePosition.ImageAbove,
@@ -138,7 +167,7 @@ public class MapBuilderEditor : Editor
             clipping = TextClipping.Clip,
             padding = new RectOffset(3, 3, 4, 2)
         };
-        dropStyle = new GUIStyle(EditorStyles.helpBox) { alignment = TextAnchor.MiddleCenter, fontSize = 11 };
+        dropStyle = new GUIStyle(EditorStyles.helpBox) { alignment = TextAnchor.MiddleCenter, fontSize = 10 };
         hudStyle = new GUIStyle(EditorStyles.helpBox) { fontSize = 11, richText = true, padding = new RectOffset(8, 8, 6, 6) };
         shortcutStyle = new GUIStyle(EditorStyles.miniLabel) { wordWrap = true };
     }
@@ -159,8 +188,7 @@ public class MapBuilderEditor : Editor
         ghostMaterial.SetColor("_BaseColor", new Color(0.2f, 1f, 0.2f, 0.6f));
     }
 
-    // 고스트는 선택한 '프리팹'이 바뀔 때만 다시 만듭니다. 번호로 비교하면 모드와 함정 종류 선택이
-    // 서로 다른 번호 체계라 바뀐 것을 놓칩니다.
+    // 고스트는 선택한 '프리팹'이 바뀔 때만 다시 만듭니다.
     private void UpdateGhost()
     {
         GameObject prefab = CurrentPrefab;
@@ -194,8 +222,9 @@ public class MapBuilderEditor : Editor
     {
         if (builder.tileContainer == null)
         {
+            // MapBuilder의 자식으로 만들지 않습니다. 이유는 MoveContainerOutOfBuilder 참고.
             GameObject containerObj = new GameObject(builder.mapPrefabName + "_Root");
-            containerObj.transform.SetParent(builder.transform, false);
+            UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(containerObj, builder.gameObject.scene);
             Undo.RegisterCreatedObjectUndo(containerObj, "Create Map Container");
             Undo.RecordObject(builder, "Create Map Container");
             builder.tileContainer = containerObj.transform;
@@ -219,16 +248,62 @@ public class MapBuilderEditor : Editor
         return false;
     }
 
+    /// <summary>
+    /// 팔레트 파일 연결을 보장합니다. 비어 있으면 프로젝트에서 찾고, 없으면 옛 슬롯 값으로 새로 만듭니다.
+    /// MapBuildScene은 커밋하지 않으므로 팀원 PC에서는 연결이 빈 채로 열리는 게 보통입니다.
+    /// </summary>
+    private void EnsureLibrary()
+    {
+        if (builder.paletteLibrary != null) return;
+
+        MapPaletteLibrary library = MapPaletteLibraryAssets.FindOrCreate(builder, out bool created);
+        if (library == null) return;
+
+        Undo.RecordObject(builder, "Assign Palette Library");
+        builder.paletteLibrary = library;
+        builder.selectedPaletteIndex = 0;
+        builder.selectedItemIndex = 0;
+
+        string path = AssetDatabase.GetAssetPath(library);
+        Debug.Log(created
+            ? $"[MapBuilder] 팔레트 파일을 만들고 기존 슬롯을 던전 팔레트 {library.dungeon.Count}개로 옮겼습니다: {path}"
+            : $"[MapBuilder] 팔레트 파일을 연결했습니다: {path}");
+    }
+
+    /// <summary>
+    /// 맵 컨테이너가 MapBuilder 아래에 있으면 씬 최상단으로 꺼냅니다(월드 위치 유지, Ctrl+Z 가능).
+    ///
+    /// 유니티는 오브젝트를 선택하면 그 자식 전체를 선택된 것으로 보고, 모든 타일의 콜라이더 외곽선과
+    /// 선택 외곽선, 적 시야 범위 같은 '선택 시 기즈모'를 전부 그립니다. 칠하려면 MapBuilder를 선택해야 하므로,
+    /// 맵이 그 자식이면 편집 내내 맵 전체가 선택된 모습이 됩니다.
+    /// </summary>
+    private void MoveContainerOutOfBuilder()
+    {
+        Transform container = builder.tileContainer;
+        if (container == null || container == builder.transform || !container.IsChildOf(builder.transform)) return;
+
+        Undo.SetTransformParent(container, null, "Move Map Container Out Of Builder");
+        Debug.Log($"[MapBuilder] 맵 컨테이너 '{container.name}'를 MapBuilder 밖(씬 최상단)으로 옮겼습니다. " +
+                  "MapBuilder를 선택해도 맵의 콜라이더·기즈모가 보이지 않게 됩니다.");
+    }
+
+    /// <summary>팔레트 파일을 고치기 직전에 부릅니다. Undo에 남기고, 저장 대상으로 표시합니다.</summary>
+    private void RecordLibrary(string undoName)
+    {
+        Undo.RecordObject(builder.paletteLibrary, undoName);
+        EditorUtility.SetDirty(builder.paletteLibrary);
+    }
+
     // ── 인스펙터 ──────────────────────────────────────────────────────
 
     public override void OnInspectorGUI()
     {
         EnsureStyles();
-        UpdatePalette();
+        EnsureLibrary();
+        MoveContainerOutOfBuilder();
         EditorGUI.BeginChangeCheck();
 
         DrawHeaderBox();
-        DrawModeTabs();
         DrawPaletteBox();
         DrawPlacementBox();
         DrawShortcutBox();
@@ -258,128 +333,276 @@ public class MapBuilderEditor : Editor
         EditorGUILayout.EndVertical();
     }
 
-    private void DrawModeTabs()
-    {
-        EditorGUILayout.Space(2);
-        EditorGUILayout.BeginHorizontal();
-        DrawModeTab(MapBuilder.BuildMode.Tile);
-        DrawModeTab(MapBuilder.BuildMode.Free);
-        DrawModeTab(MapBuilder.BuildMode.Decoration);
-        EditorGUILayout.EndHorizontal();
-    }
-
-    private void DrawModeTab(MapBuilder.BuildMode mode)
-    {
-        bool active = builder.buildMode == mode;
-        Color previous = GUI.backgroundColor;
-        if (active) GUI.backgroundColor = ModeColor(mode);
-
-        bool clicked = GUILayout.Toggle(active, ModeLabel(mode), "Button", GUILayout.Height(30));
-        GUI.backgroundColor = previous;
-
-        if (clicked && !active)
-        {
-            Undo.RecordObject(builder, "Change Map Builder Mode");
-            builder.buildMode = mode;
-        }
-    }
-
     private void DrawPaletteBox()
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        GUILayout.Label("팔레트", sectionStyle);
 
-        if (IsTileMode) DrawTilePalette();
-        else DrawFreePalette();
+        bool editing = SessionState.GetBool(EditPalettesKey, false);
+        EditorGUILayout.BeginHorizontal();
+        GUILayout.Label("팔레트  ·  던전", sectionStyle);
+        GUILayout.FlexibleSpace();
+        bool nextEditing = GUILayout.Toggle(editing, "편집", EditorStyles.miniButton, GUILayout.Width(44));
+        EditorGUILayout.EndHorizontal();
+        if (nextEditing != editing) SessionState.SetBool(EditPalettesKey, nextEditing);
 
-        EditorGUILayout.EndVertical();
-    }
-
-    private void DrawTilePalette()
-    {
-        int picked = DrawThumbnailGrid(palette, MapBuilder.TileContainerNames, builder.selectedPrefabIndex, TileThumbnailSize, null);
-        if (picked != builder.selectedPrefabIndex)
+        List<MapPalette> palettes = CurrentPalettes;
+        if (palettes == null)
         {
-            Undo.RecordObject(builder, "Select Map Tile");
-            builder.selectedPrefabIndex = picked;
-        }
-
-        // 'Trap' 팔레트가 선택됐을 때만, 어떤 함정 종류를 칠할지 하위 선택 UI를 표시합니다.
-        if (builder.selectedPrefabIndex != TrapPaletteIndex) return;
-
-        EditorGUILayout.Space(4);
-        GUILayout.Label("함정 종류", EditorStyles.miniBoldLabel);
-
-        if (builder.trapPrefabs == null || builder.trapPrefabs.Count == 0)
-        {
-            EditorGUILayout.HelpBox("'팔레트 슬롯 설정'의 Trap Prefabs 목록이 비어 있습니다.", MessageType.Warning);
+            EditorGUILayout.HelpBox("팔레트 파일을 찾거나 만들지 못했습니다. Console을 확인하세요.", MessageType.Error);
+            EditorGUILayout.EndVertical();
             return;
         }
 
-        string[] names = new string[builder.trapPrefabs.Count];
-        for (int i = 0; i < names.Length; i++)
-            names[i] = builder.trapPrefabs[i] != null ? builder.trapPrefabs[i].name : "(비어 있음)";
+        if (palettes.Count == 0)
+            EditorGUILayout.HelpBox("팔레트가 없습니다. 아래 '+ 새 팔레트'로 시작하세요.", MessageType.Info);
 
-        int current = Mathf.Clamp(builder.selectedTrapIndex, 0, names.Length - 1);
-        int trap = DrawThumbnailGrid(builder.trapPrefabs, names, current, TrapThumbnailSize, null);
-        if (trap != builder.selectedTrapIndex)
+        PaletteAction action = PaletteAction.None;
+        int actionIndex = -1;
+        for (int i = 0; i < palettes.Count; i++)
         {
-            Undo.RecordObject(builder, "Select Trap");
-            builder.selectedTrapIndex = trap;
-            UpdatePalette();
-        }
-    }
+            PaletteAction requested = DrawPalette(palettes, i, nextEditing);
+            if (requested == PaletteAction.None) continue;
 
-    private void DrawFreePalette()
-    {
-        List<GameObject> list = builder.freePrefabs;
-
-        if (list != null && list.Count > 0)
-        {
-            string[] names = new string[list.Count];
-            for (int i = 0; i < names.Length; i++)
-                names[i] = list[i] != null ? list[i].name : "(비어 있음)";
-
-            int current = Mathf.Clamp(builder.selectedFreeIndex, 0, list.Count - 1);
-            int picked = DrawThumbnailGrid(list, names, current, FreeThumbnailSize, ShowFreeContextMenu);
-            if (picked != builder.selectedFreeIndex)
-            {
-                Undo.RecordObject(builder, "Select Free Prefab");
-                builder.selectedFreeIndex = picked;
-            }
+            action = requested;
+            actionIndex = i;
         }
 
-        EditorGUILayout.Space(4);
-        DrawDropArea();
+        EditorGUILayout.Space(2);
+        if (GUILayout.Button("+ 새 팔레트", GUILayout.Height(22)))
+        {
+            AddPalette(palettes);
+            SessionState.SetBool(EditPalettesKey, true);   // 새 팔레트는 이름과 타입부터 정해야 하므로 편집을 켭니다
+        }
 
-        string where = builder.buildMode == MapBuilder.BuildMode.Decoration
-            ? "개척 장식은 DecorationRoot에 들어가고, 던전에서 개척을 완료해야 보입니다."
-            : "자유 배치는 FreeObjects에 들어가고, 항상 보입니다.";
-        GUILayout.Label(where + " 버튼을 우클릭하면 팔레트에서 뺄 수 있습니다.", shortcutStyle);
+        EditorGUILayout.EndVertical();
+
+        if (action != PaletteAction.None) ApplyPaletteAction(palettes, action, actionIndex);
     }
 
     /// <summary>
-    /// 썸네일 버튼 그리드. 선택된 칸은 모드 색으로 칠합니다. 고른 번호를 돌려줍니다.
-    /// 썸네일은 유니티의 프리팹 미리보기를 쓰고, 아직 만들어지지 않았으면 작은 아이콘으로 대신합니다.
+    /// 팔레트 한 칸. 머리줄은 칸 너비에서 직접 잘라 배치합니다 — 고정 폭 컨트롤을 늘어놓으면
+    /// 인스펙터가 좁을 때 오른쪽 버튼이 화면 밖으로 밀려납니다.
+    /// 편집 중이 아니면 이름·타입만 보여주고, 편집 중이면 순서 이동·삭제와 이름·타입 칸이 나옵니다.
     /// </summary>
-    private int DrawThumbnailGrid(IList<GameObject> prefabs, IList<string> labels, int selected, float size,
-                                  System.Action<int> onContextClick)
+    private PaletteAction DrawPalette(List<MapPalette> palettes, int index, bool editing)
     {
-        float available = EditorGUIUtility.currentViewWidth - 44f;
-        int columns = Mathf.Max(1, Mathf.FloorToInt(available / (size + 4f)));
+        MapPalette palette = palettes[index];
+        bool isCurrent = index == builder.selectedPaletteIndex;
+        bool isGrid = MapBuilder.IsGridType(palette.type);
+        Color typeColor = TypeColor(palette.type);
+        PaletteAction action = PaletteAction.None;
+
+        Color previous = GUI.backgroundColor;
+        if (isCurrent) GUI.backgroundColor = Color.Lerp(Color.white, typeColor, 0.45f);
+        EditorGUILayout.BeginVertical(GUI.skin.box);
+        GUI.backgroundColor = previous;
+
+        // ── 머리줄 ──
+        Rect header = GUILayoutUtility.GetRect(0f, 20f, GUILayout.ExpandWidth(true));
+        float right = header.xMax;
+
+        if (editing)
+        {
+            Rect delete = new Rect(right - 20f, header.y + 1f, 20f, 18f);
+            Rect down = new Rect(delete.x - 21f, header.y + 1f, 20f, 18f);
+            Rect up = new Rect(down.x - 21f, header.y + 1f, 20f, 18f);
+            right = up.x - 4f;
+
+            using (new EditorGUI.DisabledScope(index == 0))
+                if (GUI.Button(up, "▲", EditorStyles.miniButtonLeft)) action = PaletteAction.MoveUp;
+            using (new EditorGUI.DisabledScope(index == palettes.Count - 1))
+                if (GUI.Button(down, "▼", EditorStyles.miniButtonRight)) action = PaletteAction.MoveDown;
+
+            GUI.backgroundColor = DangerColor;
+            if (GUI.Button(delete, "✕", EditorStyles.miniButton)) action = PaletteAction.Delete;
+            GUI.backgroundColor = previous;
+        }
+        else
+        {
+            string tag = $"{TypeLabel(palette.type)} · {(isGrid ? "격자" : "자유")}";
+            float tagWidth = paletteTagStyle.CalcSize(new GUIContent(tag)).x;
+            Rect tagRect = new Rect(right - tagWidth, header.y + 2f, tagWidth, 16f);
+            right = tagRect.x - 6f;
+
+            Color previousContent = GUI.contentColor;
+            GUI.contentColor = typeColor;
+            GUI.Label(tagRect, tag, paletteTagStyle);
+            GUI.contentColor = previousContent;
+        }
+
+        // 유니티의 Foldout은 화살표를 영역 왼쪽 바깥에 그립니다. 그만큼 안으로 밀어 화살표가 칸 안에 오게 합니다.
+        string foldKey = FoldPaletteKeyPrefix + index;
+        bool open = SessionState.GetBool(foldKey, true);
+        Rect foldRect = new Rect(header.x + 14f, header.y + 1f, Mathf.Max(20f, right - header.x - 14f), 18f);
+        string title = $"{palette.name}  ({palette.prefabs.Count})";
+        bool nextOpen = EditorGUI.Foldout(foldRect, open, FitText(title, paletteHeaderStyle, foldRect.width - 14f), true, paletteHeaderStyle);
+        if (nextOpen != open) SessionState.SetBool(foldKey, nextOpen);
+
+        // ── 편집 칸 ──
+        if (editing)
+        {
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = 36f;
+            string name = EditorGUILayout.TextField("이름", palette.name);
+            int type = EditorGUILayout.Popup("타입", (int)palette.type, TypeOptions);
+            EditorGUIUtility.labelWidth = previousLabelWidth;
+
+            if (name != palette.name || type != (int)palette.type)
+            {
+                RecordLibrary("Edit Palette");
+                palette.name = name;
+                palette.type = (MapTileType)type;
+            }
+        }
+
+        // ── 썸네일 ──
+        if (nextOpen)
+        {
+            if (palette.prefabs.Count > 0)
+            {
+                int selected = isCurrent ? Mathf.Clamp(builder.selectedItemIndex, 0, palette.prefabs.Count - 1) : -1;
+                int picked = DrawThumbnailGrid(palette.prefabs, selected, typeColor,
+                    item => ShowItemContextMenu(palette, index, item));
+
+                if (picked >= 0 && picked != selected) Select(index, picked);
+            }
+            else if (!editing)
+            {
+                GUILayout.Label("비어 있음 — 프리팹을 이 칸으로 끌어다 놓으세요", EditorStyles.centeredGreyMiniLabel);
+            }
+
+            if (editing)
+            {
+                Rect dropHint = GUILayoutUtility.GetRect(0f, 22f, GUILayout.ExpandWidth(true));
+                GUI.Box(dropHint, "프리팹을 이 칸 어디에든 끌어다 놓으면 추가", dropStyle);
+            }
+        }
+
+        EditorGUILayout.EndVertical();
+
+        HandlePaletteDrop(GUILayoutUtility.GetLastRect(), palette, index, typeColor);
+        return action;
+    }
+
+    private void ApplyPaletteAction(List<MapPalette> palettes, PaletteAction action, int index)
+    {
+        switch (action)
+        {
+            case PaletteAction.MoveUp:
+                MovePalette(palettes, index, index - 1);
+                break;
+            case PaletteAction.MoveDown:
+                MovePalette(palettes, index, index + 1);
+                break;
+            case PaletteAction.Delete:
+                MapPalette target = palettes[index];
+                bool confirmed = target.prefabs.Count == 0 || EditorUtility.DisplayDialog("팔레트 삭제",
+                    $"'{target.name}' 팔레트를 지웁니다. 프리팹 {target.prefabs.Count}개의 연결이 빠집니다.\n" +
+                    "(프리팹 파일과 이미 맵에 놓인 오브젝트는 그대로입니다. Ctrl+Z로 되돌릴 수 있습니다)",
+                    "삭제", "취소");
+                if (confirmed) DeletePalette(palettes, index);
+                break;
+        }
+
+        // 순서가 바뀌거나 항목이 빠진 채로 이번 프레임을 계속 그리면 레이아웃이 어긋나므로 여기서 끝냅니다.
+        GUIUtility.ExitGUI();
+    }
+
+    private void MovePalette(List<MapPalette> palettes, int from, int to)
+    {
+        if (to < 0 || to >= palettes.Count) return;
+
+        RecordLibrary("Move Palette");
+        (palettes[from], palettes[to]) = (palettes[to], palettes[from]);
+
+        // 펼침 상태는 번호로 기억하므로 함께 바꿉니다.
+        bool fromOpen = SessionState.GetBool(FoldPaletteKeyPrefix + from, true);
+        bool toOpen = SessionState.GetBool(FoldPaletteKeyPrefix + to, true);
+        SessionState.SetBool(FoldPaletteKeyPrefix + from, toOpen);
+        SessionState.SetBool(FoldPaletteKeyPrefix + to, fromOpen);
+
+        Undo.RecordObject(builder, "Move Palette");
+        if (builder.selectedPaletteIndex == from) builder.selectedPaletteIndex = to;
+        else if (builder.selectedPaletteIndex == to) builder.selectedPaletteIndex = from;
+    }
+
+    private void Select(int paletteIndex, int itemIndex)
+    {
+        Undo.RecordObject(builder, "Select Palette Item");
+        builder.selectedPaletteIndex = paletteIndex;
+        builder.selectedItemIndex = itemIndex;
+    }
+
+    private void AddPalette(List<MapPalette> palettes)
+    {
+        RecordLibrary("Add Palette");
+        palettes.Add(new MapPalette());
+        SessionState.SetBool(FoldPaletteKeyPrefix + (palettes.Count - 1), true);
+        Select(palettes.Count - 1, 0);
+    }
+
+    private void DeletePalette(List<MapPalette> palettes, int index)
+    {
+        RecordLibrary("Delete Palette");
+        palettes.RemoveAt(index);
+
+        Undo.RecordObject(builder, "Delete Palette");
+        if (builder.selectedPaletteIndex == index)
+        {
+            builder.selectedPaletteIndex = 0;
+            builder.selectedItemIndex = 0;
+        }
+        else if (builder.selectedPaletteIndex > index)
+        {
+            builder.selectedPaletteIndex--;
+        }
+    }
+
+    private void ShowItemContextMenu(MapPalette palette, int paletteIndex, int itemIndex)
+    {
+        GenericMenu menu = new GenericMenu();
+        menu.AddItem(new GUIContent("팔레트에서 빼기"), false, () =>
+        {
+            RecordLibrary("Remove Palette Item");
+            palette.prefabs.RemoveAt(itemIndex);
+
+            if (builder.selectedPaletteIndex == paletteIndex && builder.selectedItemIndex >= palette.prefabs.Count)
+            {
+                Undo.RecordObject(builder, "Remove Palette Item");
+                builder.selectedItemIndex = Mathf.Max(0, palette.prefabs.Count - 1);
+            }
+            Repaint();
+        });
+        menu.AddItem(new GUIContent("Project 창에서 보기"), false, () => EditorGUIUtility.PingObject(palette.prefabs[itemIndex]));
+        menu.ShowAsContext();
+    }
+
+    /// <summary>
+    /// 썸네일 버튼 그리드. 선택된 칸은 팔레트 타입 색으로 칠합니다. 고른 번호를 돌려줍니다.
+    /// 이름이 칸보다 길면 뒤를 '…'로 줄이고, 전체 이름은 마우스를 올리면 보입니다.
+    /// </summary>
+    private int DrawThumbnailGrid(IList<GameObject> prefabs, int selected, Color selectedColor, System.Action<int> onContextClick)
+    {
+        const float spacing = 4f;
+        float available = EditorGUIUtility.currentViewWidth - 64f;
+        int columns = Mathf.Max(1, Mathf.FloorToInt((available + spacing) / (ThumbnailSize + spacing)));
+        float labelWidth = ThumbnailSize - paletteButtonStyle.padding.horizontal - 2f;
         int result = selected;
-        Color selectedColor = ModeColor(builder.buildMode);
 
         for (int start = 0; start < prefabs.Count; start += columns)
         {
             EditorGUILayout.BeginHorizontal();
             for (int i = start; i < Mathf.Min(start + columns, prefabs.Count); i++)
             {
-                GameObject prefab = prefabs[i];
-                string tooltip = prefab != null ? prefab.name : "슬롯이 비어 있습니다. '팔레트 슬롯 설정'에서 연결하세요.";
-                GUIContent content = new GUIContent(labels[i], Thumbnail(prefab), tooltip);
+                if (i > start) GUILayout.Space(spacing);
 
-                Rect rect = GUILayoutUtility.GetRect(size, size + 14f, GUILayout.Width(size), GUILayout.Height(size + 14f));
+                GameObject prefab = prefabs[i];
+                string fullName = prefab != null ? prefab.name : "(삭제됨)";
+                string tooltip = prefab != null ? prefab.name : "프리팹이 삭제되었습니다. 우클릭해서 팔레트에서 빼세요.";
+                GUIContent content = new GUIContent(FitText(fullName, paletteButtonStyle, labelWidth), Thumbnail(prefab), tooltip);
+
+                Rect rect = GUILayoutUtility.GetRect(ThumbnailSize, ThumbnailSize + 14f,
+                    GUILayout.Width(ThumbnailSize), GUILayout.Height(ThumbnailSize + 14f));
 
                 Event e = Event.current;
                 if (onContextClick != null && e.type == EventType.ContextClick && rect.Contains(e.mousePosition))
@@ -395,9 +618,24 @@ public class MapBuilderEditor : Editor
             }
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
+            GUILayout.Space(2f);
         }
 
         return result;
+    }
+
+    /// <summary>글자가 폭을 넘으면 뒤를 잘라 '…'를 붙입니다. 가운데가 잘려 앞뒤가 사라지는 것보다 알아보기 쉽습니다.</summary>
+    private static string FitText(string text, GUIStyle style, float width)
+    {
+        if (string.IsNullOrEmpty(text) || style.CalcSize(new GUIContent(text)).x <= width) return text;
+
+        for (int length = text.Length - 1; length > 0; length--)
+        {
+            string trimmed = text.Substring(0, length) + "…";
+            if (style.CalcSize(new GUIContent(trimmed)).x <= width) return trimmed;
+        }
+
+        return "…";
     }
 
     private static Texture Thumbnail(GameObject prefab)
@@ -408,27 +646,19 @@ public class MapBuilderEditor : Editor
         return preview != null ? preview : AssetPreview.GetMiniThumbnail(prefab);
     }
 
-    private void ShowFreeContextMenu(int index)
+    /// <summary>
+    /// 팔레트 칸 어디에든 프리팹을 끌어다 놓으면 그 팔레트에 추가합니다. 이미 있는 것은 건너뜁니다.
+    /// 끌고 있는 동안 칸을 팔레트 타입 색으로 옅게 칠해 어디에 들어갈지 보여줍니다.
+    /// </summary>
+    private void HandlePaletteDrop(Rect area, MapPalette palette, int paletteIndex, Color typeColor)
     {
-        GenericMenu menu = new GenericMenu();
-        menu.AddItem(new GUIContent("팔레트에서 빼기"), false, () =>
-        {
-            Undo.RecordObject(builder, "Remove Free Prefab");
-            builder.freePrefabs.RemoveAt(index);
-            builder.selectedFreeIndex = Mathf.Clamp(builder.selectedFreeIndex, 0, Mathf.Max(0, builder.freePrefabs.Count - 1));
-            Repaint();
-        });
-        menu.ShowAsContext();
-    }
-
-    /// <summary>Project 창의 프리팹을 끌어다 놓으면 자유 배치 목록에 추가합니다. 이미 있는 것은 건너뜁니다.</summary>
-    private void DrawDropArea()
-    {
-        Rect rect = GUILayoutUtility.GetRect(0f, 38f, GUILayout.ExpandWidth(true));
-        GUI.Box(rect, "프리팹을 여기로 끌어다 놓아 팔레트에 추가", dropStyle);
-
         Event e = Event.current;
-        if ((e.type != EventType.DragUpdated && e.type != EventType.DragPerform) || !rect.Contains(e.mousePosition))
+        bool hovering = area.Contains(e.mousePosition) && DragAndDrop.objectReferences.Length > 0;
+
+        if (e.type == EventType.Repaint && hovering && DragAndDrop.visualMode == DragAndDropVisualMode.Copy)
+            EditorGUI.DrawRect(area, new Color(typeColor.r, typeColor.g, typeColor.b, 0.18f));
+
+        if ((e.type != EventType.DragUpdated && e.type != EventType.DragPerform) || !area.Contains(e.mousePosition))
             return;
 
         bool anyPrefab = false;
@@ -440,18 +670,20 @@ public class MapBuilderEditor : Editor
         if (e.type == EventType.DragPerform && anyPrefab)
         {
             DragAndDrop.AcceptDrag();
-            Undo.RecordObject(builder, "Add Free Prefab");
+            RecordLibrary("Add Palette Item");
 
             foreach (Object obj in DragAndDrop.objectReferences)
             {
                 if (!(obj is GameObject go) || !PrefabUtility.IsPartOfPrefabAsset(go)) continue;
-                if (builder.freePrefabs.Contains(go)) continue;
+                if (palette.prefabs.Contains(go)) continue;
 
-                builder.freePrefabs.Add(go);
-                builder.selectedFreeIndex = builder.freePrefabs.Count - 1;
+                palette.prefabs.Add(go);
             }
+
+            Select(paletteIndex, palette.prefabs.Count - 1);
         }
 
+        Repaint();
         e.Use();
     }
 
@@ -460,7 +692,7 @@ public class MapBuilderEditor : Editor
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
         GUILayout.Label("배치", sectionStyle);
 
-        if (IsTileMode)
+        if (IsGridPlacement)
         {
             int brush = EditorGUILayout.IntSlider("브러시 크기", builder.brushSize, 1, 5);
             int height = EditorGUILayout.IntSlider("설치 높이 (층)", builder.currentHeight, 0, 10);
@@ -501,7 +733,7 @@ public class MapBuilderEditor : Editor
 
     private void DrawShortcutBox()
     {
-        string text = IsTileMode
+        string text = IsGridPlacement
             ? "Shift+클릭 칠하기 · Shift+우클릭 지우기 · Shift+R 회전 · Ctrl+휠 브러시 크기"
             : "Shift+클릭 하나 배치 · Shift+우클릭 마우스 아래 오브젝트 삭제 · Shift+R 회전 · Ctrl+휠 높이";
 
@@ -539,11 +771,8 @@ public class MapBuilderEditor : Editor
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.Space(4);
-        DrawFoldout(FoldMapSettingsKey, "맵 설정 (크기 · 저장 경로 · 컨테이너)",
-            "mapWidth", "mapHeight", "savePath", "tileContainer");
-        DrawFoldout(FoldSlotSettingsKey, "팔레트 슬롯 설정",
-            "floorPrefab", "wallPrefab", "entrancePrefab", "exitPrefab", "chestPrefab", "trapPrefabs",
-            "enemyPrefab", "pushablePrefab", "freePrefabs");
+        DrawFoldout(FoldMapSettingsKey, "맵 설정 (크기 · 저장 경로 · 컨테이너 · 팔레트 파일)",
+            "mapWidth", "mapHeight", "savePath", "tileContainer", "paletteLibrary");
 
         EditorGUILayout.Space(4);
         EditorGUILayout.BeginHorizontal();
@@ -560,7 +789,7 @@ public class MapBuilderEditor : Editor
 
     /// <summary>
     /// 자주 안 쓰는 설정은 접어 둡니다. 펼침 상태는 에디터 세션 동안만 기억합니다(씬에 저장하지 않음).
-    /// 여기서만 SerializedObject를 써서, 목록 편집·프리팹 연결을 유니티 기본 UI 그대로 쓰게 합니다.
+    /// 여기서만 SerializedObject를 써서, 프리팹·파일 연결을 유니티 기본 UI 그대로 쓰게 합니다.
     /// </summary>
     private void DrawFoldout(string key, string title, params string[] properties)
     {
@@ -584,9 +813,10 @@ public class MapBuilderEditor : Editor
     {
         RemoveGuidePlane();
 
+        // 맵 컨테이너와 같은 이유로 MapBuilder의 자식으로 두지 않습니다 — 선택 외곽선이 맵 크기만큼 그려집니다.
         GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        plane.name = "Editor_GuidePlane";
-        plane.transform.SetParent(builder.transform);
+        plane.name = GuidePlaneName;
+        UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(plane, builder.gameObject.scene);
 
         float centerX = (builder.mapWidth - 1) * builder.tileSize / 2f;
         float centerZ = (builder.mapHeight - 1) * builder.tileSize / 2f;
@@ -607,8 +837,12 @@ public class MapBuilderEditor : Editor
 
     private void RemoveGuidePlane()
     {
-        Transform plane = builder.transform.Find("Editor_GuidePlane");
-        if (plane != null) DestroyImmediate(plane.gameObject);
+        // 예전 버전은 MapBuilder 아래에 만들었으므로 그 자리도 함께 찾습니다.
+        Transform legacy = builder.transform.Find(GuidePlaneName);
+        if (legacy != null) DestroyImmediate(legacy.gameObject);
+
+        foreach (GameObject root in builder.gameObject.scene.GetRootGameObjects())
+            if (root.name == GuidePlaneName) DestroyImmediate(root);
     }
 
     // ── 씬 뷰 ─────────────────────────────────────────────────────────
@@ -616,7 +850,6 @@ public class MapBuilderEditor : Editor
     private void OnSceneGUI()
     {
         Event e = Event.current;
-        UpdatePalette(); // Trap 종류 변경 등이 즉시 고스트/설치에 반영되도록 팔레트를 갱신
         UpdateGhost();
 
         if (e.type == EventType.KeyDown && e.keyCode == KeyCode.R && e.shift)
@@ -633,7 +866,7 @@ public class MapBuilderEditor : Editor
 
         if (e.type == EventType.ScrollWheel && e.control)
         {
-            if (IsTileMode)
+            if (IsGridPlacement)
             {
                 if (e.delta.y > 0) builder.brushSize = Mathf.Max(1, builder.brushSize - 1);
                 else if (e.delta.y < 0) builder.brushSize = Mathf.Min(5, builder.brushSize + 1);
@@ -653,7 +886,7 @@ public class MapBuilderEditor : Editor
 
         DrawSceneHud();
 
-        if (IsTileMode) HandleTileScene(e);
+        if (IsGridPlacement) HandleGridScene(e);
         else HandleFreeScene(e);
 
         if (e.rawType == EventType.MouseUp && strokeUndoGroup >= 0)
@@ -670,24 +903,26 @@ public class MapBuilderEditor : Editor
     {
         EnsureStyles();
 
+        MapPalette palette = CurrentPalette;
         GameObject prefab = CurrentPrefab;
-        string color = ColorUtility.ToHtmlStringRGB(ModeColor(builder.buildMode));
-        string prefabName = prefab != null ? prefab.name : "(선택 없음)";
+        string color = ColorUtility.ToHtmlStringRGB(TypeColor(CurrentType));
+        string what = palette == null ? "(팔레트를 고르세요)"
+            : $"{palette.name} · {(prefab != null ? prefab.name : "(프리팹 없음)")}";
         string rotation = rotationNames[builder.currentRotation];
-        string detail = IsTileMode
+        string detail = IsGridPlacement
             ? $"높이 {builder.currentHeight}층 · 브러시 {builder.brushSize} · 회전 {rotation}"
             : $"높이 {builder.freeHeight:0.##} m · 회전 {rotation}";
 
         Handles.BeginGUI();
-        GUILayout.BeginArea(new Rect(10f, 10f, 300f, 60f));
-        GUILayout.Label($"<b><color=#{color}>{ModeLabel(builder.buildMode)}</color></b> · {prefabName}\n{detail}", hudStyle);
+        GUILayout.BeginArea(new Rect(10f, 10f, 320f, 60f));
+        GUILayout.Label($"<b><color=#{color}>{PlacementLabel(CurrentType)}</color></b> · {what}\n{detail}", hudStyle);
         GUILayout.EndArea();
         Handles.EndGUI();
     }
 
-    private void DrawGrid(float y)
+    private void DrawGrid(float y, float alpha)
     {
-        Handles.color = new Color(1f, 1f, 1f, IsTileMode ? 0.15f : 0.07f);
+        Handles.color = new Color(1f, 1f, 1f, alpha);
         float minBound = -builder.tileSize / 2f;
         float maxXBound = (builder.mapWidth - 1) * builder.tileSize + builder.tileSize / 2f;
         float maxZBound = (builder.mapHeight - 1) * builder.tileSize + builder.tileSize / 2f;
@@ -704,10 +939,10 @@ public class MapBuilderEditor : Editor
         }
     }
 
-    private void HandleTileScene(Event e)
+    private void HandleGridScene(Event e)
     {
         float currentYHeight = builder.currentHeight * GridSystem.Instance.TileHeight;
-        DrawGrid(currentYHeight);
+        DrawGrid(currentYHeight, 0.15f);
 
         Plane groundPlane = new Plane(Vector3.up, new Vector3(0, currentYHeight, 0));
         Ray ray = HandleUtility.GUIPointToWorldRay(e.mousePosition);
@@ -737,7 +972,7 @@ public class MapBuilderEditor : Editor
             else ghostObject.SetActive(false);
         }
 
-        Handles.color = TileColor;
+        Handles.color = GridColor;
         for (int x = offsetStart; x <= offsetEnd; x++)
         {
             for (int z = offsetStart; z <= offsetEnd; z++)
@@ -789,7 +1024,7 @@ public class MapBuilderEditor : Editor
     private void HandleFreeScene(Event e)
     {
         float y = builder.freeHeight;
-        DrawGrid(y);
+        DrawGrid(y, 0.07f);
 
         Plane plane = new Plane(Vector3.up, new Vector3(0, y, 0));
         Ray ray = HandleUtility.GUIPointToWorldRay(e.mousePosition);
@@ -810,8 +1045,7 @@ public class MapBuilderEditor : Editor
         }
 
         // 공중에 뜬 높이를 눈으로 볼 수 있게 바닥(y=0)까지 세로선을 긋습니다.
-        Color modeColor = ModeColor(builder.buildMode);
-        Handles.color = modeColor;
+        Handles.color = TypeColor(CurrentType);
         Vector3 ground = new Vector3(point.x, 0f, point.z);
         if (Mathf.Abs(y) > 0.01f) Handles.DrawDottedLine(point, ground, 3f);
         Handles.DrawWireDisc(ground, Vector3.up, 0.25f);
@@ -853,16 +1087,16 @@ public class MapBuilderEditor : Editor
         GameObject prefab = CurrentPrefab;
         if (prefab == null) return;
 
-        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, ModeContainerName);
+        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.ContainerName(CurrentType));
         GameObject placed = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         placed.transform.SetPositionAndRotation(position, rotation);
         Undo.RegisterCreatedObjectUndo(placed, "Place Free Object");
     }
 
-    /// <summary>마우스 아래 오브젝트 중 '지금 모드의 묶음'에 속한 것 하나를 지웁니다. 타일이나 다른 묶음은 건드리지 않습니다.</summary>
+    /// <summary>마우스 아래 오브젝트 중 '지금 팔레트 타입의 묶음'에 속한 것 하나를 지웁니다. 타일이나 다른 묶음은 건드리지 않습니다.</summary>
     private void RemoveFreeUnderMouse(Vector2 mousePosition)
     {
-        Transform container = MapBuilderContainers.Find(builder.tileContainer, ModeContainerName);
+        Transform container = MapBuilderContainers.Find(builder.tileContainer, MapBuilder.ContainerName(CurrentType));
         if (container == null) return;
 
         // 고스트가 마우스 바로 아래에 있어 그대로 두면 고스트가 집힙니다.
@@ -913,7 +1147,7 @@ public class MapBuilderEditor : Editor
             builder.placedTiles.Remove(gridPos);
         }
 
-        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.TileContainerNames[builder.selectedPrefabIndex]);
+        Transform parent = MapBuilderContainers.GetOrCreate(builder.tileContainer, MapBuilder.ContainerName(CurrentType));
         GameObject newTile = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         newTile.transform.position = new Vector3(x * builder.tileSize, spawnY, z * builder.tileSize);
         newTile.transform.rotation = Quaternion.Euler(0, builder.currentRotation * 90f, 0);
@@ -1031,7 +1265,7 @@ public class MapBuilderEditor : Editor
         Undo.RecordObject(builder.tileContainer.gameObject, "Load Map Prefab");
         builder.tileContainer.name = builder.mapPrefabName + "_Root";
 
-        int sorted = MapBuilderContainers.SortLoadedChildren(builder, decorationRoot);
+        int sorted = MapBuilderContainers.SortLoadedChildren(builder, CurrentPalettes, decorationRoot);
 
         Undo.CollapseUndoOperations(group);
         builder.SyncPlacedTiles();

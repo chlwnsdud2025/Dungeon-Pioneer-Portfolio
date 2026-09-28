@@ -61,10 +61,10 @@ public static class MapBuilderContainers
     /// 불러온 맵의 자식을 종류별 묶음으로 옮깁니다. 이미 묶음으로 정리된 맵이면 아무것도 하지 않습니다.
     ///
     /// 판정 순서: ① 원래 MapDecoration이 가리키던 오브젝트 → DecorationRoot
-    /// ② 팔레트 슬롯과 같은 원본 프리팹 → 그 슬롯 묶음 ③ 타일 태그/적 컴포넌트 → 해당 묶음
+    /// ② 팔레트에 들어 있는 원본 프리팹 → 그 팔레트 타입의 묶음 ③ 타일 태그/적 컴포넌트 → 해당 묶음
     /// ④ 나머지(손으로 놓은 Bonus·횃불·NPC 등) → FreeObjects
     /// </summary>
-    public static int SortLoadedChildren(MapBuilder builder, GameObject originalDecorationRoot)
+    public static int SortLoadedChildren(MapBuilder builder, IList<MapPalette> palettes, GameObject originalDecorationRoot)
     {
         Transform root = builder.tileContainer;
 
@@ -92,7 +92,7 @@ public static class MapBuilderContainers
                 }
             }
 
-            string target = Classify(builder, child.gameObject) ?? MapBuilder.FreeContainerName;
+            string target = Classify(palettes, child.gameObject) ?? MapBuilder.FreeContainerName;
             Undo.SetTransformParent(child, GetOrCreate(root, target), "Sort Map");
             moved++;
         }
@@ -100,20 +100,14 @@ public static class MapBuilderContainers
         return moved;
     }
 
-    /// <summary>오브젝트가 들어갈 타일 묶음 이름. 타일이 아니면 null.</summary>
-    public static string Classify(MapBuilder builder, GameObject obj)
+    /// <summary>오브젝트가 들어갈 묶음 이름. 팔레트에도 없고 타일 태그도 없으면 null.</summary>
+    public static string Classify(IList<MapPalette> palettes, GameObject obj)
     {
         GameObject source = PrefabUtility.GetCorrespondingObjectFromSource(obj);
-        if (source != null)
+        if (source != null && palettes != null)
         {
-            if (source == builder.floorPrefab) return "Floor";
-            if (source == builder.wallPrefab) return "Wall";
-            if (source == builder.entrancePrefab) return "Entrance";
-            if (source == builder.exitPrefab) return "Exit";
-            if (source == builder.chestPrefab) return "Chest";
-            if (builder.trapPrefabs != null && builder.trapPrefabs.Contains(source)) return "Trap";
-            if (source == builder.enemyPrefab) return "Enemy";
-            if (source == builder.pushablePrefab) return "Pushable";
+            foreach (MapPalette palette in palettes)
+                if (palette != null && palette.prefabs.Contains(source)) return MapBuilder.ContainerName(palette.type);
         }
 
         if (obj.GetComponentInChildren<EnemyController>(true) != null) return "Enemy";
