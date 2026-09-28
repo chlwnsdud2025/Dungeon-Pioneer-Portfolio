@@ -8,16 +8,6 @@ public class EnemyPatrolState : EnemyBaseState
     private const int PatrolTileRadius = 4;
     private const float RouteRetryInterval = 1f;
 
-    private static readonly Vector2Int[] Directions =
-    {
-        new Vector2Int(1, 0),
-        new Vector2Int(-1, 0),
-        new Vector2Int(0, 1),
-        new Vector2Int(0, -1)
-    };
-
-    private readonly Queue<Vector2Int> bfsQueue = new Queue<Vector2Int>();
-    private readonly Dictionary<Vector2Int, int> bfsDistance = new Dictionary<Vector2Int, int>();
     private readonly List<Vector2Int> farthestCells = new List<Vector2Int>();
 
     private Vector2Int farCell;
@@ -103,41 +93,7 @@ public class EnemyPatrolState : EnemyBaseState
         LocationGrid grid = enemy.Grid;
         if (grid == null) return false;
 
-        Vector2Int start = enemy.spawnCell;
-        bfsQueue.Clear();
-        bfsDistance.Clear();
-        farthestCells.Clear();
-
-        bfsQueue.Enqueue(start);
-        bfsDistance[start] = 0;
-        int bestDistance = 0;
-
-        while (bfsQueue.Count > 0)
-        {
-            Vector2Int cell = bfsQueue.Dequeue();
-            int distance = bfsDistance[cell];
-
-            if (distance > bestDistance)
-            {
-                bestDistance = distance;
-                farthestCells.Clear();
-            }
-            if (distance == bestDistance && distance > 0)
-                farthestCells.Add(cell);
-
-            if (distance >= PatrolTileRadius) continue;
-
-            foreach (Vector2Int dir in Directions)
-            {
-                Vector2Int next = cell + dir;
-                if (bfsDistance.ContainsKey(next)) continue;
-                if (!grid.IsPassable(next, false)) continue;
-
-                bfsDistance[next] = distance + 1;
-                bfsQueue.Enqueue(next);
-            }
-        }
-
+        GridSearch.CollectFarthest(grid, enemy.spawnCell, PatrolTileRadius, false, farthestCells);
         if (farthestCells.Count == 0) return false;
 
         farCell = farthestCells[Random.Range(0, farthestCells.Count)];
