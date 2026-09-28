@@ -19,7 +19,6 @@ public static class OverworldMapSetup
     private const string PlanePrefabPath = "Assets/Prefabs/Tile/Overworld/Plane.prefab";
     private const string MapPrefabPath = "Assets/Prefabs/Maps/OverworldMap.prefab";
     private const string OverworldScenePath = "Assets/Scenes/Game/Overworld.unity";
-    private const string MapBuildScenePath = "Assets/Scenes/MapBuildScene.unity";
     private const string DirtWithGrassFbxPath =
         "Assets/ImportedAsset/KayKit Block Bits 1.0/Assets/fbx(unity)/dirt_with_grass.fbx";
 
@@ -39,6 +38,13 @@ public static class OverworldMapSetup
     [MenuItem("Tools/Overworld/Setup Overworld Map (Bake + Place in Scene)")]
     public static void SetupOverworldMapFromMenu()
     {
+        bool proceed = EditorUtility.DisplayDialog(
+            "Overworld Map Setup",
+            "Plane 프리팹과 OverworldMap 프리팹을 처음부터 다시 생성하고, Overworld 씬의 맵을 교체합니다.\n\n" +
+            "두 프리팹과 Overworld 씬의 맵에 손으로 수정한 내용은 모두 사라집니다. 계속할까요?",
+            "다시 생성", "취소");
+        if (!proceed) return;
+
         try
         {
             SetupOverworldMap();
@@ -90,7 +96,9 @@ public static class OverworldMapSetup
         if (mapPrefab == null)
             throw new System.InvalidOperationException("OverworldMap 프리팹 저장에 실패했습니다.");
 
-        ConfigureMapBuildScene(planePrefab, mapPrefab);
+        // ★ MapBuildScene은 건드리지 않습니다. 예전에는 여기서 MapBuilder의 타일 컨테이너를
+        //   OverworldMap 프리팹 인스턴스로 바꿔 넣었는데, 그 뒤로 맵빌더에서 구운 맵이 전부
+        //   OverworldMap의 Variant가 되고 타일 삭제가 막히는 문제가 생겼습니다.
         PlaceMapInOverworldScene(mapPrefab);
 
         AssetDatabase.SaveAssets();
@@ -111,9 +119,8 @@ public static class OverworldMapSetup
         if (sourceModel == null)
             throw new System.InvalidOperationException($"FBX를 찾을 수 없습니다: {DirtWithGrassFbxPath}");
 
-        if (AssetDatabase.LoadAssetAtPath<Object>(PlanePrefabPath) != null)
-            AssetDatabase.DeleteAsset(PlanePrefabPath);
-
+        // 기존 애셋을 지우지 않고 같은 경로에 덮어써서 GUID를 유지합니다.
+        // (지우고 새로 만들면 GUID가 바뀌어 이 프리팹을 쓰던 맵/씬의 참조가 전부 끊어집니다)
         GameObject temp = Object.Instantiate(sourceModel);
         temp.name = "Plane";
 
@@ -172,9 +179,7 @@ public static class OverworldMapSetup
                 }
             }
 
-            if (AssetDatabase.LoadAssetAtPath<Object>(MapPrefabPath) != null)
-                AssetDatabase.DeleteAsset(MapPrefabPath);
-
+            // 삭제 후 재생성하지 않고 덮어써서 GUID를 유지합니다.
             PrefabUtility.SaveAsPrefabAsset(mapRoot, MapPrefabPath);
             AssetDatabase.ImportAsset(MapPrefabPath, ImportAssetOptions.ForceUpdate);
             return AssetDatabase.LoadAssetAtPath<GameObject>(MapPrefabPath);
@@ -185,7 +190,7 @@ public static class OverworldMapSetup
         }
     }
 
-    private static void ConfigureMapBuildScene(GameObject planePrefab, GameObject mapPrefab)
+    private static void PlaceMapInOverworldScene(GameObject mapPrefab)
     {
         if (!Application.isBatchMode && !SkipSavePrompt)
         {
@@ -197,54 +202,6 @@ public static class OverworldMapSetup
             EditorSceneManager.SaveOpenScenes();
         }
 
-        Scene mapBuildScene = EditorSceneManager.OpenScene(MapBuildScenePath, OpenSceneMode.Single);
-        MapBuilder builder = Object.FindFirstObjectByType<MapBuilder>();
-        if (builder == null)
-        {
-            Debug.LogWarning("[OverworldMapSetup] MapBuildScene에 MapBuilder가 없습니다. MapBuilder 설정은 건너뜁니다.");
-            EditorSceneManager.SaveScene(mapBuildScene);
-            return;
-        }
-
-        builder.mapWidth = DefaultMapWidth;
-        builder.mapHeight = DefaultMapHeight;
-        builder.mapPrefabName = "OverworldMap";
-        builder.savePath = "Assets/Prefabs/Maps/";
-        builder.prefabToLoad = mapPrefab;
-        builder.floorPrefab = planePrefab;
-
-        builder.currentHeight = 0;
-        builder.currentRotation = 0;
-        builder.selectedPrefabIndex = 0;
-        builder.brushSize = 1;
-
-        if (builder.tileContainer != null)
-        {
-            Object.DestroyImmediate(builder.tileContainer.gameObject);
-            builder.tileContainer = null;
-        }
-
-        for (int i = builder.transform.childCount - 1; i >= 0; i--)
-        {
-            Transform child = builder.transform.GetChild(i);
-            if (child.name.Contains("Root") || child.name.Contains("OverworldMap") || child.name.Contains("Firstmap"))
-                Object.DestroyImmediate(child.gameObject);
-        }
-
-        GameObject loadedMap = (GameObject)PrefabUtility.InstantiatePrefab(mapPrefab);
-        loadedMap.name = "OverworldMap_Root";
-        loadedMap.transform.SetParent(builder.transform, false);
-        loadedMap.transform.localPosition = Vector3.zero;
-        builder.tileContainer = loadedMap.transform;
-        builder.SyncPlacedTiles();
-
-        EditorUtility.SetDirty(builder);
-        EditorSceneManager.MarkSceneDirty(mapBuildScene);
-        EditorSceneManager.SaveScene(mapBuildScene);
-    }
-
-    private static void PlaceMapInOverworldScene(GameObject mapPrefab)
-    {
         Scene overworldScene = EditorSceneManager.OpenScene(OverworldScenePath, OpenSceneMode.Single);
 
         foreach (GameObject root in overworldScene.GetRootGameObjects())
