@@ -28,6 +28,8 @@ public class DialogueModule : NpcInteractionModule
 
     public bool IsTalking => talker != null;
 
+    public override bool IsEngaged => IsTalking;
+
     private void Awake()
     {
         actor = GetComponent<NpcActor>();

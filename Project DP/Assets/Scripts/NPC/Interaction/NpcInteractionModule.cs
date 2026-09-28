@@ -16,6 +16,9 @@ public abstract class NpcInteractionModule : MonoBehaviour
 
     public int Priority => priority;
 
+    /// <summary>플레이어와 상호작용이 진행 중인지(대화 중, 상점 창이 열림 등). true인 동안 브레인이 이동을 멈춥니다.</summary>
+    public virtual bool IsEngaged => false;
+
     /// <summary>지금 이 모듈을 쓸 수 있는지. false면 NpcActor가 다음 순위 모듈을 봅니다.</summary>
     public abstract bool CanInteract(PlayerController player);
 

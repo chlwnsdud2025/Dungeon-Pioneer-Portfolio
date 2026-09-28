@@ -16,6 +16,13 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
     private const float GravityAcceleration = -9.81f;
     private const float GravityMultiplier = 2f;
 
+    // GridMover는 웨이포인트를 넘기는 프레임에 잠깐 IsMoving이 false가 됩니다.
+    // 그때마다 Idle로 넘어가면 걷는 동안 모션이 끊기므로, 이 시간만큼 멈춰 있어야 Idle로 바꿉니다.
+    private const float IdleSwitchDelay = 0.15f;
+    private const float LocomotionCrossFade = 0.15f;
+    private const string IdleStateName = "Idle";
+    private const string WalkStateName = "Walk";
+
     [Header("정의")]
     [Tooltip("스탯·진영·지각 범위. 같은 종류의 NPC는 이 애셋 하나를 공유합니다.")]
     public NpcDefinition definition;
@@ -39,6 +46,9 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
     private float verticalVelocity;
     private NpcBrain brain;
     private NpcInteractionModule[] modules;
+    private bool walkAnimPlaying;
+    private float stillTime = IdleSwitchDelay;
+    private bool warnedMissingAnimState;
 
     public GridMover Mover { get; private set; }
     public Perception Perception { get; private set; }
@@ -49,6 +59,22 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
     public float MaxHealth => definition != null ? definition.maxHealth : 1f;
     public float MoveSpeed => definition != null ? definition.moveSpeed : 2f;
     public string DisplayName => definition != null ? definition.displayName : name;
+
+    /// <summary>
+    /// 플레이어와 대화 중처럼 모듈이 NPC를 붙잡고 있는지. 브레인은 이때 이동을 멈춥니다.
+    /// 멈추지 않으면 NPC가 걸어가 버려 대화가 거리 조건으로 끊깁니다.
+    /// </summary>
+    public bool IsEngaged
+    {
+        get
+        {
+            if (modules == null) return false;
+            foreach (NpcInteractionModule module in modules)
+                if (module != null && module.enabled && module.IsEngaged) return true;
+
+            return false;
+        }
+    }
 
     private void Awake()
     {
@@ -91,7 +117,47 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
         }
 
         brain?.Tick();
-        Mover.Tick();
+
+        // 목적지가 없으면 GridMover가 Move를 부르지 않으므로 여기서 중력만 적용합니다.
+        // 브레인마다 챙기게 두면 새 브레인을 만들 때 잊기 쉽고, 목적지가 있을 때 브레인이 또 부르면
+        // 한 프레임에 Move가 두 번 불려 중력이 두 배가 됩니다.
+        if (Mover.HasDestination) Mover.Tick();
+        else Move(Vector3.zero);
+
+        UpdateLocomotionAnimation();
+    }
+
+    /// <summary>
+    /// 걷기/대기 모션 전환. 브레인이 아니라 몸이 맡아야 어떤 브레인을 끼워도 같은 모션이 나옵니다.
+    /// 애니메이터의 상태 이름(Idle/Walk)으로 전환합니다 — 적이 "Chase" 상태를 이름으로 부르는 것과 같은 방식입니다.
+    /// </summary>
+    private void UpdateLocomotionAnimation()
+    {
+        if (animator == null) return;
+
+        if (Mover.IsMoving) stillTime = 0f;
+        else stillTime += Time.deltaTime;
+
+        bool shouldWalk = stillTime < IdleSwitchDelay;
+        if (shouldWalk == walkAnimPlaying) return;
+
+        walkAnimPlaying = shouldWalk;
+        string stateName = shouldWalk ? WalkStateName : IdleStateName;
+
+        int shortHash = Animator.StringToHash(stateName);
+        int fullHash = Animator.StringToHash("Base Layer." + stateName);
+        if (!animator.HasState(0, shortHash) && !animator.HasState(0, fullHash))
+        {
+            if (!warnedMissingAnimState)
+            {
+                Debug.LogWarning($"[NpcActor] '{name}'의 애니메이터에 '{stateName}' 상태가 없어 모션을 바꾸지 않습니다. " +
+                                 $"Base Layer에 '{IdleStateName}'과 '{WalkStateName}' 상태를 만들어주세요.", this);
+                warnedMissingAnimState = true;
+            }
+            return;
+        }
+
+        animator.CrossFadeInFixedTime(shortHash, LocomotionCrossFade);
     }
 
     /// <summary>
@@ -108,6 +174,14 @@ public class NpcActor : MonoBehaviour, IGridAgent, IPerceptionAgent, IFactionMem
 
         if (!spawnCaptured)
         {
+            // 적처럼 셀 중앙에 맞춥니다. 어긋난 채로 출발하면 첫 경로가 비틀리고,
+            // 그리드가 없는 장소에서는 기준이 되는 칸이 없으므로 그대로 둡니다.
+            if (Grid != null)
+            {
+                Vector3 center = LocationGrid.CellToWorld(CurrentCell);
+                Teleport(new Vector3(center.x, transform.position.y, center.z), transform.rotation);
+            }
+
             spawnPosition = transform.position;
             spawnCell = CurrentCell;
             spawnRotation = transform.rotation;
