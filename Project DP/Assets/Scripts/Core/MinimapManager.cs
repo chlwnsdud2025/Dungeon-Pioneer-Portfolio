@@ -71,6 +71,10 @@ public class MinimapManager : MonoBehaviour
     public MarkerIcon trapIcon = new MarkerIcon();
     [Tooltip("밀 수 있는 오브젝트. 지금 비춰질 때만 그립니다.")]
     public MarkerIcon pushableIcon = new MarkerIcon();
+    [Tooltip("던전 밖: 다른 지역으로 가는 포탈. 항상 그립니다.")]
+    public MarkerIcon portalIcon = new MarkerIcon();
+    [Tooltip("던전 밖: 던전 입구. 항상 그립니다.")]
+    public MarkerIcon dungeonEntranceIcon = new MarkerIcon();
 
     [Header("Marker Colors (플레이어 점, 그리고 아이콘이 없을 때 대신 그리는 점)")]
     public Color playerColor = new Color(0.2f, 0.8f, 0.2f, 1f);
@@ -81,12 +85,46 @@ public class MinimapManager : MonoBehaviour
     public Color graveColor = new Color(0.65f, 0.2f, 0.9f, 1f);
     public Color trapColor = new Color(0f, 0f, 1f, 1f);
     public Color pushWallColor = new Color(1f, 0.55f, 0.1f, 1f);
+    public Color portalColor = new Color(0.3f, 0.7f, 1f, 1f);
+    public Color dungeonEntranceColor = new Color(0.8f, 0.3f, 0.9f, 1f);
 
     [Header("Marker Dot Sizes (px, 플레이어 점과 아이콘이 없을 때의 점)")]
     public int playerDotRadiusPx = 3;
     public int enemyDotRadiusPx = 3;
     public int chestDotRadiusPx = 2;
     public int torchDotRadiusPx = 1;
+
+    [Header("Outdoor Map (던전 밖: 맵을 한 번 위에서 찍어 플레이어 주변만 보여줌)")]
+    [Tooltip("미니맵에 한 번에 보여줄 칸 수 (가로·세로). 플레이어가 가운데 오고, 맵 끝에서는 창이 멈춥니다.")]
+    [Min(2)] public int outdoorViewTiles = 12;
+    [Tooltip("맵을 찍을 때 한 칸을 몇 픽셀로 찍을지. 던전 미니맵과 같게 두면 아이콘 크기 느낌이 같습니다.")]
+    [Min(2)] public int outdoorPixelsPerTile = 20;
+    [Tooltip("맵 오브젝트 범위 바깥으로 더 찍을 여백 (칸).")]
+    [Min(0f)] public float outdoorCaptureMarginTiles = 1f;
+    [Tooltip("찍을 레이어. Player·NPC·Enemy·UI는 마커로 따로 그리므로 여기서 켜 두어도 항상 빼고 찍습니다.")]
+    public LayerMask outdoorCaptureLayers = ~0;
+    [Tooltip("찍기 전용 URP 렌더러. 게임 렌더러의 조명·후처리 기능(HBAO, SSR, GI, 안개 등)이 섞이지 않도록 " +
+             "기능이 없는 렌더러(MinimapCapture_Renderer)를 쓰며, 모든 URP 설정 파일의 Renderer List에 등록돼 있어야 합니다.")]
+    public UnityEngine.Rendering.Universal.ScriptableRendererData outdoorCaptureRenderer;
+    [Tooltip("찍을 때 모든 물체에 잠깐 씌우는 셰이더 (조명 없이 원래 색). Hidden/Minimap/CaptureColor")]
+    public Shader outdoorCaptureColorShader;
+    [Tooltip("찍을 때 쓰는 높이 셰이더 (외곽선 계산용). Hidden/Minimap/CaptureHeight")]
+    public Shader outdoorCaptureHeightShader;
+    [Tooltip("맵 바깥, 아무것도 찍히지 않은 곳의 색")]
+    public Color outdoorEmptyColor = new Color(0f, 0f, 0f, 1f);
+
+    [Header("Outdoor Style (찍은 그림을 미니맵답게 가공)")]
+    [Tooltip("색 단계 수. 작을수록 색이 뭉쳐 단순해집니다.")]
+    [Range(2, 32)] public int outdoorColorLevels = 6;
+    [Tooltip("채도. 1이면 원래대로, 0이면 흑백.")]
+    [Range(0f, 2f)] public float outdoorSaturation = 1f;
+    [Tooltip("밝기. 1이면 원래대로.")]
+    [Range(0f, 2f)] public float outdoorBrightness = 1f;
+    [Tooltip("외곽선 두께 (픽셀). 0이면 외곽선을 그리지 않습니다.")]
+    [Range(0, 4)] public int outdoorOutlineThickness = 1;
+    [Tooltip("이웃보다 이만큼(월드 높이) 이상 높은 곳의 가장자리에 외곽선을 긋습니다. 작을수록 낮은 턱에도 선이 생깁니다.")]
+    [Min(0.01f)] public float outdoorOutlineHeightThreshold = 0.3f;
+    public Color outdoorOutlineColor = new Color(0.1f, 0.08f, 0.06f, 1f);
 
     [System.Serializable]
     public class MarkerIcon
@@ -105,9 +143,8 @@ public class MinimapManager : MonoBehaviour
     {
         public LocationGrid grid;
         public MinimapVisionMap vision;
-        public Texture2D texture;
+        public MinimapCanvas canvas;      // 바탕 + 마커. 텍스처에 올리는 최종본
         public Color32[] terrainBuffer;   // 시야·탐색 상태만 칠한 바탕. 바뀐 범위만 다시 칠합니다.
-        public Color32[] frameBuffer;     // 바탕 + 마커. 텍스처에 올리는 최종본
         public int texWidth, texHeight;
 
         public readonly List<PushableObject> pushables = new List<PushableObject>();
@@ -133,23 +170,6 @@ public class MinimapManager : MonoBehaviour
         public int lastMarkerSignature;
     }
 
-    private struct Marker
-    {
-        public Vector2 center;   // 픽셀 좌표
-        public IconImage icon;   // 있으면 아이콘을 그리고, 없으면 아래 대체 모양으로 그립니다.
-        public int radius;       // 점: 반지름, 칸: 한 변의 절반
-        public Color32 color;
-        public bool isTile;
-        public float opacity;    // 0~1
-    }
-
-    /// <summary>아이콘 칸의 sizePx 크기로 줄이고 색을 곱해 둔 아이콘 픽셀. (아래가 0번 줄)</summary>
-    private class IconImage
-    {
-        public Color32[] pixels;
-        public int size;
-    }
-
     private readonly Dictionary<LocationId, LocationMinimapState> locationStates = new Dictionary<LocationId, LocationMinimapState>();
     private LocationMinimapState current;
     private GameObject currentLocationInstance;
@@ -157,14 +177,19 @@ public class MinimapManager : MonoBehaviour
 
     private readonly List<Vector2Int> blockerCells = new List<Vector2Int>();
     private readonly List<Vector2> torchCenters = new List<Vector2>();
-    private readonly List<Marker> markers = new List<Marker>();
+    private readonly List<MinimapMarker> markers = new List<MinimapMarker>();
+
+    // 던전 밖 미니맵. 던전 밖 맵(SceneLocation)이 있는 씬에서만 만들어집니다.
+    private OutdoorMinimap outdoor;
+    private SceneLocation failedOutdoorSource;   // 찍기에 실패한 맵. 매 프레임 다시 시도하지 않도록 기억합니다.
+    private bool outdoorNeedsRebuild;            // 플레이 중 인스펙터에서 설정을 바꾸면 다시 찍습니다.
 
     // lightFalloff를 픽셀마다 Evaluate하지 않도록 미리 뽑아 둔 밝기표. (MinimapVisionMap.LightPlayer 참고)
     private const int FalloffTableSize = 256;
     private byte[] falloffTable;
 
     // 아이콘 설정 → 줄여 둔 픽셀. 읽기에 실패한 아이콘은 null로 기억해 에러를 한 번만 띄웁니다.
-    private readonly Dictionary<MarkerIcon, IconImage> iconCache = new Dictionary<MarkerIcon, IconImage>();
+    private readonly Dictionary<MarkerIcon, MinimapIconImage> iconCache = new Dictionary<MarkerIcon, MinimapIconImage>();
 
     private void Awake()
     {
@@ -182,13 +207,17 @@ public class MinimapManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        outdoor?.Dispose();
+        outdoor = null;
     }
 
-    // 플레이 중 인스펙터에서 색·밝기 곡선·아이콘을 바꾸면 바로 다시 칠합니다.
+    // 플레이 중 인스펙터에서 색·밝기 곡선·아이콘·던전 밖 설정을 바꾸면 바로 다시 칠합니다.
     private void OnValidate()
     {
         falloffTable = null;
         iconCache.Clear();
+        outdoorNeedsRebuild = outdoor != null;
+        failedOutdoorSource = null;   // 설정을 고쳤을 수 있으니 실패했던 맵도 다시 시도
         if (current == null) return;
 
         current.torchesDirty = true;
@@ -222,9 +251,27 @@ public class MinimapManager : MonoBehaviour
         current = null;
     }
 
-    public Texture CurrentTexture => current != null ? current.texture : null;
+    /// <summary>HUD에 보여줄 텍스처. 던전 밖이면 플레이어 주변 창, 던전이면 층 전체.</summary>
+    public Texture CurrentTexture
+    {
+        get
+        {
+            if (outdoor != null) return outdoor.ViewTexture;
+            return current != null ? current.canvas.texture : null;
+        }
+    }
 
-    public float CurrentAspect => (current != null && current.texHeight > 0) ? (float)current.texWidth / current.texHeight : 1f;
+    public float CurrentAspect
+    {
+        get
+        {
+            if (outdoor != null) return 1f;   // 정사각형 창
+            return (current != null && current.texHeight > 0) ? (float)current.texWidth / current.texHeight : 1f;
+        }
+    }
+
+    /// <summary>지금 던전 밖 미니맵을 보여주고 있는지.</summary>
+    public bool IsOutdoorActive => outdoor != null;
 
     public bool HasCurrentLocation => current != null && current.vision.FloorPixelCount > 0;
 
@@ -253,6 +300,7 @@ public class MinimapManager : MonoBehaviour
 
     public void SwitchLocation(LocationId id, GameObject locationInstance, bool isNewLocation, Transform playerRef)
     {
+        ClearOutdoor();
         playerTransform = playerRef;
         currentLocationInstance = locationInstance;
 
@@ -309,11 +357,8 @@ public class MinimapManager : MonoBehaviour
                 state.torches.Add(torch.transform);
         }
 
-        state.texture = new Texture2D(state.texWidth, state.texHeight, TextureFormat.RGBA32, false);
-        state.texture.filterMode = FilterMode.Point;
-        state.texture.wrapMode = TextureWrapMode.Clamp;
+        state.canvas = new MinimapCanvas(state.texWidth, state.texHeight);
         state.terrainBuffer = new Color32[state.texWidth * state.texHeight];
-        state.frameBuffer = new Color32[state.texWidth * state.texHeight];
 
         return state;
     }
@@ -385,8 +430,58 @@ public class MinimapManager : MonoBehaviour
 
     private void Update()
     {
-        if (current == null || current.texture == null || playerTransform == null) return;
+        SyncOutdoor();
+        if (outdoor != null)
+        {
+            outdoor.Update(Time.deltaTime, OutdoorPlayer());
+            return;
+        }
+
+        if (current == null || current.canvas == null || playerTransform == null) return;
         Refresh(Time.deltaTime);
+    }
+
+    // ── 던전 밖 ─────────────────────────────────────────────
+
+    /// <summary>
+    /// 지금 씬에 던전 밖 맵(SceneLocation)이 있으면 그 맵을 찍어 던전 밖 미니맵으로 바꾸고, 없으면 끕니다.
+    /// SceneLocation이 알려주기를 기다리지 않고 여기서 확인하는 이유: HUD(이 컴포넌트)는 비동기로 늦게
+    /// 생길 수 있어서, 맵의 Start가 먼저 끝나면 알림을 놓칩니다.
+    /// </summary>
+    private void SyncOutdoor()
+    {
+        SceneLocation location = SceneLocation.Primary;
+
+        if (outdoor != null && outdoor.Source == location && !outdoorNeedsRebuild) return;
+
+        ClearOutdoor();
+        outdoorNeedsRebuild = false;
+        if (location == null || location == failedOutdoorSource) return;
+
+        var map = new OutdoorMinimap(this, location);
+        if (!map.Capture())
+        {
+            map.Dispose();
+            failedOutdoorSource = location;
+            return;
+        }
+
+        outdoor = map;
+        current = null;   // 던전을 떠났으니 층 미니맵은 더 보여주지 않습니다. (다시 들어가면 새로 만듦)
+    }
+
+    private void ClearOutdoor()
+    {
+        if (outdoor == null) return;
+
+        outdoor.Dispose();
+        outdoor = null;
+    }
+
+    private static Transform OutdoorPlayer()
+    {
+        GameObject player = PlayerManager.Instance != null ? PlayerManager.Instance.Player : null;
+        return player != null ? player.transform : null;
     }
 
     /// <param name="deltaTime">아이콘이 서서히 나타나고 사라지는 데 쓰는 경과 시간. 층을 막 옮겼을 때는 0.</param>
@@ -506,16 +601,12 @@ public class MinimapManager : MonoBehaviour
         int signature = CollectMarkers(deltaTime);
         if (!terrainChanged && current.hasFrame && signature == current.lastMarkerSignature) return;
 
-        System.Array.Copy(current.terrainBuffer, current.frameBuffer, current.frameBuffer.Length);
-        foreach (Marker marker in markers)
-        {
-            if (marker.icon != null) DrawIcon(marker.center, marker.icon, marker.opacity);
-            else if (marker.isTile) DrawSquare(marker.center, marker.radius, marker.color);
-            else DrawDot(marker.center, marker.radius, marker.color, marker.opacity);
-        }
+        MinimapCanvas canvas = current.canvas;
+        System.Array.Copy(current.terrainBuffer, canvas.pixels, canvas.pixels.Length);
+        foreach (MinimapMarker marker in markers)
+            canvas.Draw(marker, Vector2.zero);
 
-        current.texture.SetPixels32(current.frameBuffer);
-        current.texture.Apply();
+        canvas.Upload();
 
         current.hasFrame = true;
         current.lastMarkerSignature = signature;
@@ -545,10 +636,10 @@ public class MinimapManager : MonoBehaviour
                 switch (vision.KindAt(i))
                 {
                     case MinimapVisionMap.PixelKind.Floor:
-                        color = light > 0 ? Blend(trail, floor, light) : vision.IsExploredFloor(i) ? trail : unexplored;
+                        color = light > 0 ? MinimapCanvas.Blend(trail, floor, light) : vision.IsExploredFloor(i) ? trail : unexplored;
                         break;
                     case MinimapVisionMap.PixelKind.WallFace:
-                        color = light > 0 ? Blend(seenWall, litWall, light) : vision.IsSeenWall(i) ? seenWall : unexplored;
+                        color = light > 0 ? MinimapCanvas.Blend(seenWall, litWall, light) : vision.IsSeenWall(i) ? seenWall : unexplored;
                         break;
                     default:
                         color = unexplored;
@@ -562,17 +653,6 @@ public class MinimapManager : MonoBehaviour
         current.terrainDirtyAll = false;
         current.terrainDirtyRect = default;
         return true;
-    }
-
-    /// <summary>from에서 to로 weight(0~255)만큼 섞습니다. 255면 to 그대로입니다.</summary>
-    private static Color32 Blend(Color32 from, Color32 to, byte weight)
-    {
-        int w = weight, rest = 255 - weight;
-        return new Color32(
-            (byte)((from.r * rest + to.r * w) / 255),
-            (byte)((from.g * rest + to.g * w) / 255),
-            (byte)((from.b * rest + to.b * w) / 255),
-            (byte)((from.a * rest + to.a * w) / 255));
     }
 
     /// <summary>
@@ -654,8 +734,8 @@ public class MinimapManager : MonoBehaviour
     private void AddMarker(ref int signature, Vector2 center, MarkerIcon iconSetting, Color fallbackColor, int fallbackRadius,
                            bool fallbackIsTile, float opacity)
     {
-        IconImage icon = GetIcon(iconSetting);
-        markers.Add(new Marker
+        MinimapIconImage icon = GetIcon(iconSetting);
+        markers.Add(new MinimapMarker
         {
             center = center,
             icon = icon,
@@ -733,11 +813,12 @@ public class MinimapManager : MonoBehaviour
 
     // ── 아이콘 ──────────────────────────────────────────────
 
-    private IconImage GetIcon(MarkerIcon setting)
+    /// <summary>아이콘 칸의 이미지를 줄여 둔 픽셀. 이미지가 없거나 읽을 수 없으면 null (대체 모양으로 그림).</summary>
+    internal MinimapIconImage GetIcon(MarkerIcon setting)
     {
         if (setting == null || setting.sprite == null) return null;
 
-        if (!iconCache.TryGetValue(setting, out IconImage icon))
+        if (!iconCache.TryGetValue(setting, out MinimapIconImage icon))
         {
             icon = BuildIcon(setting);
             iconCache[setting] = icon;
@@ -747,7 +828,7 @@ public class MinimapManager : MonoBehaviour
     }
 
     /// <summary>스프라이트 픽셀을 읽어 아이콘 칸의 sizePx 크기로 줄여 둡니다. 읽을 수 없으면 에러를 남기고 null.</summary>
-    private IconImage BuildIcon(MarkerIcon setting)
+    private MinimapIconImage BuildIcon(MarkerIcon setting)
     {
         Sprite sprite = setting.sprite;
         Texture2D source = sprite.texture;
@@ -764,7 +845,7 @@ public class MinimapManager : MonoBehaviour
         Color[] src = source.GetPixels(Mathf.RoundToInt(rect.x), Mathf.RoundToInt(rect.y), srcW, srcH);
 
         int size = Mathf.Max(1, setting.sizePx);
-        return new IconImage { pixels = ShrinkIcon(src, srcW, srcH, size, setting.tint), size = size };
+        return new MinimapIconImage { pixels = ShrinkIcon(src, srcW, srcH, size, setting.tint), size = size };
     }
 
     /// <summary>
@@ -804,75 +885,6 @@ public class MinimapManager : MonoBehaviour
         }
 
         return pixels;
-    }
-
-    private void DrawIcon(Vector2 center, IconImage icon, float opacity)
-    {
-        int size = icon.size;
-        int left = Mathf.RoundToInt(center.x - size * 0.5f);
-        int bottom = Mathf.RoundToInt(center.y - size * 0.5f);
-
-        for (int y = 0; y < size; y++)
-        {
-            int ty = bottom + y;
-            if (ty < 0 || ty >= current.texHeight) continue;
-
-            for (int x = 0; x < size; x++)
-            {
-                int tx = left + x;
-                if (tx < 0 || tx >= current.texWidth) continue;
-
-                Color32 src = icon.pixels[y * size + x];
-                Composite(ty * current.texWidth + tx, src, Mathf.RoundToInt(src.a * opacity));
-            }
-        }
-    }
-
-    /// <summary>frameBuffer의 픽셀 위에 src를 alpha(0~255)만큼 덮습니다. 미니맵 텍스처는 늘 불투명하게 유지합니다.</summary>
-    private void Composite(int index, Color32 src, int alpha)
-    {
-        if (alpha <= 0) return;
-
-        Color32 result = alpha >= 255 ? src : Blend(current.frameBuffer[index], src, (byte)alpha);
-        result.a = 255;
-        current.frameBuffer[index] = result;
-    }
-
-    private void DrawDot(Vector2 center, int radiusPx, Color32 color, float opacity)
-    {
-        int alpha = Mathf.RoundToInt(opacity * 255f);
-        int minX = Mathf.Max(0, Mathf.FloorToInt(center.x - radiusPx));
-        int maxX = Mathf.Min(current.texWidth - 1, Mathf.CeilToInt(center.x + radiusPx));
-        int minY = Mathf.Max(0, Mathf.FloorToInt(center.y - radiusPx));
-        int maxY = Mathf.Min(current.texHeight - 1, Mathf.CeilToInt(center.y + radiusPx));
-
-        float radiusSq = radiusPx * radiusPx;
-
-        for (int y = minY; y <= maxY; y++)
-        {
-            for (int x = minX; x <= maxX; x++)
-            {
-                float dx = x + 0.5f - center.x;
-                float dy = y + 0.5f - center.y;
-                if (dx * dx + dy * dy <= radiusSq)
-                    Composite(y * current.texWidth + x, color, alpha);
-            }
-        }
-    }
-
-    private void DrawSquare(Vector2 center, int halfSize, Color32 color)
-    {
-        int minX = Mathf.Max(0, Mathf.RoundToInt(center.x - halfSize));
-        int maxX = Mathf.Min(current.texWidth, Mathf.RoundToInt(center.x + halfSize));
-        int minY = Mathf.Max(0, Mathf.RoundToInt(center.y - halfSize));
-        int maxY = Mathf.Min(current.texHeight, Mathf.RoundToInt(center.y + halfSize));
-
-        for (int y = minY; y < maxY; y++)
-        {
-            int row = y * current.texWidth;
-            for (int x = minX; x < maxX; x++)
-                current.frameBuffer[row + x] = color;
-        }
     }
 
     /// <summary>월드 좌표 → 타일 공간 (1 = 한 칸, 칸 (x, z)는 [x, x+1)).</summary>

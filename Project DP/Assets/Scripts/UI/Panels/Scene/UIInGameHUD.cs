@@ -202,12 +202,16 @@ public class UIInGameHUD : UIScene
     }
 
     /// <summary>
-    /// 이 지역에 표시할 미니맵이 있는지. 지금은 던전(MinimapManager)만 미니맵을 갖고 있습니다.
-    /// 오버월드/마을 미니맵이 생기면 여기에 조건을 추가하세요.
+    /// 이 지역에 표시할 미니맵이 있는지. 던전 밖이면 맵을 찍어 둔 미니맵, 던전이면 층 미니맵을 보여줍니다.
+    /// (던전을 떠난 뒤에도 층 미니맵이 남지 않도록 던전 쪽은 지역까지 확인합니다)
     /// </summary>
     private static bool HasMinimapFor(RegionType? region)
     {
-        return region == RegionType.Dungeon && MinimapManager.Instance != null;
+        MinimapManager mm = MinimapManager.Instance;
+        if (mm == null) return false;
+        if (mm.IsOutdoorActive) return true;
+
+        return region == RegionType.Dungeon && mm.HasCurrentLocation;
     }
 
     private void ToggleInventory()

@@ -29,6 +29,12 @@ public class SceneLocation : MonoBehaviour
     public LocationRoot Root { get; private set; }
 
     /// <summary>
+    /// 지금 켜져 있는 던전 밖 맵. 없으면 null (던전·타이틀 씬). 던전 밖 미니맵이 이 맵을 찍어 보여줍니다.
+    /// 한 씬에 하나만 두는 게 규칙이라 첫 번째 것을 씁니다.
+    /// </summary>
+    public static SceneLocation Primary => active.Count > 0 ? active[0] : null;
+
+    /// <summary>
     /// 맵의 자식이 아닌 액터(씬 최상단에 놓인 NPC 등)가 장소를 찾을 때 씁니다.
     /// 던전에는 SceneLocation이 없으므로 던전 액터의 동작은 바뀌지 않습니다.
     /// </summary>

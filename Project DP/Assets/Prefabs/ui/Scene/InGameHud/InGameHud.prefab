@@ -2368,8 +2368,8 @@ MonoBehaviour:
   gridSize: {x: 17, y: 17}
   pixelsPerTile: 20
   explorationCompleteThreshold: 0.95
-  playerVisionRadius: 2
-  torchVisionRadius: 2
+  playerVisionRadius: 3
+  torchVisionRadius: 3
   wallFaceThickness: 0.3
   lightFalloff:
     serializedVersion: 2
@@ -2427,6 +2427,14 @@ MonoBehaviour:
     sprite: {fileID: 21300000, guid: e045ddc093019c1478944cf793e0a75d, type: 3}
     sizePx: 16
     tint: {r: 1, g: 1, b: 1, a: 1}
+  portalIcon:
+    sprite: {fileID: 21300000, guid: b182c40c5472cd74dab6b34e7d4828dd, type: 3}
+    sizePx: 32
+    tint: {r: 1, g: 1, b: 1, a: 1}
+  dungeonEntranceIcon:
+    sprite: {fileID: 21300000, guid: 8ba5642479ce24545843fa0bad0c73d0, type: 3}
+    sizePx: 32
+    tint: {r: 1, g: 1, b: 1, a: 1}
   playerColor: {r: 0.2, g: 0.8, b: 0.2, a: 1}
   enemyColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
   chestColor: {r: 0.9, g: 0.9, b: 0.2, a: 1}
@@ -2434,10 +2442,28 @@ MonoBehaviour:
   graveColor: {r: 0.65, g: 0.2, b: 0.9, a: 1}
   trapColor: {r: 1, g: 0.4403754, b: 0, a: 1}
   pushWallColor: {r: 0.5, g: 0, b: 0.5, a: 1}
+  portalColor: {r: 0.3, g: 0.7, b: 1, a: 1}
+  dungeonEntranceColor: {r: 0.8, g: 0.3, b: 0.9, a: 1}
   playerDotRadiusPx: 8
   enemyDotRadiusPx: 8
   chestDotRadiusPx: 5
   torchDotRadiusPx: 5
+  outdoorViewTiles: 14
+  outdoorPixelsPerTile: 20
+  outdoorCaptureMarginTiles: 1
+  outdoorCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  outdoorCaptureRenderer: {fileID: 11400000, guid: 49a6ce74e48b4dde8e308aa73fdd25c1, type: 2}
+  outdoorCaptureColorShader: {fileID: 4800000, guid: 7295b579b85a46cd9e2b3f768d35d487, type: 3}
+  outdoorCaptureHeightShader: {fileID: 4800000, guid: a2489998bf774e959e65c03f47c5f67c, type: 3}
+  outdoorEmptyColor: {r: 0, g: 0, b: 0, a: 1}
+  outdoorColorLevels: 6
+  outdoorSaturation: 1
+  outdoorBrightness: 1
+  outdoorOutlineThickness: 1
+  outdoorOutlineHeightThreshold: 0.3
+  outdoorOutlineColor: {r: 0.1, g: 0.08, b: 0.06, a: 1}
 --- !u!1 &4220802573315079293
 GameObject:
   m_ObjectHideFlags: 0
