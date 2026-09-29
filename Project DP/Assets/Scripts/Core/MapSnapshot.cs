@@ -60,8 +60,6 @@ public class MapSnapshot
     /// <summary>사망 위치에 설치된 묘비. 같은 셀에는 하나만 기록됩니다.</summary>
     public readonly List<GraveRecord> graves = new();
 
-    // 미니맵 탐색 기록. visited는 2차원 배열을 1차원으로 편 것.
-    public bool[] minimapVisited;
-    public int minimapVisitedCount;
-    public Vector2Int minimapGridSize;
+    // 미니맵 탐색 기록 (밝혀진 바닥·본 벽면, 픽셀 단위). 개척도도 여기서 다시 계산됩니다.
+    public MinimapExplorationRecord minimapExploration;
 }

@@ -5,7 +5,6 @@ public class MapBuilder : MonoBehaviour
 {
     // 맵 프리팹 안의 표준 묶음 이름. 격자 타일 묶음 이름은 MapTileType 이름과 같습니다.
     // 묶음 오브젝트는 태그가 없어야 합니다 — 태그가 붙으면 그 아래 타일이 LocationGrid에서 빠집니다.
-    // 이름이 "Bonus"로 시작하면 안 됩니다 — 미니맵이 이름으로 보너스 오브젝트를 찾습니다.
     public static readonly string[] TileContainerNames = { "Floor", "Wall", "Entrance", "Exit", "Chest", "Trap", "Enemy", "Pushable" };
     public const string FreeContainerName = "FreeObjects";
     public const string DecorationContainerName = "DecorationRoot";

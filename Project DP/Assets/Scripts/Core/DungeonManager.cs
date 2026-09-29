@@ -221,14 +221,8 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
             if (isNew)
             {
                 MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));
-                if (snapshot != null && snapshot.minimapVisited != null)
-                {
-                    MinimapManager.Instance.RestoreExploration(
-                        destination,
-                        snapshot.minimapVisited,
-                        snapshot.minimapVisitedCount,
-                        snapshot.minimapGridSize);
-                }
+                if (snapshot != null && snapshot.minimapExploration != null)
+                    MinimapManager.Instance.RestoreExploration(destination, snapshot.minimapExploration);
             }
         }
 
@@ -345,11 +339,9 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
             // 4. 미니맵 탐색 기록 (개척도 포함)
             if (MinimapManager.Instance != null &&
-                MinimapManager.Instance.TryCaptureExploration(kvp.Key, out bool[] visited, out int visitedCount, out Vector2Int gridSize))
+                MinimapManager.Instance.TryCaptureExploration(kvp.Key, out MinimapExplorationRecord exploration))
             {
-                snapshot.minimapVisited = visited;
-                snapshot.minimapVisitedCount = visitedCount;
-                snapshot.minimapGridSize = gridSize;
+                snapshot.minimapExploration = exploration;
             }
 
             DungeonRunState.Save(mapId, snapshot);
