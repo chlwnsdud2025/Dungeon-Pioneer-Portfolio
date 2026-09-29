@@ -67,12 +67,16 @@ MonoBehaviour:
   obstacleLayer:
     serializedVersion: 2
     m_Bits: 64
+  faction: 2
+  huntsTorches: 1
+  torchGiveUpSeconds: 3
+  torchIgnoreSeconds: 10
   spawnPosition: {x: 0, y: 0, z: 0}
   spawnCell: {x: 0, y: 0}
   spawnRotation: {x: 0, y: 0, z: 0, w: 0}
-  target: {fileID: 0}
   lastAttackTime: -999
-  viewAngle: 60
+  viewAngle: 120
+  eyeHeight: 1.5
   backstabDamageMultiplier: 1.5
   gravity: -9.81
   gravityMultiplier: 2
