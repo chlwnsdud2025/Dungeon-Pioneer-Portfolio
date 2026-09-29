@@ -10,8 +10,9 @@ public class LocationPortal : TransitionArrivalPoint
     [SerializeField] private string portalId = "";
 
     [Header("목적지")]
-    [SerializeField] private LocationType destination = LocationType.Overworld;
-    [Tooltip("도착 지역에서 플레이어가 나올 LocationPortal의 id. 비우면 같은 id의 포탈을 찾습니다.")]
+    [Tooltip("이 문으로 들어가면 열릴 씬. Build Settings에 등록된 씬만 고를 수 있습니다.")]
+    [SerializeField, SceneName] private string destinationScene = "";
+    [Tooltip("도착 씬에서 플레이어가 나올 LocationPortal의 id. 비우면 같은 id의 포탈을 찾습니다.")]
     [SerializeField] private string arrivalPortalId = "";
 
     private TransitionPath path;
@@ -58,7 +59,7 @@ public class LocationPortal : TransitionArrivalPoint
         yield return TransitionMotion.Depart(Path);
 
         string targetId = !string.IsNullOrEmpty(arrivalPortalId) ? arrivalPortalId : portalId;
-        if (WorldManager.TravelToArrival(new LocationId(destination), targetId)) yield break;
+        if (WorldManager.TravelToArrival(destinationScene, targetId)) yield break;
 
         // 이동에 실패했으면 까만 화면에 갇히지 않도록 문 밖으로 도로 걸어 나옵니다.
         isTraveling = false;

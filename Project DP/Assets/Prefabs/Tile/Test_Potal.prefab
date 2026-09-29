@@ -131,7 +131,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LocationPortal
   portalId: 
-  destination: 1
+  destinationScene: 
   arrivalPortalId: 
 --- !u!114 &7400000000000000010
 MonoBehaviour:

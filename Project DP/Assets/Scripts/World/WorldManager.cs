@@ -78,15 +78,35 @@ public static class WorldManager
     /// </summary>
     public static bool TravelToArrival(LocationId destination, string arrivalId)
     {
+        if (Table == null || !Table.TryGetScene(destination, out string sceneName))
+        {
+            Debug.LogError($"[WorldManager] LocationTable에 {destination}이(가) 등록되어 있지 않습니다.");
+            return false;
+        }
+
+        return TravelToArrival(sceneName, arrivalId);
+    }
+
+    /// <summary>
+    /// 도착 씬의 특정 지점(포탈 / 던전 입구)으로 걸어 나오며 이동합니다. 포탈처럼 씬을 직접 지목할 때 씁니다.
+    /// 도착한 씬의 지역(Current)은 씬 로드 시 LocationTable에서 씬 이름으로 찾아 정합니다.
+    /// </summary>
+    public static bool TravelToArrival(string sceneName, string arrivalId)
+    {
+        if (string.IsNullOrEmpty(sceneName))
+        {
+            Debug.LogError($"[WorldManager] 도착 지점 '{arrivalId}'으로 갈 씬 이름이 비어 있습니다.");
+            return false;
+        }
+
         if (string.IsNullOrEmpty(arrivalId))
         {
-            Debug.LogError($"[WorldManager] {destination}으로 갈 도착 지점 id가 비어 있습니다.");
+            Debug.LogError($"[WorldManager] {sceneName}으로 갈 도착 지점 id가 비어 있습니다.");
             return false;
         }
 
         // 같은 씬이면 씬을 다시 로드하지 않고 그 지점에서 바로 나온다.
-        if (Table != null && Table.TryGetScene(destination, out string sceneName)
-            && sceneName == SceneManager.GetActiveScene().name)
+        if (sceneName == SceneManager.GetActiveScene().name)
         {
             TransitionArrivalPoint point = TransitionArrivalPoint.Find(arrivalId);
             if (point == null)
@@ -95,14 +115,12 @@ public static class WorldManager
                 return false;
             }
 
-            Current = destination;
-            ApplyRegion(destination);
             point.StartCoroutine(point.ArriveRoutine());
             return true;
         }
 
         pendingArrivalId = arrivalId;
-        if (Travel(destination, null)) return true;
+        if (SceneTransition.Go(sceneName, null)) return true;
 
         pendingArrivalId = null;
         return false;

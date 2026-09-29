@@ -22,6 +22,10 @@ MonoBehaviour:
       index: 0
     sceneName: Overworld
   - id:
+      type: 1
+      index: 1
+    sceneName: Field
+  - id:
       type: 2
       index: 0
     sceneName: Dungeon

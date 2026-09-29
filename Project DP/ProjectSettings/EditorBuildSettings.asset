@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Game/Overworld.unity
     guid: f959e9df5ed6df74bb1939a46abe8b85
   - enabled: 1
+    path: Assets/Scenes/Game/Field.unity
+    guid: 44d30cf8c034d4842b0f2151fb8bf090
+  - enabled: 1
     path: Assets/Scenes/Game/Dungeon.unity
     guid: 92077b019f7948547b0b720140223a3f
   m_configObjects:

@@ -23,6 +23,13 @@ public static class SceneTransition
             return false;
         }
 
+        // LoadScene은 실패해도 에러만 남기고 넘어가므로, 플레이어를 꺼두기 전에 미리 확인합니다.
+        if (!Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            Debug.LogError($"[SceneTransition] '{sceneName}' 씬이 Build Settings에 없어 로드할 수 없습니다.");
+            return false;
+        }
+
         pendingAnchorId = anchorId;
         reviveOnArrival = revive;
 
