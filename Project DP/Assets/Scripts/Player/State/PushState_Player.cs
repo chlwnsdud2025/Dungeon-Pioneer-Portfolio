@@ -20,7 +20,7 @@ public class PushState_Player : PlayerBaseState
 
         if (targetObject == null)
         {
-            stateMachine.ChangeState<IdleState_Player>();
+            if (!TryResumeAirborne()) stateMachine.ChangeState<IdleState_Player>();
             return;
         }
 
@@ -31,7 +31,7 @@ public class PushState_Player : PlayerBaseState
         if (!CanPushObject(snappedPushDirection))
         {
             Debug.Log("<color=red>벽이나 장애물에 막혀 밀 수 없습니다!</color>");
-            stateMachine.ChangeState<IdleState_Player>();
+            if (!TryResumeAirborne()) stateMachine.ChangeState<IdleState_Player>();
             return;
         }
 
@@ -51,14 +51,15 @@ public class PushState_Player : PlayerBaseState
 
     public override void Update()
     {
-        player.MoveCharacter(Vector3.zero);
+        // 점프 중에 밀었으면 중력과 점프 관성을 그대로 받으며 떨어집니다. (땅에서는 airMomentum이 0이라 제자리)
+        player.MoveCharacter(player.airMomentum * Time.deltaTime);
 
         // ★ 더 이상 여기서 Lerp/MovePosition을 직접 하지 않고, PushableObject에게 완료 여부만 물어봅니다.
         //   (Rigidbody.MovePosition을 두 스크립트가 각자 호출하면 서로의 이동을 덮어써버리기 때문에,
         //    이동의 소유권을 PushableObject 한 곳으로 합쳤습니다.)
         if (targetPushable == null || targetPushable.IsPushComplete)
         {
-            stateMachine.ChangeState<IdleState_Player>();
+            if (!TryResumeAirborne()) stateMachine.ChangeState<IdleState_Player>();
         }
     }
 

@@ -62,9 +62,8 @@ public class PlaceTorchState_Player : PlayerBaseState
             SpawnTorchOnWall(wallCollider, player.focusedHitNormal);
         }
 
-        // 3. 모션 재생 및 제자리 고정
+        // 3. 모션 재생
         player.animator.CrossFadeInFixedTime(interactAnimHash, 0.1f);
-        player.MoveCharacter(Vector3.zero);
 
         // 재고는 Inventory.UseItem이 이 직후에 1개 줄이므로, 여기서 찍는 값은 '차감 전' 개수다.
         Debug.Log($"<color=orange>횃불 설치! 남은 개수: {player.TorchStock - 1}</color>");
@@ -122,11 +121,14 @@ public class PlaceTorchState_Player : PlayerBaseState
 
     public override void Update()
     {
+        // 점프 중에 설치했으면 중력과 점프 관성을 그대로 받으며 떨어집니다. (땅에서는 airMomentum이 0이라 제자리)
+        player.MoveCharacter(player.airMomentum * Time.deltaTime);
+
         timer += Time.deltaTime;
 
         if (timer >= placeDuration)
         {
-            stateMachine.ChangeState<IdleState_Player>();
+            if (!TryResumeAirborne()) stateMachine.ChangeState<IdleState_Player>();
         }
     }
 

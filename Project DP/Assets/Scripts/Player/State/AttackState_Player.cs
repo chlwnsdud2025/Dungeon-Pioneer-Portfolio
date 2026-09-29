@@ -46,12 +46,9 @@ public class AttackState_Player : PlayerBaseState
         // 상태 종료 판정만 애니메이션 진행률을 씁니다.
         if (TryGetAttackProgress(out float progress) && progress >= EndNormalized)
         {
-            if (!player.characterController.isGrounded)
-            {
-                player.resumeAirborne = true;
-                stateMachine.ChangeState<JumpState_Player>();
-            }
-            else if (player.moveInput == Vector2.zero)
+            if (TryResumeAirborne()) return;
+
+            if (player.moveInput == Vector2.zero)
                 stateMachine.ChangeState<IdleState_Player>();
             else
                 stateMachine.ChangeState<WalkState_Player>();

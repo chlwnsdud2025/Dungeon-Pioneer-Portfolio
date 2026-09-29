@@ -46,6 +46,21 @@ public abstract class PlayerBaseState
             target.Interact(player);
     }
 
+    /// <summary>
+    /// 공격·상호작용처럼 제자리에서 하는 동작이 끝났을 때 부릅니다. 공중이면 점프 상태로 돌아가
+    /// 남은 낙하를 이어가고 true를 돌려줍니다. 땅이면 false라, 부른 쪽이 땅 위 상태를 고릅니다.
+    /// (동작 중에는 Update에서 MoveCharacter(airMomentum)를 계속 불러 중력과 공중 관성을 유지해야
+    ///  공중에서 멈추지 않습니다.)
+    /// </summary>
+    protected bool TryResumeAirborne()
+    {
+        if (player.characterController.isGrounded) return false;
+
+        player.resumeAirborne = true;
+        stateMachine.ChangeState<JumpState_Player>();
+        return true;
+    }
+
     // [추가] 이동 방향으로 캐릭터를 부드럽게 회전시키는 공통 메서드
     protected virtual void HandleRotation(Vector3 moveDir)
     {
