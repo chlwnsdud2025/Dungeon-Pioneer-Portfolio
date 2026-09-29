@@ -12,16 +12,14 @@ public class UIQuickSlotView : MonoBehaviour,
     [SerializeField] private int slotIndex;
 
     [Header("표시")]
+    [Tooltip("등록된 아이템 아이콘. 빈 칸이면 꺼집니다. 마우스 판정은 칸 배경 Image가 받아야 빈 칸에도 끌어다 놓을 수 있습니다.")]
     [SerializeField] private Image iconImage;
-    [Tooltip("빈 칸일 때 보여줄 기본 이미지.")]
-    [SerializeField] private Sprite emptySprite;
     [Tooltip("인벤토리에 남은 개수. 정확히 1개일 때는 숨깁니다.")]
     [SerializeField] private TMP_Text countText;
     [Tooltip("(선택) 단축키 표시. 비워두면 슬롯 번호+1로 자동으로 채웁니다.")]
     [SerializeField] private TMP_Text hotkeyText;
 
     [Header("색")]
-    [SerializeField] private Color emptyColor = new Color(1f, 1f, 1f, 0.3f);
     [Tooltip("등록은 되어 있지만 인벤토리 재고가 0일 때의 색.")]
     [SerializeField] private Color outOfStockColor = new Color(1f, 1f, 1f, 0.35f);
 
@@ -53,14 +51,14 @@ public class UIQuickSlotView : MonoBehaviour,
 
         if (data == null)
         {
-            iconImage.sprite = emptySprite;
-            iconImage.color = emptyColor;
+            iconImage.enabled = false;
             if (countText != null) countText.gameObject.SetActive(false);
             return;
         }
 
         int stock = holder.StockOf(slotIndex);
 
+        iconImage.enabled = true;
         iconImage.sprite = data.SlotIcon;                              // 없으면 icon으로 폴백
         iconImage.color = stock > 0 ? Color.white : outOfStockColor;   // 다 썼어도 등록은 유지
 

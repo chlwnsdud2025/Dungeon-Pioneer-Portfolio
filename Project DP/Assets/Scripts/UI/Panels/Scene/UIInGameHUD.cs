@@ -15,13 +15,11 @@ public class UIInGameHUD : UIScene
     [Tooltip("(선택) '80 / 100' 같은 수치 텍스트.")]
     [SerializeField] private TMP_Text healthText;
 
-    [Header("Region / Floor")]
-    [Tooltip("현재 지역을 표시하는 텍스트. 던전이면 층, 그 외엔 지역 이름이 나옵니다.")]
-    [SerializeField] private TMP_Text regionText;
-    [Tooltip("던전일 때 층 표시 형식. {0}에 층 번호가 들어갑니다.")]
-    [SerializeField] private string floorFormat = "{0}층";
-    [SerializeField] private string overworldLabel = "Overworld";
-    [SerializeField] private string townLabel = "Town";
+    [Header("MP Bar")]
+    [Tooltip("Image Type을 'Filled'로 설정한 마나 게이지. fillAmount(0~1)로 채웁니다.")]
+    [SerializeField] private Image manaFill;
+    [Tooltip("(선택) '40 / 100' 같은 수치 텍스트.")]
+    [SerializeField] private TMP_Text manaText;
 
     [Header("Exploration (현재 층 개척도)")]
     [Tooltip("현재 층을 얼마나 개척했는지 보여주는 텍스트. 던전에서만 표시됩니다.")]
@@ -30,12 +28,6 @@ public class UIInGameHUD : UIScene
     [SerializeField] private string explorationFormat = "개척도 {0}%";
     [Tooltip("임계값을 넘겼을 때 표시할 문구.")]
     [SerializeField] private string explorationCompleteLabel = "개척 완료";
-
-    [Header("Torch")]
-    [Tooltip("남은 횃불 개수 텍스트. 인벤토리의 횃불 아이템 재고를 그대로 보여줍니다.")]
-    [SerializeField] private TMP_Text torchCountText;
-    [Tooltip("개수 표시 형식. {0}에 개수가 들어갑니다.")]
-    [SerializeField] private string torchCountFormat = "{0}";
 
     [Header("Gold")]
     [Tooltip("보유 골드 텍스트. PlayerWallet의 잔액을 그대로 보여줍니다.")]
@@ -50,9 +42,7 @@ public class UIInGameHUD : UIScene
 
     // ── 내부 캐시 ──
     private PlayerController _player;
-    private string _lastRegionLabel;
     private string _lastExplorationLabel;
-    private int _lastTorchStock = -1;
     private int _lastGold = -1;
 
 
@@ -62,9 +52,7 @@ public class UIInGameHUD : UIScene
         base.OnBeforeShow();
         // 보이기 직전에 한 번 즉시 갱신해서 첫 프레임 깜빡임을 줄임
         _player = FindPlayer();
-        _lastRegionLabel = null;
         _lastExplorationLabel = null;
-        _lastTorchStock = -1;
         _lastGold = -1;
         Refresh();
     }
@@ -92,10 +80,8 @@ public class UIInGameHUD : UIScene
     private void Refresh()
     {
         RefreshMinimap();
-        RefreshHealth();
-        RefreshRegion();
+        RefreshStatus();
         RefreshExploration();
-        RefreshTorch();
         RefreshGold();
         EnsurePlayerBindings();
     }
@@ -126,22 +112,6 @@ public class UIInGameHUD : UIScene
 
         _lastExplorationLabel = label;
         explorationText.text = label;
-    }
-
-    // 횃불은 인벤토리 소모품이라 개수가 곧 인벤토리 재고입니다.
-    // 설치(F키)로도, 퀵슬롯으로도 줄어들기 때문에 어느 쪽으로 써도 여기에 반영됩니다.
-    private void RefreshTorch()
-    {
-        if (torchCountText == null) return;
-
-        // 인벤토리 연결 전이면 0. EnsurePlayerBindings가 곧 연결하고, 그때 값이 채워집니다.
-        int stock = _player != null ? _player.TorchStock : 0;
-
-        // 값이 바뀔 때만 갱신 (매 프레임 TMP 텍스트를 건드리지 않도록)
-        if (stock == _lastTorchStock) return;
-
-        _lastTorchStock = stock;
-        torchCountText.text = string.Format(torchCountFormat, stock);
     }
 
     // 골드는 Player의 PlayerWallet이 들고 있습니다. 상자 보상·상점 결제 등
@@ -201,62 +171,36 @@ public class UIInGameHUD : UIScene
     {
         if (minimapImage == null) return;
 
-        MinimapManager mm = MinimapManager.Instance;
-        if (mm == null) return;
+        // 현재 지역에 미니맵 소스가 있을 때만 표시합니다.
+        bool show = HasMinimapFor(RegionState.Region);
+        if (minimapImage.gameObject.activeSelf != show) minimapImage.gameObject.SetActive(show);
+        if (!show) return;
 
+        MinimapManager mm = MinimapManager.Instance;
         Texture tex = mm.CurrentTexture;
         if (minimapImage.texture != tex) minimapImage.texture = tex;
         if (minimapFitter != null && tex != null) minimapFitter.aspectRatio = mm.CurrentAspect;
     }
 
-    private void RefreshHealth()
+    // 체력·마나 게이지. 둘 다 PlayerStat의 현재값/최대값을 그대로 보여줍니다.
+    private void RefreshStatus()
     {
         if (_player == null) _player = FindPlayer();
-        if (_player == null || _player.stat == null || _player.stat.maxHealth <= 0f) return;
+        if (_player == null || _player.stat == null) return;
 
-        float ratio = Mathf.Clamp01(_player.stat.currentHealth / _player.stat.maxHealth);
-        if (healthFill != null) healthFill.fillAmount = ratio;
-        if (healthText != null)
-            healthText.text = $"{Mathf.CeilToInt(Mathf.Max(0f, _player.stat.currentHealth))} / {Mathf.CeilToInt(_player.stat.maxHealth)}";
+        PlayerStat stat = _player.stat;
+        ApplyGauge(healthFill, healthText, stat.currentHealth, stat.maxHealth);
+        ApplyGauge(manaFill, manaText, stat.currentMana, stat.maxMana);
     }
 
-    private void RefreshRegion()
+    private static void ApplyGauge(Image fill, TMP_Text text, float current, float max)
     {
-        RegionType? region = RegionState.Region;
+        if (max <= 0f) return;
 
-        // 현재 지역에 미니맵 소스가 있을 때만 표시합니다.
-        bool showMinimap = HasMinimapFor(region);
-        if (minimapImage != null && minimapImage.gameObject.activeSelf != showMinimap)
-            minimapImage.gameObject.SetActive(showMinimap);
-
-        if (regionText == null) return;
-
-        string label;
-        if (region == RegionType.Dungeon)
-        {
-            int floor = DungeonManager.Instance != null ? DungeonManager.Instance.currentFloor : 1;
-            label = string.Format(floorFormat, floor);
-        }
-        else if (region == RegionType.Town)
-        {
-            label = townLabel;
-        }
-        else if (region == RegionType.Overworld)
-        {
-            label = overworldLabel;
-        }
-        else
-        {
-            label = string.Empty; // 아직 지역 제공자가 등록되지 않음
-        }
-
-        // 지역/층은 자주 안 바뀌므로 값이 변할 때만 갱신
-        if (label != _lastRegionLabel)
-        {
-            _lastRegionLabel = label;
-            regionText.text = label;
-        }
+        if (fill != null) fill.fillAmount = Mathf.Clamp01(current / max);
+        if (text != null) text.text = $"{Mathf.CeilToInt(Mathf.Max(0f, current))} / {Mathf.CeilToInt(max)}";
     }
+
     /// <summary>
     /// 이 지역에 표시할 미니맵이 있는지. 지금은 던전(MinimapManager)만 미니맵을 갖고 있습니다.
     /// 오버월드/마을 미니맵이 생기면 여기에 조건을 추가하세요.

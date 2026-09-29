@@ -8,6 +8,10 @@ public class PlayerStat : MonoBehaviour
     public float maxHealth = 100f;
     [HideInInspector] public float currentHealth;
 
+    [Header("마나")]
+    public float maxMana = 100f;
+    [HideInInspector] public float currentMana;
+
     [Header("공격")]
     public float attackDamage = 5f;
 
@@ -34,6 +38,7 @@ public class PlayerStat : MonoBehaviour
     private void Awake()
     {
         ResetHealth();
+        ResetMana();
     }
 
     /// <summary>
@@ -45,6 +50,12 @@ public class PlayerStat : MonoBehaviour
     {
         currentHealth = maxHealth;
         OnHealthChanged?.Invoke();
+    }
+
+    /// <summary>마나를 최대치로 되돌립니다. 부활할 때 체력과 함께 부릅니다.</summary>
+    public void ResetMana()
+    {
+        currentMana = maxMana;
     }
 
     /// <summary>체력 회복. 사망 상태면 무시.</summary>

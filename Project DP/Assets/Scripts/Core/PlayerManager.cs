@@ -112,7 +112,11 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         if (Player == null) return;
 
         // ① 부활은 상태머신을 Idle로 되돌리기 '전에' 끝나야 합니다. (체력 0인 채로 살아나는 것 방지)
-        if (SceneTransition.ConsumeRevive() && Stat != null) Stat.ResetHealth();
+        if (SceneTransition.ConsumeRevive() && Stat != null)
+        {
+            Stat.ResetHealth();
+            Stat.ResetMana();
+        }
 
         // ② CharacterController가 켜진 채로 position을 직접 바꾸면 충돌 보정이 끼어들어 위치가 튑니다.
         CharacterController cc = Player.GetComponent<CharacterController>();
