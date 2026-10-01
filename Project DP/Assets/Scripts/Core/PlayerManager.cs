@@ -7,6 +7,11 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     [Tooltip("앱 전체에서 단 하나만 생성될 플레이어 프리팹. (Assets/Prefabs/Player/Player.prefab)")]
     [SerializeField] private GameObject playerPrefab;
 
+    [Header("UI")]
+    [Tooltip("앱 전체에서 단 하나만 생성될 UI 묶음 프리팹. (Assets/Prefabs/ui/GameUI.prefab) " +
+             "UIManager·InputManager·Canvas·EventSystem이 들어 있으며, 씬에는 두지 않고 처음 한 번 만들어 씬을 옮겨도 그대로 씁니다.")]
+    [SerializeField] private GameObject uiPrefab;
+
     [Header("Camera")]
     [Tooltip("앱 전체에서 단 하나만 생성될 카메라 프리팹. (Assets/Prefabs/Camera/GameCamera.prefab) " +
              "씬에는 카메라를 두지 않고, 처음 한 번 만들어 씬을 옮겨도 그대로 씁니다.")]
@@ -28,7 +33,9 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         base.Awake();                 // MonoSingleton: Instance 설정 + DontDestroyOnLoad
         if (Instance != this) return; // 중복 인스턴스면 초기화 스킵 (곧 Destroy됨)
 
-        // 다른 오브젝트의 Start가 Camera.main을 찾을 수 있도록 플레이어보다 먼저, Awake에서 만듭니다.
+        // 다른 오브젝트가 Start에서 UIManager·InputManager·Camera.main을 찾을 수 있도록 플레이어보다 먼저, Awake에서 만듭니다.
+        // (플레이어는 OnEnable에서 InputManager에 입력을 구독합니다)
+        EnsureUI();
         EnsureCamera();
         SceneManager.sceneLoaded += HandleSceneLoaded;
     }
@@ -172,6 +179,21 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     }
 
     // ── 생성 ─────────────────────────────────────────────────────
+
+    /// <summary>UI 묶음이 아직 없으면 프리팹으로 만듭니다. 안의 UIManager가 스스로 씬을 넘어 유지됩니다.</summary>
+    private void EnsureUI()
+    {
+        if (UIManager.Instance != null) return;
+
+        if (uiPrefab == null)
+        {
+            Debug.LogError("[PlayerManager] uiPrefab이 연결되지 않았습니다. 인스펙터를 확인해주세요.", this);
+            return;
+        }
+
+        GameObject uiObject = Instantiate(uiPrefab);
+        uiObject.name = uiPrefab.name; // 하이어라키에서 찾기 쉽도록 "(Clone)" 제거
+    }
 
     /// <summary>GameCamera가 아직 없으면 프리팹으로 만듭니다. 만든 카메라는 스스로 씬을 넘어 유지됩니다.</summary>
     private void EnsureCamera()
