@@ -7,6 +7,11 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     [Tooltip("앱 전체에서 단 하나만 생성될 플레이어 프리팹. (Assets/Prefabs/Player/Player.prefab)")]
     [SerializeField] private GameObject playerPrefab;
 
+    [Header("Camera")]
+    [Tooltip("앱 전체에서 단 하나만 생성될 카메라 프리팹. (Assets/Prefabs/Camera/GameCamera.prefab) " +
+             "씬에는 카메라를 두지 않고, 처음 한 번 만들어 씬을 옮겨도 그대로 씁니다.")]
+    [SerializeField] private GameObject cameraPrefab;
+
     [Header("첫 스폰")]
     [Tooltip("게임을 이 씬에서 바로 시작했을 때 플레이어를 놓을 SpawnAnchor의 id. 없으면 배치를 건너뜁니다.")]
     [SerializeField] private string defaultAnchorId = "Start";
@@ -23,6 +28,8 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         base.Awake();                 // MonoSingleton: Instance 설정 + DontDestroyOnLoad
         if (Instance != this) return; // 중복 인스턴스면 초기화 스킵 (곧 Destroy됨)
 
+        // 다른 오브젝트의 Start가 Camera.main을 찾을 수 있도록 플레이어보다 먼저, Awake에서 만듭니다.
+        EnsureCamera();
         SceneManager.sceneLoaded += HandleSceneLoaded;
     }
 
@@ -137,17 +144,18 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     }
 
     /// <summary>
-    /// 씬마다 존재하는 Main Camera의 CameraFollow를 플레이어에 다시 연결합니다.
+    /// GameCamera의 CameraFollow를 플레이어에 연결하고 카메라를 바로 플레이어 위치로 옮깁니다.
     /// (CameraOcclusionFader는 자기 target이 비어 있으면 CameraFollow.target을 쓰므로 함께 해결됩니다)
     /// </summary>
     public void BindCamera()
     {
         if (Player == null) return;
 
-        Camera cam = Camera.main;
+        EnsureCamera();
+        Camera cam = GameCamera.Instance != null ? GameCamera.Instance.Camera : Camera.main;
         if (cam == null)
         {
-            Debug.LogWarning("[PlayerManager] MainCamera 태그를 가진 카메라가 없어 카메라를 연결하지 못했습니다.");
+            Debug.LogWarning("[PlayerManager] 카메라가 없어 연결하지 못했습니다. cameraPrefab을 확인해주세요.", this);
             return;
         }
 
@@ -164,6 +172,21 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     }
 
     // ── 생성 ─────────────────────────────────────────────────────
+
+    /// <summary>GameCamera가 아직 없으면 프리팹으로 만듭니다. 만든 카메라는 스스로 씬을 넘어 유지됩니다.</summary>
+    private void EnsureCamera()
+    {
+        if (GameCamera.Instance != null) return;
+
+        if (cameraPrefab == null)
+        {
+            Debug.LogError("[PlayerManager] cameraPrefab이 연결되지 않았습니다. 인스펙터를 확인해주세요.", this);
+            return;
+        }
+
+        GameObject cameraObject = Instantiate(cameraPrefab);
+        cameraObject.name = cameraPrefab.name; // 하이어라키에서 찾기 쉽도록 "(Clone)" 제거
+    }
 
     /// <summary>
     /// Player가 아직 없으면 생성합니다. 스크립트 실행 순서(PlayerManager.Start vs DungeonManager.Start)에

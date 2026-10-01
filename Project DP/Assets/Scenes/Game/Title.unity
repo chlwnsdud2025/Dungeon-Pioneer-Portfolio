@@ -651,6 +651,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerManager
   playerPrefab: {fileID: 4568866605203343792, guid: 43831cc1c0dd6f6419d6b11161fdfa02, type: 3}
+  cameraPrefab: {fileID: 6127394810452317001, guid: 2f8b6d1e4c9a4b3d9e7a5c1f8d2b6e93, type: 3}
   defaultAnchorId: Start
 --- !u!4 &1028333412
 Transform:
