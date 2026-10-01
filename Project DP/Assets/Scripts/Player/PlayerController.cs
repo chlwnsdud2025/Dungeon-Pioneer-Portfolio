@@ -132,7 +132,10 @@ public class PlayerController : MonoBehaviour, ITarget, IFactionMember
 
     private void Start()
     {
-        stateMachine.Initialize<IdleState_Player>();
+        // 생성 직후 같은 프레임에 이미 다른 상태로 들어갔을 수 있습니다. (던전 씬에서 바로 시작하면
+        // DungeonManager가 플레이어를 만들자마자 계단 도착 연출 상태로 바꿈) 그 상태를 Idle로 덮어쓰면
+        // 연출 상태의 Exit가 불리지 않아 CharacterController가 꺼진 채 남으므로, 상태가 없을 때만 시작합니다.
+        if (stateMachine.CurrentState == null) stateMachine.Initialize<IdleState_Player>();
     }
 
     private void Update()
