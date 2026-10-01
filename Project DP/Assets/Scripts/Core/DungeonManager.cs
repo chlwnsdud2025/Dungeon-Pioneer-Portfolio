@@ -212,22 +212,38 @@ public class DungeonManager : MonoBehaviour, IRegionProvider
 
         StairTile arrival = PlacePlayer(instance, arrivalSpawnPointId, arriveInside);
 
-        GameObject player = PlayerManager.Instance != null ? PlayerManager.Instance.Player : null;
-        if (MinimapManager.Instance != null && player != null)
-        {
-            MinimapManager.Instance.SwitchLocation(destination, instance, isNew, player.transform);
-
-            // 새로 만든 층이면 저장해둔 탐색 기록을 덮어씌운다. (SwitchLocation이 백지 상태를 만든 뒤여야 함)
-            if (isNew)
-            {
-                MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));
-                if (snapshot != null && snapshot.minimapExploration != null)
-                    MinimapManager.Instance.RestoreExploration(destination, snapshot.minimapExploration);
-            }
-        }
-
+        NotifyMinimap(destination, instance, isNew);
         RevealDecorationIfExplored(instance);
         return arrival;
+    }
+
+    /// <summary>
+    /// 미니맵(HUD의 MinimapManager)이 지금 층보다 늦게 생겼을 때 지금 층을 다시 알려줍니다.
+    /// 던전 씬에서 바로 시작하면 HUD를 비동기로 불러오는 동안 첫 층이 먼저 만들어져 알림을 놓치기 때문입니다.
+    /// 미니맵에는 처음 보는 층이므로 새 층처럼 만들고, 저장해둔 탐색 기록이 있으면 되돌립니다.
+    /// </summary>
+    public void AttachMinimap()
+    {
+        GameObject instance = CurrentLocationInstance;
+        if (instance == null) return;
+
+        NotifyMinimap(currentLocationId, instance, isNew: true);
+        RevealDecorationIfExplored(instance);
+    }
+
+    private static void NotifyMinimap(LocationId location, GameObject instance, bool isNew)
+    {
+        GameObject player = PlayerManager.Instance != null ? PlayerManager.Instance.Player : null;
+        if (MinimapManager.Instance == null || player == null) return;
+
+        MinimapManager.Instance.SwitchLocation(location, instance, isNew, player.transform);
+
+        // 새로 만든 층이면 저장해둔 탐색 기록을 덮어씌운다. (SwitchLocation이 백지 상태를 만든 뒤여야 함)
+        if (!isNew) return;
+
+        MapSnapshot snapshot = DungeonRunState.Get(GetMapId(instance));
+        if (snapshot != null && snapshot.minimapExploration != null)
+            MinimapManager.Instance.RestoreExploration(location, snapshot.minimapExploration);
     }
 
     /// <summary>

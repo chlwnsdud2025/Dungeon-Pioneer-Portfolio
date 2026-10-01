@@ -218,6 +218,15 @@ public class MinimapManager : MonoBehaviour
         Instance = this;
     }
 
+    private void Start()
+    {
+        if (Instance != this) return;
+
+        // HUD는 UIManager가 비동기로 불러와 던전 층보다 늦게 생길 수 있습니다. (던전 씬에서 바로 시작한 경우)
+        // 그때 이미 만들어진 층의 알림을 놓쳤으므로 DungeonManager에 지금 층을 다시 받아옵니다.
+        if (current == null && DungeonManager.Instance != null) DungeonManager.Instance.AttachMinimap();
+    }
+
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
