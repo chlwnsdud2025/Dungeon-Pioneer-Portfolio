@@ -2363,8 +2363,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 22c6916792c402e41a99204cef75e646, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MinimapManager
-  minimapDisplay: {fileID: 2805765172743338948}
-  minimapAspectFitter: {fileID: 6646566767543662732}
+  minimapDisplay: {fileID: 0}
+  minimapAspectFitter: {fileID: 0}
   gridSize: {x: 17, y: 17}
   pixelsPerTile: 20
   explorationCompleteThreshold: 0.95
@@ -2458,12 +2458,18 @@ MonoBehaviour:
   outdoorCaptureColorShader: {fileID: 4800000, guid: 7295b579b85a46cd9e2b3f768d35d487, type: 3}
   outdoorCaptureHeightShader: {fileID: 4800000, guid: a2489998bf774e959e65c03f47c5f67c, type: 3}
   outdoorEmptyColor: {r: 0, g: 0, b: 0, a: 1}
-  outdoorColorLevels: 6
-  outdoorSaturation: 1
-  outdoorBrightness: 1
+  outdoorBrushRadius: 3
+  outdoorSaturation: 1.354
+  outdoorBrightness: 0.997
+  outdoorPaperColor: {r: 0.96, g: 0.91, b: 0.78, a: 1}
+  outdoorPaperAmount: 0.213
+  outdoorSunAzimuth: 312
+  outdoorSunElevation: 40
+  outdoorShadeStrength: 0.082
+  outdoorShadowStrength: 0.137
+  outdoorOutlineStrength: 0
   outdoorOutlineThickness: 1
-  outdoorOutlineHeightThreshold: 0.3
-  outdoorOutlineColor: {r: 0.1, g: 0.08, b: 0.06, a: 1}
+  outdoorOutlineHeightThreshold: 0.8
 --- !u!1 &4220802573315079293
 GameObject:
   m_ObjectHideFlags: 0

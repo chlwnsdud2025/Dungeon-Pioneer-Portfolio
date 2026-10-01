@@ -30,11 +30,12 @@ internal class OutdoorMinimap
 
     // 찍은 그림 (맵 전체). 가공 설정만 바뀌면 다시 찍지 않고 raw에서 다시 가공할 수 있게 원본을 남겨 둡니다.
     private Color32[] rawColor;
-    private ushort[] heights;
+    private float[] heights;       // 월드 높이
     private Color32[] background;
     private int mapWidth, mapHeight;
     private Vector2 mapOriginXZ;   // 그림 왼쪽 아래 모서리의 월드 XZ
     private float worldPerPixel;
+    private float tileSize;
     private float heightMin, heightRange;
 
     // 보여줄 창
@@ -98,7 +99,8 @@ internal class OutdoorMinimap
             rawColor = Render(camera, drawn, hidden, settings.outdoorCaptureColorShader, true);
 
             Shader.SetGlobalVector(HeightRangeId, new Vector4(heightMin, 1f / heightRange, 0f, 0f));
-            heights = MinimapImageProcessing.DecodeHeight(Render(camera, drawn, hidden, settings.outdoorCaptureHeightShader, false));
+            ushort[] encoded = MinimapImageProcessing.DecodeHeight(Render(camera, drawn, hidden, settings.outdoorCaptureHeightShader, false));
+            heights = MinimapImageProcessing.ToWorldHeights(encoded, heightMin, heightRange);
         }
         finally
         {
@@ -231,7 +233,7 @@ internal class OutdoorMinimap
 
     private void SetUpMapArea(Bounds bounds)
     {
-        float tileSize = GridSystem.Instance.TileSize;
+        tileSize = GridSystem.Instance.TileSize;
         float margin = settings.outdoorCaptureMarginTiles * tileSize;
         float width = bounds.size.x + margin * 2f;
         float depth = bounds.size.z + margin * 2f;
@@ -421,16 +423,34 @@ internal class OutdoorMinimap
 
     // ── 가공 ────────────────────────────────────────────────
 
-    /// <summary>찍어 둔 원본으로 색 단순화·외곽선을 다시 입힙니다.</summary>
+    /// <summary>찍어 둔 원본(색·높이)을 손으로 칠한 지도처럼 가공합니다.</summary>
     private void RebuildBackground()
     {
-        background = new Color32[mapWidth * mapHeight];
-        MinimapImageProcessing.Stylize(rawColor, background, settings.outdoorColorLevels, settings.outdoorSaturation,
-                                       settings.outdoorBrightness, settings.outdoorEmptyColor);
+        // 그림자는 맵에서 가장 높은 물체가 드리울 길이까지만, 그래도 6칸은 넘지 않게 봅니다.
+        float sunElevation = Mathf.Clamp(settings.outdoorSunElevation, 5f, 89f);
+        float shadowDistance = Mathf.Min(heightRange / Mathf.Tan(sunElevation * Mathf.Deg2Rad), tileSize * 6f);
 
-        int threshold = Mathf.Max(1, Mathf.RoundToInt(settings.outdoorOutlineHeightThreshold / heightRange * 65535f));
-        MinimapImageProcessing.DrawHeightOutline(heights, mapWidth, mapHeight, threshold, settings.outdoorOutlineThickness,
-                                                 settings.outdoorOutlineColor, background);
+        var style = new MinimapPaintStyle
+        {
+            brushRadius = settings.outdoorBrushRadius,
+            saturation = settings.outdoorSaturation,
+            brightness = settings.outdoorBrightness,
+            paperColor = settings.outdoorPaperColor,
+            paperAmount = settings.outdoorPaperAmount,
+            sunAzimuth = settings.outdoorSunAzimuth,
+            sunElevation = sunElevation,
+            shadeStrength = settings.outdoorShadeStrength,
+            shadowStrength = settings.outdoorShadowStrength,
+            shadowMaxDistance = shadowDistance,
+            reliefSoftness = Mathf.Max(1, Mathf.RoundToInt(tileSize * 0.1f / worldPerPixel)),   // 한 칸의 1/10
+            outlineStrength = settings.outdoorOutlineStrength,
+            outlineHeightThreshold = settings.outdoorOutlineHeightThreshold,
+            outlineThickness = settings.outdoorOutlineThickness,
+            emptyColor = settings.outdoorEmptyColor
+        };
+
+        background = new Color32[mapWidth * mapHeight];
+        MinimapImageProcessing.Paint(rawColor, heights, mapWidth, mapHeight, worldPerPixel, style, background);
         hasFrame = false;
     }
 

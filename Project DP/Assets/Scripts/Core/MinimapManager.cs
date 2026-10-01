@@ -113,18 +113,32 @@ public class MinimapManager : MonoBehaviour
     [Tooltip("맵 바깥, 아무것도 찍히지 않은 곳의 색")]
     public Color outdoorEmptyColor = new Color(0f, 0f, 0f, 1f);
 
-    [Header("Outdoor Style (찍은 그림을 미니맵답게 가공)")]
-    [Tooltip("색 단계 수. 작을수록 색이 뭉쳐 단순해집니다.")]
-    [Range(2, 32)] public int outdoorColorLevels = 6;
-    [Tooltip("채도. 1이면 원래대로, 0이면 흑백.")]
-    [Range(0f, 2f)] public float outdoorSaturation = 1f;
+    [Header("Outdoor Style (찍은 그림을 손으로 칠한 지도처럼 가공)")]
+    [Tooltip("붓질 반경 (픽셀). 풀 텍스처 같은 자잘한 무늬를 뭉개고 물체 경계는 살려, 물감으로 칠한 느낌을 냅니다. " +
+             "클수록 더 뭉개지고 0이면 끕니다.")]
+    [Range(0, 6)] public int outdoorBrushRadius = 3;
+    [Tooltip("채도. 1이면 원래대로, 0이면 흑백. 조금 낮추면 차분한 파스텔 톤이 됩니다.")]
+    [Range(0f, 2f)] public float outdoorSaturation = 0.8f;
     [Tooltip("밝기. 1이면 원래대로.")]
     [Range(0f, 2f)] public float outdoorBrightness = 1f;
+    [Tooltip("그림 전체에 살짝 섞을 종이색. 따뜻한 미색이면 오래된 지도 느낌이 납니다.")]
+    public Color outdoorPaperColor = new Color(0.96f, 0.91f, 0.78f, 1f);
+    [Tooltip("종이색을 섞는 양. 0이면 섞지 않고, 1이면 종이색만 남습니다.")]
+    [Range(0f, 1f)] public float outdoorPaperAmount = 0.18f;
+    [Tooltip("해가 있는 방향 (미니맵 위쪽=북쪽에서 시계 방향 각도). 315면 왼쪽 위에서 비춥니다.")]
+    [Range(0f, 360f)] public float outdoorSunAzimuth = 315f;
+    [Tooltip("해의 높이 (도). 낮을수록 음영이 진하고 그림자가 깁니다.")]
+    [Range(10f, 80f)] public float outdoorSunElevation = 40f;
+    [Tooltip("입체 음영 세기. 해 쪽을 향한 비탈·지붕은 밝게, 반대쪽은 어둡게 칠합니다. 0이면 평평한 그림입니다.")]
+    [Range(0f, 1f)] public float outdoorShadeStrength = 0.55f;
+    [Tooltip("그림자 세기. 나무·집 같은 높은 물체가 해 반대쪽 바닥에 드리우는 그림자입니다. 0이면 끕니다.")]
+    [Range(0f, 1f)] public float outdoorShadowStrength = 0.3f;
+    [Tooltip("외곽선 진하기. 높은 물체 가장자리를 그 자리 색보다 이만큼 어둡게 칠합니다. 0이면 외곽선이 없습니다.")]
+    [Range(0f, 1f)] public float outdoorOutlineStrength = 0.45f;
     [Tooltip("외곽선 두께 (픽셀). 0이면 외곽선을 그리지 않습니다.")]
     [Range(0, 4)] public int outdoorOutlineThickness = 1;
-    [Tooltip("이웃보다 이만큼(월드 높이) 이상 높은 곳의 가장자리에 외곽선을 긋습니다. 작을수록 낮은 턱에도 선이 생깁니다.")]
-    [Min(0.01f)] public float outdoorOutlineHeightThreshold = 0.3f;
-    public Color outdoorOutlineColor = new Color(0.1f, 0.08f, 0.06f, 1f);
+    [Tooltip("이웃보다 이만큼(월드 높이) 이상 높은 곳의 가장자리에만 외곽선을 긋습니다. 작을수록 낮은 턱에도 선이 생깁니다.")]
+    [Min(0.01f)] public float outdoorOutlineHeightThreshold = 0.8f;
 
     [System.Serializable]
     public class MarkerIcon
