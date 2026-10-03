@@ -51,7 +51,8 @@ MonoBehaviour:
     - {fileID: 5813289311675977411, guid: a689a2d7e5ea9984b9bed0725dafbb4c, type: 3}
   - name: "\uC790\uC720 \uBC30\uCE58"
     type: 8
-    prefabs: []
+    prefabs:
+    - {fileID: 6627615869561318768, guid: 5731a7a2afa9cb843944b7a89965ce43, type: 3}
   - name: "\uAC1C\uCC99 \uC7A5\uC2DD"
     type: 9
     prefabs: []

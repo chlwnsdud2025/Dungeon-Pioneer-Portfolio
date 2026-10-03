@@ -129,7 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1023264117}
   m_Layer: 0
-  m_Name: Demomap1_Root
+  m_Name: DGMAP_01_Root
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -143,12 +143,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1023264116}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1447101946}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1099536335
 GameObject:
@@ -443,8 +443,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1023264117}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1447101947
@@ -459,16 +458,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10303580936d6e44ba69afa9de0213be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapBuilder
-  mapWidth: 17
-  mapHeight: 17
+  mapWidth: 25
+  mapHeight: 25
   tileContainer: {fileID: 1023264117}
   brushSize: 1
-  currentHeight: 3
+  currentHeight: 1
   currentRotation: 1
   useSelectiveEraser: 0
-  mapPrefabName: Demomap1
+  mapPrefabName: DGMAP_04
   savePath: Assets/Prefabs/Maps/
-  prefabToLoad: {fileID: 2449207738045336394, guid: 23070fb34d043244e8c5fe47765aa9e8, type: 3}
+  prefabToLoad: {fileID: 7684237999883813262, guid: cf8d791187dc2c84bab9346a4172a6a1, type: 3}
+  paletteLibrary: {fileID: 11400000, guid: 79d441cc27d361e499de9ed934cd0878, type: 2}
+  mapKind: 2
+  selectedPaletteIndex: 7
+  selectedItemIndex: 0
+  freeHeightStep: 0.25
+  freeHeight: 1
   floorPrefab: {fileID: 2899550423917745108, guid: 2168a46faa89d9447b211d30efc2064c, type: 3}
   wallPrefab: {fileID: 7749681633486640535, guid: dadcef389fad1c046bea8c76ab9807ce, type: 3}
   entrancePrefab: {fileID: 4755391832852263130, guid: 3a91721e98352544ca459964efd420aa, type: 3}
@@ -482,8 +487,7 @@ MonoBehaviour:
   - {fileID: 1873648191601592951, guid: 53a93c71ee35c2b4ab51b4936ddee298, type: 3}
   enemyPrefab: {fileID: 5313783119121271820, guid: 41ee85e6c9601d84cb8f1303db4508e3, type: 3}
   pushablePrefab: {fileID: 5813289311675977411, guid: a689a2d7e5ea9984b9bed0725dafbb4c, type: 3}
-  selectedPrefabIndex: 1
-  selectedTrapIndex: 2
+  freePrefabs: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -491,3 +495,4 @@ SceneRoots:
   - {fileID: 1099536338}
   - {fileID: 1110756183}
   - {fileID: 1447101946}
+  - {fileID: 1023264117}
