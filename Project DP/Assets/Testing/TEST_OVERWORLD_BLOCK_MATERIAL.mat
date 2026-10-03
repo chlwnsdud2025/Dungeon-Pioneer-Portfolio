@@ -57,7 +57,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Mask_Map:
-        m_Texture: {fileID: 2800000, guid: e2b1414c2d2cc704b961e6f63757436d, type: 3}
+        m_Texture: {fileID: 2800000, guid: aa697bd42264e044db2d985e799b93c3, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -70,6 +70,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _OverlayMap:
+        m_Texture: {fileID: 2800000, guid: aa697bd42264e044db2d985e799b93c3, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
@@ -113,8 +117,10 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.59999996
     - _GlossyReflections: 1
+    - _MAINTEXUSEUV: 0
     - _Metallic: 0
     - _Mode: 0
+    - _OVERLAYINVERT: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _QueueControl: 0
@@ -139,9 +145,10 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _Emission_Boost: {r: 0, g: 0, b: 0, a: 1}
     - _Metallic_Remap: {r: 0, g: 0, b: 0, a: 0}
-    - _Smoothness_Remap: {r: 0, g: 0.53, b: 0, a: 0}
+    - _OverlayMix: {r: 1, g: 1, b: 1, a: 0.14117648}
+    - _Smoothness_Remap: {r: 0, g: 0.43, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _Tint: {r: 0.33627605, g: 0.5345911, b: 0.1966891, a: 1}
+    - _Tint: {r: 0.3841042, g: 0.7106918, b: 0.15420662, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &6776570163970397805
