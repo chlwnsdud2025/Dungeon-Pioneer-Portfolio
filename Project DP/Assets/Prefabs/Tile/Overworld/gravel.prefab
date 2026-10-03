@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 1206415554182681619}
   - component: {fileID: 4912568557654971721}
   - component: {fileID: 2701494676564188072}
+  - component: {fileID: 1836653073788741886}
   m_Layer: 0
   m_Name: gravel
   m_TagString: Untagged
@@ -40,7 +41,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 466015001611127883}
-  m_Mesh: {fileID: 6938882208586647541, guid: 962d23d19525f5442bdc57e3709f8c33, type: 3}
+  m_Mesh: {fileID: -498282214495449752, guid: 3640a044a05f3c54491876e5bedef3c7, type: 3}
 --- !u!23 &2701494676564188072
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -66,7 +67,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -1340270957083844871, guid: 962d23d19525f5442bdc57e3709f8c33, type: 3}
+  - {fileID: 2100000, guid: 1683dd81fca2e2441a9f5a2326ccf02c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -90,3 +91,15 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &1836653073788741886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 466015001611127883}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdf9b54b4692157448fbe2e07fe8a482, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TEST_DUNGEONBLOCK_SETUP
