@@ -409,6 +409,8 @@ internal class OutdoorMinimap
 
     private static bool IsTriplanar(Material source)
     {
+        if (source.IsKeywordEnabled("_MAINTEXUSEUV")) return false;
+
         return source.HasProperty("_TriplanarBlend")
                || source.shader.name.IndexOf("Triplanar", System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
