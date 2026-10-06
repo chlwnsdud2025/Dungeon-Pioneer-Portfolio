@@ -4518,7 +4518,7 @@
     "m_Hidden": false,
     "m_ShaderOutputName": "EdgeWidth",
     "m_StageCapability": 3,
-    "m_Value": 0.1,
+    "m_Value": 0.05,
     "m_DefaultValue": 0.0,
     "m_Labels": []
 }
