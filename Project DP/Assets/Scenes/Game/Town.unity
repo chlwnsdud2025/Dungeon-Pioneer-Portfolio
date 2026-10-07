@@ -163,9 +163,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d1f4b8e2a6c4f9b8e3d5a7c1b9f2e64, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraSceneSettings
-  clearFlags: 1
-  backgroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
-  postProcessing: 0
+  clearFlags: 2
+  backgroundColor: {r: 0, g: 0, b: 0, a: 1}
+  postProcessing: 1
 --- !u!1 &800000001
 GameObject:
   m_ObjectHideFlags: 0
@@ -226,8 +226,8 @@ MonoBehaviour:
   shadowSource: 1
   sampleCount: 16
   earlyOutSamples: 32
-  lightSize: 6
-  enableContactHardening: 1
+  lightSize: 4
+  enableContactHardening: 0
   contactStrength: 0.5
   contactStrengthKnee: 0.0001
   distantSpread: 1
@@ -380,6 +380,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3585910847738626605, guid: 25398ead6d2cf294db8da00374ab1d9e, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 5973b351a46f26f4aa86d73d41691620, type: 2}
+    - target: {fileID: 5711517861640587179, guid: 25398ead6d2cf294db8da00374ab1d9e, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 5973b351a46f26f4aa86d73d41691620, type: 2}
     - target: {fileID: 5867796444596400174, guid: 25398ead6d2cf294db8da00374ab1d9e, type: 3}
       propertyPath: m_Name
       value: TownMap
@@ -435,6 +443,30 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1698672336864217990, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2945239173184459748, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.11918406
+      objectReference: {fileID: 0}
+    - target: {fileID: 2945239173184459748, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.044052053
+      objectReference: {fileID: 0}
+    - target: {fileID: 2945239173184459748, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.9303769
+      objectReference: {fileID: 0}
+    - target: {fileID: 2945239173184459748, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.34387997
+      objectReference: {fileID: 0}
+    - target: {fileID: 2945239173184459748, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 165.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 4571368583696680756, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}
+      propertyPath: weight
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7943252763167898058, guid: fab908f62fbdfe540bcb5eea00d47a84, type: 3}

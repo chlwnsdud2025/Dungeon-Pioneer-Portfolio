@@ -110,7 +110,7 @@ MonoBehaviour:
     dimension: 1
   noise3DIntensity:
     m_OverrideState: 1
-    m_Value: 0.502
+    m_Value: 0.8
   noise3DTiling:
     m_OverrideState: 1
     m_Value: {x: 0.2, y: 0.2, z: 0.2}
