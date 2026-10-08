@@ -29,22 +29,25 @@ public class CameraOcclusionFader : MonoBehaviour
     {
         [Tooltip("벽의 원래 셰이더")]
         public Shader source;
-        [Tooltip("그 셰이더를 복사해 디졸브 전환(_SeeThroughProgress)과 스크린도어(_DitherFade)를 더한 뚫기용 셰이더. 원래와 똑같이 보여야 바꿔 끼우는 순간이 티 나지 않습니다.")]
+        [Tooltip("그 셰이더를 복사해 반투명(알파 = 1 - _DitherFade)으로 바꾼 셰이더.")]
         public Shader seeThrough;
     }
 
     [Header("벽 비치기")]
-    [Tooltip("원래 셰이더별 뚫기용 셰이더. 던전 벽(TEST_TRIPLANAR_LIT) → WallSeeThrough")]
+    [Tooltip("원래 셰이더별 반투명용 셰이더. 던전 벽(TEST_TRIPLANAR_LIT) → WallSeeThrough")]
     public SeeThroughShader[] seeThroughShaders;
-    [Tooltip("위 목록에 없는 셰이더의 벽에 쓸 뚫기용 셰이더 (예전 WallDither). 원래 벽과 모양이 달라 바꿔 끼울 때 티가 납니다. " +
+    [Tooltip("위 목록에 없는 셰이더의 벽에 쓸 반투명용 셰이더 (예전 WallDither). 원래 벽과 모양이 달라 바꿔 끼울 때 티가 납니다. " +
              "비우면 그런 벽은 비치지 않습니다.")]
     [SerializeField] private Shader ditherShader;
-    [Tooltip("가릴 때 벽을 얼마나 비치게 할지 (0=그대로, 0.5=한 칸씩 건너뛴 바둑판으로 반투명, 1=완전히 사라짐). 픽셀을 바둑판 순서로 걸러 그리는 스크린도어 방식입니다.")]
+    [Tooltip("가릴 때 벽을 얼마나 투명하게 할지 (0=그대로, 0.5=반투명, 1=완전히 투명).")]
     [Range(0f, 1f)] public float occludedFade = 0.5f;
     [Tooltip("벽이 비치기까지 걸리는 시간 (초)")]
     [Min(0.01f)] public float disappearSeconds = 0.35f;
     [Tooltip("벽이 다시 나타나기까지 걸리는 시간 (초)")]
     [Min(0.01f)] public float reappearSeconds = 0.5f;
+    [Tooltip("비칠 때 벽 셰이더의 오버레이 무늬(바둑판 등, _OverlayMix)를 비치는 정도에 맞춰 옅게 합니다. " +
+             "반투명이 되면 뒤 배경과 대비돼 무늬가 도드라지기 때문입니다. 원래 벽 머티리얼은 바꾸지 않습니다.")]
+    public bool hideOverlayWhenSeeThrough = true;
 
     private CameraFollow camFollow;
 
@@ -185,7 +188,7 @@ public class CameraOcclusionFader : MonoBehaviour
         if (wall != null) return wall;
 
         wall = wallTransform.gameObject.AddComponent<FadeableWall>();
-        wall.Init(SeeThroughShaderFor);   // ★ 최초 1회 뚫기용 셰이더 고르는 방법 전달
+        wall.Init(SeeThroughShaderFor, hideOverlayWhenSeeThrough);   // ★ 최초 1회 반투명용 셰이더 고르는 방법 전달
         return wall;
     }
 
