@@ -11,8 +11,7 @@
 [![URP](https://img.shields.io/badge/URP-Render_Pipeline-222222)](#)
 [![Status](https://img.shields.io/badge/Status-개발_중-F5B83D)](#)
 
-<!-- TODO: 영상 업로드 후 아래 링크를 watch URL로 교체 -->
-[▶ 포트폴리오 영상 (YouTube)](https://www.youtube.com/channel/UCMoIuWbEUPRG-8-CIZpd6cQ) · [🌐 포트폴리오 사이트](https://chlwnsdud2025.github.io/projects/dungeon-pioneer.html) · [📑 Canva 포트폴리오](https://www.canva.com/d/mzu8Fvwvj8IVG7d)
+[▶ 포트폴리오 영상 (YouTube)](https://www.youtube.com/watch?v=2XpqfbCuGMY) · [🌐 포트폴리오 사이트](https://chlwnsdud2025.github.io/projects/dungeon-pioneer.html) · [📑 Canva 포트폴리오](https://www.canva.com/d/mzu8Fvwvj8IVG7d)
 
 <img src="docs/gifs/torch_place.webp" width="49%" alt="벽에 횃불을 걸어 어두운 던전을 밝히는 장면"> <img src="docs/gifs/builder_walls.webp" width="49%" alt="맵 빌더로 벽을 칠해 던전을 만드는 장면">
 
